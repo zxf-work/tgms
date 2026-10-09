@@ -1,0 +1,1405 @@
+{
+  "config": {
+    "campaign": "tgms-control",
+    "cell_ids": [
+      "collegemsg-c1-deep-n1000-s0",
+      "collegemsg-c1-none-n1000-s0",
+      "collegemsg-c3-days-n1000-s0",
+      "collegemsg-c3-deep-n1000-s0",
+      "collegemsg-c3-hours-n1000-s0",
+      "collegemsg-c3-none-n1000-s0",
+      "collegemsg-c3-recent-n1000-s0",
+      "collegemsg-c4-deep-n1000-s0",
+      "collegemsg-c4-none-n1000-s0",
+      "synth-iv-60k-c1-deep-n1000-s0",
+      "synth-iv-60k-c1-none-n1000-s0",
+      "synth-iv-60k-c1-none-n10000-s0",
+      "synth-iv-60k-c3-days-n1000-s0",
+      "synth-iv-60k-c3-deep-n1000-s0",
+      "synth-iv-60k-c3-hours-n1000-s0",
+      "synth-iv-60k-c3-none-n1000-s0",
+      "synth-iv-60k-c3-recent-n1000-s0",
+      "synth-iv-60k-c4-deep-n1000-s0",
+      "synth-iv-60k-c4-none-n1000-s0"
+    ]
+  },
+  "dataset": {
+    "digest": "a2249be076d9cf9df32da0b711911e9d430300af1106fec1383839b3115f4785",
+    "digest_kind": "eventlog_sha",
+    "name": "storm-v2 grid (TGMS same-host control, xzgpu, lane T1)"
+  },
+  "git_commit": "93d4543af61f786884884bee1ebf440ca5ce5673",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.03
+  },
+  "n_cells": 19,
+  "protocol": {
+    "ceilings": {
+      "note": "per-cell ceilings are in each row's own manifest"
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/external-v1/tgms-control-2026-10-08-arc5-rows.jsonl",
+  "result_digest": "1de589e098cf064c39a7d847afa6ab65100edeaefcfc38683cd4b8295a6ec006",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": "cell identity carries the seed; see cell_id per row",
+    "value": null
+  },
+  "summary": {
+    "per_cell": [
+      {
+        "age": "deep",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9978586723768736,
+            "avoided_recompute_wall": 0.9983788182260007,
+            "false_fresh": 989,
+            "false_stale": 31,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17682,
+            "ttf_p50_ms": 5036.5465064533055,
+            "ttf_p95_ms": 5196.427938062698
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 998,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7538543897216274,
+            "avoided_recompute_wall": 0.7913936495378675,
+            "e2e_refresh_calls_median": 233.5,
+            "false_fresh": 0,
+            "false_stale": 3600,
+            "ttf_p50_ms": 3867.71639296785,
+            "ttf_p95_ms": 5375.2133949892595
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7538543897216274,
+            "avoided_recompute_wall": 0.7913936495378675,
+            "e2e_refresh_calls_median": 233.5,
+            "false_fresh": 0,
+            "false_stale": 3600,
+            "ttf_p50_ms": 3844.090693979524,
+            "ttf_p95_ms": 5391.318309004419
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8137044967880086,
+            "avoided_recompute_wall": 0.8243059643514997,
+            "false_fresh": 146,
+            "false_stale": 2628,
+            "ttf_p50_ms": 1311.0498000169173,
+            "ttf_p95_ms": 2207.766115432605
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c1-deep-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.14,
+          "before": 1.13
+        },
+        "mix": "c1",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.3102049112268248,
+        "store": "collegemsg",
+        "wall_s": 374.8235595226288
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9986081370449679,
+            "avoided_recompute_wall": 0.9989798392199678,
+            "false_fresh": 1174,
+            "false_stale": 18,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17498,
+            "ttf_p50_ms": 4898.84490671102,
+            "ttf_p95_ms": 5117.576724267565
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 1182,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7394539614561028,
+            "avoided_recompute_wall": 0.7591533641001957,
+            "e2e_refresh_calls_median": 255.5,
+            "false_fresh": 0,
+            "false_stale": 3685,
+            "ttf_p50_ms": 4401.571046095341,
+            "ttf_p95_ms": 5781.392305041663
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7394539614561028,
+            "avoided_recompute_wall": 0.7591533641001957,
+            "e2e_refresh_calls_median": 255.5,
+            "false_fresh": 0,
+            "false_stale": 3685,
+            "ttf_p50_ms": 4375.9401249699295,
+            "ttf_p95_ms": 5696.198930032551
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.7800856531049251,
+            "avoided_recompute_wall": 0.7896068077274658,
+            "false_fresh": 82,
+            "false_stale": 3008,
+            "ttf_p50_ms": 991.559712565504,
+            "ttf_p95_ms": 1594.360391725786
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c1-none-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.13,
+          "before": 0.12
+        },
+        "mix": "c1",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.119495415112583,
+        "store": "collegemsg",
+        "wall_s": 396.0945453643799
+      },
+      {
+        "age": "days",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9981263383297645,
+            "avoided_recompute_wall": 0.9985813577650738,
+            "false_fresh": 1031,
+            "false_stale": 30,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17644,
+            "ttf_p50_ms": 4998.952686437406,
+            "ttf_p95_ms": 5146.94036450237
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 1036,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.742237687366167,
+            "avoided_recompute_wall": 0.7796472664438024,
+            "e2e_refresh_calls_median": 246.0,
+            "false_fresh": 0,
+            "false_stale": 3779,
+            "ttf_p50_ms": 4061.024868977256,
+            "ttf_p95_ms": 5169.277259032242
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.742237687366167,
+            "avoided_recompute_wall": 0.7796472664438024,
+            "e2e_refresh_calls_median": 246.0,
+            "false_fresh": 0,
+            "false_stale": 3779,
+            "ttf_p50_ms": 4037.4826228944585,
+            "ttf_p95_ms": 5122.371742036194
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8189507494646681,
+            "avoided_recompute_wall": 0.8325869677926143,
+            "false_fresh": 105,
+            "false_stale": 2451,
+            "ttf_p50_ms": 1032.0307423826307,
+            "ttf_p95_ms": 1524.5960199972615
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c3-days-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.13,
+          "before": 1.26
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.2381360251784,
+        "store": "collegemsg",
+        "wall_s": 384.84809827804565
+      },
+      {
+        "age": "deep",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9986081370449679,
+            "avoided_recompute_wall": 0.9989691572311692,
+            "false_fresh": 1120,
+            "false_stale": 22,
+            "ttf_p50_ms": 8.262089104391634,
+            "ttf_p95_ms": 8.262089104391634
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17556,
+            "ttf_p50_ms": 4969.494896824472,
+            "ttf_p95_ms": 5098.795314086601
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 1124,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7418094218415417,
+            "avoided_recompute_wall": 0.7783136543627812,
+            "e2e_refresh_calls_median": 254.5,
+            "false_fresh": 0,
+            "false_stale": 3699,
+            "ttf_p50_ms": 4241.57207692042,
+            "ttf_p95_ms": 5248.219205997884
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7418094218415417,
+            "avoided_recompute_wall": 0.7783136543627812,
+            "e2e_refresh_calls_median": 254.5,
+            "false_fresh": 0,
+            "false_stale": 3699,
+            "ttf_p50_ms": 4145.242332015187,
+            "ttf_p95_ms": 5112.405298976228
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.823982869379015,
+            "avoided_recompute_wall": 0.8372965435919973,
+            "false_fresh": 137,
+            "false_stale": 2301,
+            "ttf_p50_ms": 687.1710197301582,
+            "ttf_p95_ms": 1732.4182704323903
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c3-deep-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.08,
+          "before": 1.13
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.1988430346866064,
+        "store": "collegemsg",
+        "wall_s": 381.7589054107666
+      },
+      {
+        "age": "hours",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9978051391862955,
+            "avoided_recompute_wall": 0.9982498015512327,
+            "false_fresh": 1164,
+            "false_stale": 27,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17502,
+            "ttf_p50_ms": 5050.2647056709975,
+            "ttf_p95_ms": 5188.936141785234
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 1178,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7475374732334047,
+            "avoided_recompute_wall": 0.7642600958619844,
+            "e2e_refresh_calls_median": 259.5,
+            "false_fresh": 0,
+            "false_stale": 3538,
+            "ttf_p50_ms": 4394.809689023532,
+            "ttf_p95_ms": 5560.560578946024
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7475374732334047,
+            "avoided_recompute_wall": 0.7642600958619844,
+            "e2e_refresh_calls_median": 259.5,
+            "false_fresh": 0,
+            "false_stale": 3538,
+            "ttf_p50_ms": 4317.068970995024,
+            "ttf_p95_ms": 5516.619340050966
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.7883832976445396,
+            "avoided_recompute_wall": 0.7845397043683119,
+            "false_fresh": 116,
+            "false_stale": 2891,
+            "ttf_p50_ms": 1161.9342307094485,
+            "ttf_p95_ms": 2263.228945317678
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c3-hours-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.26,
+          "before": 1.12
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.1698364653430549,
+        "store": "collegemsg",
+        "wall_s": 385.8988161087036
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9981263383297645,
+            "avoided_recompute_wall": 0.9985951523716188,
+            "false_fresh": 788,
+            "false_stale": 23,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 3.9065940072759986
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17880,
+            "ttf_p50_ms": 4849.227983504534,
+            "ttf_p95_ms": 5049.3254360044375
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 800,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7560492505353319,
+            "avoided_recompute_wall": 0.7823910782796032,
+            "e2e_refresh_calls_median": 244.5,
+            "false_fresh": 0,
+            "false_stale": 3757,
+            "ttf_p50_ms": 3972.102617030032,
+            "ttf_p95_ms": 5489.325963892043
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7560492505353319,
+            "avoided_recompute_wall": 0.7823910782796032,
+            "e2e_refresh_calls_median": 244.5,
+            "false_fresh": 0,
+            "false_stale": 3757,
+            "ttf_p50_ms": 3938.777050934732,
+            "ttf_p95_ms": 5388.958277995698
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8207708779443255,
+            "avoided_recompute_wall": 0.8211455917605286,
+            "false_fresh": 11,
+            "false_stale": 2559,
+            "ttf_p50_ms": 506.3433558680117,
+            "ttf_p95_ms": 1854.1509790811688
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c3-none-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.13,
+          "before": 1.14
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.2311506644819457,
+        "store": "collegemsg",
+        "wall_s": 369.23463439941406
+      },
+      {
+        "age": "recent",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9983404710920771,
+            "avoided_recompute_wall": 0.9987538669729124,
+            "false_fresh": 751,
+            "false_stale": 26,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 4.785783006809652
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17924,
+            "ttf_p50_ms": 5001.741310930811,
+            "ttf_p95_ms": 5163.076829747297
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 756,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7717880085653105,
+            "avoided_recompute_wall": 0.7915185314293024,
+            "e2e_refresh_calls_median": 216.5,
+            "false_fresh": 0,
+            "false_stale": 3507,
+            "ttf_p50_ms": 3753.281414974481,
+            "ttf_p95_ms": 5578.803039039485
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7717880085653105,
+            "avoided_recompute_wall": 0.7915185314293024,
+            "e2e_refresh_calls_median": 216.5,
+            "false_fresh": 0,
+            "false_stale": 3507,
+            "ttf_p50_ms": 3712.3336739605293,
+            "ttf_p95_ms": 5400.514962035231
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8480728051391863,
+            "avoided_recompute_wall": 0.8342209528306131,
+            "false_fresh": 35,
+            "false_stale": 2117,
+            "ttf_p50_ms": 639.640104258433,
+            "ttf_p95_ms": 2464.10257962998
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c3-recent-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.12,
+          "before": 1.12
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.3473307493921116,
+        "store": "collegemsg",
+        "wall_s": 359.2503957748413
+      },
+      {
+        "age": "deep",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9791755888650964,
+            "avoided_recompute_wall": 0.9837586781540105,
+            "false_fresh": 1043,
+            "false_stale": 328,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 4.374729003757238
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17576,
+            "ttf_p50_ms": 5092.519761645235,
+            "ttf_p95_ms": 5277.048828313127
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 1104,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7614561027837259,
+            "avoided_recompute_wall": 0.79315776774595,
+            "e2e_refresh_calls_median": 239.5,
+            "false_fresh": 0,
+            "false_stale": 3352,
+            "ttf_p50_ms": 4248.042585910298,
+            "ttf_p95_ms": 6866.693558986299
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7614561027837259,
+            "avoided_recompute_wall": 0.79315776774595,
+            "e2e_refresh_calls_median": 239.5,
+            "false_fresh": 0,
+            "false_stale": 3352,
+            "ttf_p50_ms": 4198.435646016151,
+            "ttf_p95_ms": 6705.464735045098
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8265524625267666,
+            "avoided_recompute_wall": 0.8309672146827324,
+            "false_fresh": 228,
+            "false_stale": 2364,
+            "ttf_p50_ms": 705.0802302546799,
+            "ttf_p95_ms": 1893.4191261650994
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c4-deep-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.05,
+          "before": 1.16
+        },
+        "mix": "c4",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.2129564892765405,
+        "store": "collegemsg",
+        "wall_s": 693.3602056503296
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9787473233404711,
+            "avoided_recompute_wall": 0.9835261102470222,
+            "false_fresh": 846,
+            "false_stale": 329,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17766,
+            "ttf_p50_ms": 4973.78470050171,
+            "ttf_p95_ms": 5233.208125922829
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 914,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.765899357601713,
+            "avoided_recompute_wall": 0.8058854938580654,
+            "e2e_refresh_calls_median": 230.0,
+            "false_fresh": 0,
+            "false_stale": 3459,
+            "ttf_p50_ms": 4043.7868419103324,
+            "ttf_p95_ms": 5730.535462033004
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.765899357601713,
+            "avoided_recompute_wall": 0.8058854938580654,
+            "e2e_refresh_calls_median": 230.0,
+            "false_fresh": 0,
+            "false_stale": 3459,
+            "ttf_p50_ms": 4026.8781509948894,
+            "ttf_p95_ms": 5707.9060949618
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8170770877944326,
+            "avoided_recompute_wall": 0.8223339852790209,
+            "false_fresh": 205,
+            "false_stale": 2708,
+            "ttf_p50_ms": 813.8428640086204,
+            "ttf_p95_ms": 3191.356056020595
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "collegemsg-c4-none-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.16,
+          "before": 1.08
+        },
+        "mix": "c4",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.235146561182358,
+        "store": "collegemsg",
+        "wall_s": 669.5551173686981
+      },
+      {
+        "age": "deep",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9985859728506787,
+            "avoided_recompute_wall": 0.9982277341307739,
+            "false_fresh": 915,
+            "false_stale": 13,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16753,
+            "ttf_p50_ms": 15484.686215524562,
+            "ttf_p95_ms": 15586.753103416413
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 927,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7579751131221719,
+            "avoided_recompute_wall": 0.6231689118917528,
+            "e2e_refresh_calls_median": 230.0,
+            "false_fresh": 0,
+            "false_stale": 3352,
+            "ttf_p50_ms": 8655.720914946869,
+            "ttf_p95_ms": 12129.780202987604
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7579751131221719,
+            "avoided_recompute_wall": 0.6231689118917528,
+            "e2e_refresh_calls_median": 230.0,
+            "false_fresh": 0,
+            "false_stale": 3352,
+            "ttf_p50_ms": 8568.7208219897,
+            "ttf_p95_ms": 12177.693463047035
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8208710407239819,
+            "avoided_recompute_wall": 0.7678029064012002,
+            "false_fresh": 204,
+            "false_stale": 2444,
+            "ttf_p50_ms": 5268.137898878194,
+            "ttf_p95_ms": 6136.702279793099
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.2,
+          "before": 1.08
+        },
+        "mix": "c1",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.8071176010060437,
+        "store": "synth-iv-60k",
+        "wall_s": 786.2306718826294
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.998868778280543,
+            "avoided_recompute_wall": 0.9984719126756404,
+            "false_fresh": 971,
+            "false_stale": 15,
+            "ttf_p50_ms": 20.225822925567627,
+            "ttf_p95_ms": 20.225822925567627
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16704,
+            "ttf_p50_ms": 15625.486038974486,
+            "ttf_p95_ms": 15714.148234808818
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 976,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7558823529411764,
+            "avoided_recompute_wall": 0.6508221428063657,
+            "e2e_refresh_calls_median": 238.5,
+            "false_fresh": 0,
+            "false_stale": 3340,
+            "ttf_p50_ms": 9058.167136041448,
+            "ttf_p95_ms": 11932.408457039855
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7558823529411764,
+            "avoided_recompute_wall": 0.6508221428063657,
+            "e2e_refresh_calls_median": 238.5,
+            "false_fresh": 0,
+            "false_stale": 3340,
+            "ttf_p50_ms": 9083.848200039938,
+            "ttf_p95_ms": 11936.91888009198
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8135180995475113,
+            "avoided_recompute_wall": 0.760759877553264,
+            "false_fresh": 167,
+            "false_stale": 2488,
+            "ttf_p50_ms": 3896.315593039617,
+            "ttf_p95_ms": 5606.5335450693965
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.08,
+          "before": 1.05
+        },
+        "mix": "c1",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.7201394931837133,
+        "store": "synth-iv-60k",
+        "wall_s": 779.9110987186432
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9979825151311366,
+            "avoided_recompute_wall": 0.994277173665863,
+            "false_fresh": 2385,
+            "false_stale": 71,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 42206,
+            "ttf_p50_ms": 162369.588718866,
+            "ttf_p95_ms": 163623.06363787502
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 2404,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.757610401255324,
+            "avoided_recompute_wall": 0.5981245080792084,
+            "false_fresh": 0,
+            "false_stale": 8409,
+            "ttf_p50_ms": 128542.9411707446,
+            "ttf_p95_ms": 130276.90520090982
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.757610401255324,
+            "avoided_recompute_wall": 0.5981245080792084,
+            "false_fresh": 0,
+            "false_stale": 8409,
+            "ttf_p50_ms": 128435.70311868098,
+            "ttf_p95_ms": 130171.97601753287
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.7483748038556377,
+            "avoided_recompute_wall": 0.7171054663349157,
+            "false_fresh": 10,
+            "false_stale": 8831,
+            "ttf_p50_ms": 31918.749782140367,
+            "ttf_p95_ms": 47110.60125846416
+          }
+        },
+        "batches_realized": 5,
+        "batches_requested": 5,
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.24,
+          "before": 1.12
+        },
+        "mix": "c1",
+        "n_artifacts": 10000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.264209131699372,
+        "store": "synth-iv-60k",
+        "wall_s": 1399.654662847519
+      },
+      {
+        "age": "days",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9989819004524887,
+            "avoided_recompute_wall": 0.9995967495466066,
+            "false_fresh": 776,
+            "false_stale": 14,
+            "ttf_p50_ms": 5.212435964494944,
+            "ttf_p95_ms": 5.9643370332196355
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16900,
+            "ttf_p50_ms": 15644.318254315294,
+            "ttf_p95_ms": 15930.31954288017
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 780,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7649886877828054,
+            "avoided_recompute_wall": 0.7102794292144698,
+            "e2e_refresh_calls_median": 228.5,
+            "false_fresh": 0,
+            "false_stale": 3375,
+            "ttf_p50_ms": 8840.12977196835,
+            "ttf_p95_ms": 12000.955538940616
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7649886877828054,
+            "avoided_recompute_wall": 0.7102794292144698,
+            "e2e_refresh_calls_median": 228.5,
+            "false_fresh": 0,
+            "false_stale": 3375,
+            "ttf_p50_ms": 8788.948758039623,
+            "ttf_p95_ms": 12028.854620060883
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8536199095022624,
+            "avoided_recompute_wall": 0.810825578957425,
+            "false_fresh": 161,
+            "false_stale": 1969,
+            "ttf_p50_ms": 3789.1200508456677,
+            "ttf_p95_ms": 5676.693826564588
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c3-days-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.12,
+          "before": 1.06
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.779998801336141,
+        "store": "synth-iv-60k",
+        "wall_s": 735.1831324100494
+      },
+      {
+        "age": "deep",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9987556561085973,
+            "avoided_recompute_wall": 0.9994966966722065,
+            "false_fresh": 770,
+            "false_stale": 15,
+            "ttf_p50_ms": 5.348310922272503,
+            "ttf_p95_ms": 5.736610037274659
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16903,
+            "ttf_p50_ms": 15568.70803621132,
+            "ttf_p95_ms": 15780.584572348744
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 777,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7606900452488687,
+            "avoided_recompute_wall": 0.6810604456070772,
+            "e2e_refresh_calls_median": 234.0,
+            "false_fresh": 0,
+            "false_stale": 3454,
+            "ttf_p50_ms": 8953.27905297745,
+            "ttf_p95_ms": 12150.91023198329
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7606900452488687,
+            "avoided_recompute_wall": 0.6810604456070772,
+            "e2e_refresh_calls_median": 234.0,
+            "false_fresh": 0,
+            "false_stale": 3454,
+            "ttf_p50_ms": 8892.190851969644,
+            "ttf_p95_ms": 12115.24402804207
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8339366515837104,
+            "avoided_recompute_wall": 0.7842231692084192,
+            "false_fresh": 97,
+            "false_stale": 2256,
+            "ttf_p50_ms": 3789.370855432935,
+            "ttf_p95_ms": 5770.916749024764
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.18,
+          "before": 1.1
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.7508292720418623,
+        "store": "synth-iv-60k",
+        "wall_s": 754.4182350635529
+      },
+      {
+        "age": "hours",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9986425339366516,
+            "avoided_recompute_wall": 0.997350913606886,
+            "false_fresh": 637,
+            "false_stale": 17,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 9.753042017109692
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 17036,
+            "ttf_p50_ms": 15456.101911724545,
+            "ttf_p95_ms": 15572.649695444852
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 644,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7701923076923077,
+            "avoided_recompute_wall": 0.6673607846014323,
+            "e2e_refresh_calls_median": 217.0,
+            "false_fresh": 0,
+            "false_stale": 3419,
+            "ttf_p50_ms": 8748.559102066793,
+            "ttf_p95_ms": 12739.793650922365
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7701923076923077,
+            "avoided_recompute_wall": 0.6673607846014323,
+            "e2e_refresh_calls_median": 217.0,
+            "false_fresh": 0,
+            "false_stale": 3419,
+            "ttf_p50_ms": 8728.887386037968,
+            "ttf_p95_ms": 12667.487269965932
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8088235294117647,
+            "avoided_recompute_wall": 0.7557054010691363,
+            "false_fresh": 74,
+            "false_stale": 2810,
+            "ttf_p50_ms": 4617.515758611262,
+            "ttf_p95_ms": 5904.330742545426
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c3-hours-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.06,
+          "before": 1.19
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.7706840778409965,
+        "store": "synth-iv-60k",
+        "wall_s": 748.4984245300293
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9987556561085973,
+            "avoided_recompute_wall": 0.9992239015273807,
+            "false_fresh": 837,
+            "false_stale": 17,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16838,
+            "ttf_p50_ms": 15603.258210001513,
+            "ttf_p95_ms": 15725.514868157916
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 842,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7697398190045249,
+            "avoided_recompute_wall": 0.6983600411647148,
+            "e2e_refresh_calls_median": 211.5,
+            "false_fresh": 0,
+            "false_stale": 3229,
+            "ttf_p50_ms": 7766.579539980739,
+            "ttf_p95_ms": 12684.211023966782
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7697398190045249,
+            "avoided_recompute_wall": 0.6983600411647148,
+            "e2e_refresh_calls_median": 211.5,
+            "false_fresh": 0,
+            "false_stale": 3229,
+            "ttf_p50_ms": 7727.324693929404,
+            "ttf_p95_ms": 12610.0254439516
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.7247737556561086,
+            "avoided_recompute_wall": 0.6580802751003196,
+            "false_fresh": 109,
+            "false_stale": 4133,
+            "ttf_p50_ms": 5801.006022258662,
+            "ttf_p95_ms": 13452.907922212034
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c3-none-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.1,
+          "before": 1.2
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 2.0192316005899755,
+        "store": "synth-iv-60k",
+        "wall_s": 738.2139608860016
+      },
+      {
+        "age": "recent",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.998868778280543,
+            "avoided_recompute_wall": 0.9981177417997198,
+            "false_fresh": 976,
+            "false_stale": 17,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16701,
+            "ttf_p50_ms": 15625.68334734533,
+            "ttf_p95_ms": 15796.76868650131
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 979,
+            "false_stale": 0,
+            "ttf_p50_ms": null,
+            "ttf_p95_ms": null
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7573529411764706,
+            "avoided_recompute_wall": 0.6553670560735503,
+            "e2e_refresh_calls_median": 237.0,
+            "false_fresh": 0,
+            "false_stale": 3311,
+            "ttf_p50_ms": 9101.317263091914,
+            "ttf_p95_ms": 12438.570947968401
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7573529411764706,
+            "avoided_recompute_wall": 0.6553670560735503,
+            "e2e_refresh_calls_median": 237.0,
+            "false_fresh": 0,
+            "false_stale": 3311,
+            "ttf_p50_ms": 9070.795505074784,
+            "ttf_p95_ms": 12669.533750973642
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8062217194570136,
+            "avoided_recompute_wall": 0.7475979897039327,
+            "false_fresh": 132,
+            "false_stale": 2579,
+            "ttf_p50_ms": 4286.767583107576,
+            "ttf_p95_ms": 5945.925142033957
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c3-recent-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.19,
+          "before": 1.24
+        },
+        "mix": "c3",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.7226364918714485,
+        "store": "synth-iv-60k",
+        "wall_s": 779.2840602397919
+      },
+      {
+        "age": "deep",
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.977262443438914,
+            "avoided_recompute_wall": 0.9727388490755083,
+            "false_fresh": 733,
+            "false_stale": 324,
+            "ttf_p50_ms": 10.979883023537695,
+            "ttf_p95_ms": 20.658964989706874
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16869,
+            "ttf_p50_ms": 15811.648780130781,
+            "ttf_p95_ms": 16089.984097983688
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 811,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7688914027149321,
+            "avoided_recompute_wall": 0.7311294105306418,
+            "e2e_refresh_calls_median": 220.0,
+            "false_fresh": 0,
+            "false_stale": 3275,
+            "ttf_p50_ms": 8974.173292983323,
+            "ttf_p95_ms": 12954.882455989718
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7688914027149321,
+            "avoided_recompute_wall": 0.7311294105306418,
+            "e2e_refresh_calls_median": 220.0,
+            "false_fresh": 0,
+            "false_stale": 3275,
+            "ttf_p50_ms": 8952.864635037258,
+            "ttf_p95_ms": 12879.808256984688
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.8594457013574661,
+            "avoided_recompute_wall": 0.820973266002443,
+            "false_fresh": 230,
+            "false_stale": 1904,
+            "ttf_p50_ms": 2681.8605319131166,
+            "ttf_p95_ms": 5949.895547819324
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.12,
+          "before": 1.16
+        },
+        "mix": "c4",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 1.766099391054289,
+        "store": "synth-iv-60k",
+        "wall_s": 1040.481939315796
+      },
+      {
+        "age": null,
+        "arms": {
+          "entity-touch": {
+            "avoided_recompute_decision": 0.9783371040723982,
+            "avoided_recompute_wall": 0.9745501059309429,
+            "false_fresh": 760,
+            "false_stale": 310,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "global-recompute": {
+            "avoided_recompute_decision": 0.0,
+            "avoided_recompute_wall": 0.0,
+            "false_fresh": 0,
+            "false_stale": 16847,
+            "ttf_p50_ms": 15904.930193559267,
+            "ttf_p95_ms": 16049.831759184599
+          },
+          "row-touch": {
+            "avoided_recompute_decision": 1.0,
+            "avoided_recompute_wall": 1.0,
+            "false_fresh": 833,
+            "false_stale": 0,
+            "ttf_p50_ms": 0.0,
+            "ttf_p95_ms": 0.0
+          },
+          "tgms-L0": {
+            "avoided_recompute_decision": 0.7867647058823529,
+            "avoided_recompute_wall": 0.7779473382328828,
+            "e2e_refresh_calls_median": 164.5,
+            "false_fresh": 0,
+            "false_stale": 2937,
+            "ttf_p50_ms": 5013.944810023531,
+            "ttf_p95_ms": 12816.566394059919
+          },
+          "tgms-L1": {
+            "avoided_recompute_decision": 0.7867647058823529,
+            "avoided_recompute_wall": 0.7779473382328828,
+            "e2e_refresh_calls_median": 164.5,
+            "false_fresh": 0,
+            "false_stale": 2937,
+            "ttf_p50_ms": 5004.464118974283,
+            "ttf_p95_ms": 12704.170097014867
+          },
+          "window-overlap": {
+            "avoided_recompute_decision": 0.7927036199095022,
+            "avoided_recompute_wall": 0.7368123850395196,
+            "false_fresh": 245,
+            "false_stale": 3077,
+            "ttf_p50_ms": 4694.405492627993,
+            "ttf_p95_ms": 6261.111513478681
+          }
+        },
+        "batches_realized": 20,
+        "batches_requested": 20,
+        "cell_id": "synth-iv-60k-c4-none-n1000-s0",
+        "check_cache": "chain",
+        "check_cache_misses_median": 1.0,
+        "equality_level": "no-L1 (eventlog sha mismatch)",
+        "host_load": {
+          "after": 1.16,
+          "before": 1.18
+        },
+        "mix": "c4",
+        "n_artifacts": 1000,
+        "seed": 0,
+        "speedup_global_recompute_over_l1": 3.1781485120966653,
+        "store": "synth-iv-60k",
+        "wall_s": 990.1245691776276
+      }
+    ]
+  },
+  "timestamp_utc": "2026-10-09T00:37:15Z"
+}

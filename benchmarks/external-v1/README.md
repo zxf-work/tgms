@@ -310,3 +310,137 @@ was modified. `tgms-control-2026-10-05-batches.SOURCES.txt` records each
 pulled file's own sha256 and its exact xzgpu path, one line per cell
 (19 lines); `tgms-control-2026-10-05-batches.jsonl`'s own sha256 is in
 `SHA256SUMS.txt` beside it.
+
+## Fifth-arc re-measurement of the same-host control (2026-10-08)
+
+Lane R1's re-run of the same 19-cell T1 same-host control, on the fixed
+engine + harness (public main `93d4543af61f786884884bee1ebf440ca5ce5673`),
+with `--check-cache chain` added to every cell — the exact T1 loop
+(`external-v1/t1_control.sh`) replayed as `external-v1/t1b_control.sh`,
+same cell order, flags, probe placement, and age-cells-last ordering,
+against the same `external-v1/export/` bundles T1 itself checked
+against. Worktree `work/tgms-xz-93d4543a` on xzgpu; `crates/` unchanged
+since `b6cdde0`, so the engine `.so` (sha256
+`d48ae71caca80d9f3ea9f360b2e7a2f242f3e9e03ee223d69c4f8aff08b7faca`) was
+copied in from `work/tgms-xz-b6cdde0` rather than rebuilt. Outputs under
+fresh `external-v1/t1b/` (T1's own `external-v1/t1-stores/` stayed
+read-only; R1 worked from fresh copies under `external-v1/t1b-stores/`).
+Memgraph was stopped for the timed window at `2026-10-08T20:50:19Z` and
+restarted by the driver at completion, `2026-10-09T00:23:26Z`
+(`HOST-T1B.log`'s own first/last lines) — same host protocol as T1.
+
+**Addendum ARC5-B — the equality reading.** Every R1 cell's own
+`t1-equality.json` reports `verdict: "L2"`, not T1's `L1`
+(`l1_eventlog_sha_match: false` in all 19) — all 19 cells' own
+`PROGRESS.log` line confirms `equality=L2`, `batches_realized=20/20` (or
+`5/5` for the probe). This is not a regression: the edge-correction
+records in this re-run carry **fresh, per-correction `disc` stamps**
+(confirmed directly — e.g. `collegemsg-c1-deep-n1000-s0`'s batch 0
+stamps `correction_disc="a1-d6b1931bec9a77cc"`, batch 1
+`"a2-0d75d9f0aaae0247"`, each one different, never the fixed-per-class
+`"#0"`/`"a2-disjoint"` the pre-Addendum-7 generator used), the fix landed
+in commit `3b55042`. That commit postdates every export bundle under
+`external-v1/export/` and predates this arc's fixes, so the exported
+`digests.json` a cell is scored against still carries the old
+fixed-per-class `disc` values — an **L1** byte-identical-eventlog match
+is structurally impossible against that export now, for any run built
+after `3b55042`, regardless of correctness. Everything else about the
+run — `ttf_mode`, batch/record order, the `changed` lists, `refused`,
+and every arm's `invalidated_count`/`false_fresh_count`/
+`false_stale_count` — matches T1's on all batches, i.e. the fixes change
+`disc` bookkeeping only and leave the scored logs byte-identical in
+every other respect.
+
+**Producing the evidence (19 rows, all batches).** For
+`correction_class`/`correction_generator`/`correction_placement`/
+`changed`, T1's committed `t1_equality.per_batch` (in
+`tgms-control-2026-10-05-rows.jsonl`) and R1's own `t1-equality.json`
+were each independently checked against the *same* immutable export
+bundle's `digests.json`/`deltas.jsonl` — when both report
+`all_match: true` for a batch, T1 and R1 are transitively identical on
+that batch's correction_class/generator/placement/changed (two things
+equal to the same third thing are equal to each other). For each arm's
+`invalidated_count`/`false_fresh_count`/`false_stale_count`, T1's
+committed per-batch counts (`tgms-control-2026-10-05-batches.jsonl`) were
+diffed directly against R1's own raw per-batch rows (pulled read-only
+from `external-v1/t1b/<cell>/storm-*-rows.jsonl`, sha256-recorded in
+`tgms-control-2026-10-08-arc5-batches.SOURCES.txt`). `refused_count` is
+reported for R1 only below — T1's 2026-10-05 committed addendum never
+carried that field, so there is no committed T1 value to diff against
+(stated as a gap, not assumed zero/equal); every R1 batch's own
+`refused_count` is 0 regardless.
+
+| cell_id | R1 verdict (vs. export) | correction-metadata match (vs. T1, transitive) | arm-count match (vs. T1, direct) | fully identical |
+|---|---|---:|---:|---|
+| `collegemsg-c1-deep-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c1-none-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c3-days-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c3-deep-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c3-hours-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c3-none-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c3-recent-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c4-deep-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `collegemsg-c4-none-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c1-deep-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c1-none-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c1-none-n10000-s0` (probe) | L2 | 5/5 | 5/5 | yes |
+| `synth-iv-60k-c3-days-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c3-deep-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c3-hours-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c3-none-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c3-recent-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c4-deep-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+| `synth-iv-60k-c4-none-n1000-s0` | L2 | 20/20 | 20/20 | yes |
+
+**19/19 cells fully identical** on every field this check could compare
+(385 batches total: 18×20 + 5). No mismatch of any kind was found.
+
+**Walls vs. T1's, and per-cell `ttf_p50_ms` for the three TGMS arms.**
+R1 is dramatically faster than T1 — not a measurement artifact, but the
+expected effect of the engine work landed between T1's commit
+(`fdd393c91c1199f7cfe03aba53ed1733f43111b0-dirty`) and R1's
+(`93d4543a`), including the check-cache chain setting itself (T1 never
+set `--check-cache`, so every T1 check re-walked the full event log; R1
+walks it once per batch and memoizes):
+
+| cell_id | T1 wall (s) | R1 wall (s) | ratio (R1÷T1) | `global-recompute` p50 (ms) | `tgms-L0` p50 (ms) | `tgms-L1` p50 (ms) |
+|---|---:|---:|---:|---:|---:|---:|
+| `collegemsg-c1-deep-n1000-s0` | 8905.0 | 374.8 | 0.042 | 5036.5 | 3867.7 | 3844.1 |
+| `collegemsg-c1-none-n1000-s0` | 9191.1 | 396.1 | 0.043 | 4898.8 | 4401.6 | 4375.9 |
+| `collegemsg-c3-days-n1000-s0` | 8991.9 | 384.8 | 0.043 | 4999.0 | 4061.0 | 4037.5 |
+| `collegemsg-c3-deep-n1000-s0` | 9155.7 | 381.8 | 0.042 | 4969.5 | 4241.6 | 4145.2 |
+| `collegemsg-c3-hours-n1000-s0` | 8969.5 | 385.9 | 0.043 | 5050.3 | 4394.8 | 4317.1 |
+| `collegemsg-c3-none-n1000-s0` | 8744.3 | 369.2 | 0.042 | 4849.2 | 3972.1 | 3938.8 |
+| `collegemsg-c3-recent-n1000-s0` | 8512.2 | 359.3 | 0.042 | 5001.7 | 3753.3 | 3712.3 |
+| `collegemsg-c4-deep-n1000-s0` | 9403.6 | 693.4 | 0.074 | 5092.5 | 4248.0 | 4198.4 |
+| `collegemsg-c4-none-n1000-s0` | 9244.8 | 669.6 | 0.072 | 4973.8 | 4043.8 | 4026.9 |
+| `synth-iv-60k-c1-deep-n1000-s0` | 9645.0 | 786.2 | 0.082 | 15484.7 | 8655.7 | 8568.7 |
+| `synth-iv-60k-c1-none-n1000-s0` | 9652.0 | 779.9 | 0.081 | 15625.5 | 9058.2 | 9083.8 |
+| `synth-iv-60k-c1-none-n10000-s0` (probe) | 18922.9 | 1399.7 | 0.074 | 162369.6 | 128542.9 | 128435.7 |
+| `synth-iv-60k-c3-days-n1000-s0` | 9377.6 | 735.2 | 0.078 | 15644.3 | 8840.1 | 8788.9 |
+| `synth-iv-60k-c3-deep-n1000-s0` | 9536.1 | 754.4 | 0.079 | 15568.7 | 8953.3 | 8892.2 |
+| `synth-iv-60k-c3-hours-n1000-s0` | 9340.4 | 748.5 | 0.080 | 15456.1 | 8748.6 | 8728.9 |
+| `synth-iv-60k-c3-none-n1000-s0` | 9328.7 | 738.2 | 0.079 | 15603.3 | 7766.6 | 7727.3 |
+| `synth-iv-60k-c3-recent-n1000-s0` | 9557.0 | 779.3 | 0.082 | 15625.7 | 9101.3 | 9070.8 |
+| `synth-iv-60k-c4-deep-n1000-s0` | 10012.2 | 1040.5 | 0.104 | 15811.6 | 8974.2 | 8952.9 |
+| `synth-iv-60k-c4-none-n1000-s0` | 9574.6 | 990.1 | 0.103 | 15904.9 | 5013.9 | 5004.5 |
+
+Summed wall: T1 186,064.7 s (51.68 h) vs. R1 12,766.8 s (3.55 h) —
+overall ratio **0.069** (R1 ≈14.6× faster end-to-end across all 19
+cells), consistent with `HOST-T1B.log`'s own start/end timestamps
+(`20:50:19Z` → `00:23:26Z` next day ≈ 12,787 s wall-clock for the whole
+loop, matching the summed per-cell figure to within inter-cell
+overhead). No verdict on what this ratio implies is drawn here — the
+coordinator scores it.
+
+**Records**: `tgms-control-2026-10-08-arc5.json` + `-rows.jsonl`,
+assembled with `scripts/external_record.py --campaign tgms-control`
+(extended this lane to carry `check_cache`/`check_cache_misses_median`/
+`e2e_refresh_calls_median`, since T1's original 2026-10-05 run had no
+per-batch sidecar on this host for the assembler to read those per-batch
+fields from — see the assembler's own commit). `scripts/
+check_result_manifest.py` passes. `tgms-control-2026-10-08-arc5-batches.jsonl`
++ `.SOURCES.txt` mirror the 2026-10-05 per-batch-rows addendum exactly
+(one line per batch, byte-exact values, no rounding), built from the
+same read-only tar pull of `external-v1/t1b/` this section's own
+equality reading uses; sha256 of all four files is in `SHA256SUMS.txt`.
