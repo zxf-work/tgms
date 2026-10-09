@@ -850,8 +850,8 @@ def plot_r18_crossover(data: dict) -> None:
         ax.annotate(f"first recorded {data['pre_rollout_first_recorded_n1k']:.2f}x\n"
                     "(check-only timer, superseded)",
                     xy=(n1k, pre["speedup_n1k"]), xycoords="data",
-                    xytext=(0.32, 0.78), textcoords="axes fraction",
-                    fontsize=6, color="0.35",
+                    xytext=(n1k, 0.945), textcoords="data",
+                    ha="left", fontsize=6, color="0.35",
                     arrowprops={"arrowstyle": "->", "color": "0.5", "linewidth": 0.7})
         ax.set_xscale("log")
         ax.set_xticks([n1k, n10k])
