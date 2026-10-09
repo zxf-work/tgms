@@ -331,6 +331,14 @@ def main(argv: list[str] | None = None) -> int:
             r = storm.run_batch(len(results))
             if r is not None:
                 results.append(r)
+        # `storm.run`'s own tail check (`storm-harness-swallows-write-
+        # refusals`) restated here for the same reason the loop above is:
+        # this branch never calls `Storm.run`, so it never gets that check
+        # for free. A wall-capped partial manifest is still worth writing
+        # when SIGTERM caught a store that was realizing real batches --
+        # but zero batches plus at least one write refusal is the silent-
+        # zero bug regardless of why the loop stopped, so it still raises.
+        storm._raise_if_fully_refused()
     wall_s = time.time() - t_start
 
     dag_payload: dict[str, Any] | None = None
@@ -379,6 +387,15 @@ def main(argv: list[str] | None = None) -> int:
 
     summary = summarize(results)
     summary["narrowing_coverage"] = narrowing_coverage_data
+    # `storm-harness-swallows-write-refusals`: recorded on every manifest
+    # this run reaches (a run that ends with zero batches and at least one
+    # refusal never gets here at all -- `storm._raise_if_fully_refused()`
+    # above raises first), so a manifest with `write_refusals > 0` but a
+    # real `batches` count still names the engine-or-setup refusals it rode
+    # through, rather than only the all-refused case being visible.
+    summary["write_refusals"] = storm.write_refusals
+    summary["first_write_refusal"] = storm.first_write_refusal
+    summary["mix_starved"] = storm.n_mix_starved
     rows_json = [r.to_json() for r in results]
 
     manifest = {

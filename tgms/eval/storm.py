@@ -80,7 +80,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import tgms
-from tgms.core.errors import TgmsError
+from tgms.core.errors import StateError, TgmsError
 from tgms.core.model import OPEN_END, canonical_json, edge_eid
 from tgms.eval.corrections import (
     Correction, GENERATORS, Substrate, Target, generate as generate_corrections,
@@ -113,6 +113,21 @@ ARMS: tuple[str, ...] = (
     "global-recompute", "entity-touch", "window-overlap", "row-touch",
     "tgms-L0", "tgms-L1",
 )
+
+#: Failure ledger `storm-harness-swallows-write-refusals`: a store whose
+#: native engine backend has already committed past the transaction time
+#: this harness computes from the store's own event log (`Storm._tt`,
+#: seeded from `store.eventlog.last_tt()`) makes *every* correction write
+#: raise the engine's monotonic-tt `StateError` — an engine-or-setup error
+#: (a mis-built or inconsistently copied store), never the pre-existing
+#: "mix starved" path (`self.mix(...)` had nothing realizable to draw this
+#: batch, which still returns `None` without raising). After this many
+#: *consecutive* write refusals, `run_batch` raises immediately rather than
+#: letting the caller's bounded-attempt loop (`Storm.run`) silently exhaust
+#: itself into a 0-batch, exit-0 run; `Storm.run` itself raises the same way
+#: at the end of its loop if it realized zero batches and saw at least one
+#: refusal, even when refusals never reached this bound in a row.
+MAX_CONSECUTIVE_WRITE_REFUSALS = 3
 
 #: §3's "four window fractions of the substrate span".
 WINDOW_FRACTIONS: tuple[float, ...] = (0.05, 0.1, 0.25, 0.5)
@@ -857,7 +872,55 @@ class Storm:
         self.name_prefix = name_prefix
         self.n_registration_skipped = 0
         self.n_batches = 0
+        #: `storm-harness-swallows-write-refusals` instrumentation (see
+        #: `MAX_CONSECUTIVE_WRITE_REFUSALS`'s own comment). `write_refusals`
+        #: and `first_write_refusal` are cumulative for this run and never
+        #: reset; `_consecutive_write_refusals` resets to `0` on every
+        #: successful write.
+        self.write_refusals = 0
+        self._consecutive_write_refusals = 0
+        self.first_write_refusal: str | None = None
+        #: The pre-existing, legitimate "nothing realizable this draw"
+        #: count (`self.mix(...)` returned an empty list) — tracked
+        #: separately from `write_refusals` so a run that is genuinely
+        #: starved for correction material (not refused by the engine) is
+        #: never confused with one the engine is refusing outright.
+        self.n_mix_starved = 0
         self._register_population(n_artifacts)
+
+    def _write_refusal_error(self) -> RuntimeError:
+        """The loud failure for `storm-harness-swallows-write-refusals`:
+        every correction write this run attempted was refused by the native
+        engine. Names the exception, the store path, and both tt sources
+        this harness can see from Python (`store.eventlog.last_tt()`, which
+        seeded `self._tt`, and `store.clock.last_tt`) so a human can tell
+        whether the store itself is mis-built (its native backend has
+        already committed past either of them) without re-deriving this
+        from a bare `StateError` traceback."""
+        return RuntimeError(
+            f"Storm: every correction write this run attempted was refused "
+            f"by the engine ({self.write_refusals} refusal(s), "
+            f"{self._consecutive_write_refusals} consecutive) on store "
+            f"{self.store_dir} -- this is an engine-or-setup error, not a "
+            f"starved correction mix (see failure ledger entry "
+            f"'storm-harness-swallows-write-refusals'). Storm._tt reached "
+            f"{self._tt} (seeded from store.eventlog.last_tt()); "
+            f"store.clock.last_tt is {self.store.clock.last_tt}. The native "
+            f"engine backend has evidently committed past one or both of "
+            f"these -- the store was likely copied, rebuilt, or replayed "
+            f"inconsistently. First refusal: {self.first_write_refusal}"
+        )
+
+    def _raise_if_fully_refused(self) -> None:
+        """Called at the end of `Storm.run` (and by the CLI's own bounded
+        loop, `scripts/bench_correction_storm.py`'s wall-cap branch, which
+        cannot use `Storm.run` directly): if this run realized zero batches
+        and saw at least one write refusal, that is never a starved mix
+        (`run_batch` already returns `None` for those, uncounted here) --
+        raise rather than let the caller write a silent `batches: 0`
+        manifest at exit 0."""
+        if self.n_batches == 0 and self.write_refusals:
+            raise self._write_refusal_error()
 
     # -- population (§3) ----------------------------------------------------
 
@@ -957,17 +1020,45 @@ class Storm:
     def run_batch(self, batch_index: int) -> BatchResult | None:
         """Inject one correction batch and score every configured arm
         against the oracle. Returns `None` if no correction was realizable
-        or the injection itself was refused — the caller's `run()` retries
-        with a fresh draw rather than counting a null attempt as a batch."""
+        (`n_mix_starved`) or the injection itself was refused for a reason
+        unrelated to `tt` (a non-`StateError` `TgmsError`) — the caller's
+        `run()` retries with a fresh draw rather than counting a null
+        attempt as a batch. A monotonic-tt `StateError` is different: it
+        means the store itself is inconsistent, not that this draw was
+        unrealizable, so it is counted (`write_refusals`) and, past
+        `MAX_CONSECUTIVE_WRITE_REFUSALS` in a row, raised
+        (`storm-harness-swallows-write-refusals`) rather than returned as
+        another silent `None`."""
         corrections = self.mix(self.store, self.sub, self.target, self.rng)
         if not corrections:
+            # the pre-existing, legitimate "mix starved" path: the
+            # generator had nothing realizable to draw this batch. Never a
+            # write refusal -- recorded separately (`n_mix_starved`), never
+            # raised.
+            self.n_mix_starved += 1
             return None
         correction = corrections[self.rng.randrange(len(corrections))]
         tt = self._next_tt()
         try:
             batch = self._write(tt, list(correction.ops))
+        except StateError as e:
+            # `storm-harness-swallows-write-refusals`: a monotonic-tt /
+            # state error from the write path is an engine-or-setup error,
+            # never a starved mix -- count it, and fail loudly rather than
+            # silently once consecutive refusals cross the bound (a cap
+            # this low would otherwise let a mis-built store exhaust the
+            # caller's whole bounded-attempt loop one silent `None` at a
+            # time).
+            self.write_refusals += 1
+            self._consecutive_write_refusals += 1
+            if self.first_write_refusal is None:
+                self.first_write_refusal = f"{type(e).__name__}: {e}"
+            if self._consecutive_write_refusals >= MAX_CONSECUTIVE_WRITE_REFUSALS:
+                raise self._write_refusal_error() from e
+            return None
         except TgmsError:
             return None
+        self._consecutive_write_refusals = 0
         self.n_batches += 1
 
         touched = set(correction.identities)
@@ -1142,6 +1233,7 @@ class Storm:
             r = self.run_batch(len(results))
             if r is not None:
                 results.append(r)
+        self._raise_if_fully_refused()
         return results
 
     def close(self) -> None:
