@@ -2281,7 +2281,7 @@ def plot_scale(data: dict) -> None:
 
         # (b) time
         _human_time_axis(axt, "y", [60.0, 600.0, 3600.0, 36000.0])
-        axt.set_ylim(30, 1.2e5)
+        axt.set_ylim(30, 3e5)
         _scale_x_axis(axt)
         axt.grid(axis="y", which="major")
         lo_h, hi_h = data["forecast_h"]
@@ -2302,8 +2302,11 @@ def plot_scale(data: dict) -> None:
             _point(axt, x, y, GREY_RAMP[1], "^", hollow=True)
         _note(axt, xs[-1] / 1.3, ys[-1] * 1.55, "refuted", color=C_REF, ha="right",
               va="bottom")
-        _note(axt, xs[-1] / 1.3, ys[-1] / 1.1, f"{data['share']:g}% compaction",
-              ha="right", va="center")
+        axt.annotate(f"{data['share']:g}% compaction", xy=(xs[-1], ys[-1]),
+                     xytext=(xs[-1] / 1.3, ys[-1] * 3.3), ha="right", va="bottom",
+                     fontsize=SMALL_PT, color=C_ANNOT,
+                     arrowprops={"arrowstyle": "-", "color": C_ANNOT, "lw": 0.4,
+                                 "shrinkA": 0, "shrinkB": 3, "relpos": (1.0, 0.0)})
         _note(axt, rx[-1] / 1.25, ry[-1], "refuted", color=C_REF, ha="right", va="center")
         handles = [
             matplotlib.lines.Line2D([], [], color=GREY_RAMP[0], marker="o", ms=MS, lw=1.0,
@@ -2388,7 +2391,7 @@ def plot_ldbc(data: dict) -> None:
     v, t = data["v"], data["t"]
     with plt.rc_context(PAPER_RC):
         fig = _new_fig("f_ldbc")
-        axa, axb = fig.subplots(1, 2, gridspec_kw={"width_ratios": [1.5, 1.0]})
+        axa, axb = fig.subplots(1, 2, gridspec_kw={"width_ratios": [1.8, 1.0]})
 
         # (a) the four axes, and the reference run's verdicts
         total = v["recLdbcSfOneTemplates"]
@@ -2403,11 +2406,12 @@ def plot_ldbc(data: dict) -> None:
         axa.barh(yc, v["recLdbcCertifiedUnordered"], height=0.62, color=GREY_RAMP[3], lw=0)
         axa.barh(yc, v["recLdbcCertifiedOrdered"], height=0.62, color=GREY_RAMP[1], lw=0)
         _note(axa, v["recLdbcCertifiedOrdered"] + 0.6, yc,
-              f"{v['recLdbcCertifiedOrdered']:.0f} ordered", color="#000000", va="center")
+              f"full contract {v['recLdbcCertifiedOrdered']:.0f}", color="#000000", va="center",
+              fontsize=6.0)
         _note(axa, v["recLdbcCertifiedUnordered"] + 0.6, yc,
               f"{v['recLdbcCertifiedUnordered']:.0f}", va="center", color="#000000")
         _note(axa, v["recLdbcCertifiedUnordered"] - 0.6, yc, "unordered", ha="right",
-              va="center")
+              va="center", fontsize=6.0)
         yv = ypos[5]
         left = 0.0
         segments = (("recLdbcAgree", GREY_RAMP[1], None, "agree"),
@@ -2675,7 +2679,7 @@ def plot_correction_load(data: dict) -> None:
         first = v["recStormV1SpeedupN1kSeed0"]
         axa.plot([-0.27], [first], marker="x", ls="none", ms=2.8, mew=0.7, color=C_BEFORE,
                  zorder=3)
-        _note(axa, -0.27, first / 1.14, "first\nrecorded,\ncheck-only", ha="center", va="top",
+        _note(axa, -0.27, first * 1.14, "first\nrecorded", ha="center", va="bottom",
               linespacing=0.9)
         _note(axa, 0.06, _bar("rollout_speedup_n1k_predicted"), "predicted", color=C_PRED,
               ha="left", va="center")
@@ -2860,21 +2864,22 @@ def plot_durability(data: dict) -> None:
                 x = x0 + box_w * _BOUNDARY_AT.get(b, 1.0)
                 axa.plot([x], [box_y + box_h + 0.12], marker="v", ms=2.4, color="#000000",
                          zorder=3)
-                _note(axa, x, box_y + box_h + 0.28, f"{by_name[b]['problems']}", ha="center",
-                      va="bottom", fontsize=6.0, color="#000000")
         for j, (label, b) in enumerate(_SIDE_LANES):
             x0 = 0.07 + 2.0 * j
             axa.plot([x0, x0 + 1.8], [0.3, 0.3], color=GREY_RAMP[2], lw=0.6, ls=(0, (2, 1)))
             xb = x0 + 1.55
             axa.plot([xb], [0.3], marker="v", ms=2.4, color="#000000", zorder=3)
             _note(axa, x0, 0.38, label, color="#000000", ha="left", va="bottom", fontsize=6.0)
-            _note(axa, xb + 0.08, 0.38, f"{by_name[b]['problems']}", ha="left", va="bottom",
-                  fontsize=6.0, color="#000000")
         _note(axa, n_steps - 0.5, 0.38, "publication point", color=C_INCR, ha="center",
               va="bottom", fontsize=6.0)
         trials = {by_name[b]["trials"] for b in data["order"]}
+        problems = {by_name[b]["problems"] for b in data["order"]}
         assert len(trials) == 1, "f_durability: boundaries ran different trial counts"
-        _panel_tag(axa, "a", f"commit protocol; crash problems per {trials.pop():,} trials")
+        assert len(problems) == 1, "f_durability: one shared label needs one problem count"
+        _note(axa, n_steps / 2, box_y + box_h + 0.3,
+              f"{problems.pop()} problems at every boundary",
+              color="#000000", ha="center", va="bottom", fontsize=6.0)
+        _panel_tag(axa, "a", f"commit protocol; {trials.pop():,} crash trials per boundary")
 
         # (b) corruption outcome by class (post-fix), with the pre-fix
         # artifact_blob row as a ghost bar above its class
