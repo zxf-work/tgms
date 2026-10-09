@@ -298,15 +298,23 @@ def test_total_pairs_identity_matches_the_calibration_cell() -> None:
 def _withheld_result() -> dict:
     return {
         "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+        "inter_burst_wall_ms": 12.5,
         "feeders": [
             {"feeder": "F-epoch", "probe_reports_complete_through_10": True,
              "signalled": False, "false_fresh_count": 3,
              "artifacts": [{"name": "a1", "served_digest": "x", "oracle_digest_epoch10": "y",
-                           "false_fresh": True}]},
+                           "false_fresh": True, "held": False}],
+             "held_artifacts": 0, "refused_answers": 0,
+             "hold_ms_median": 0.0, "hold_ms_min": 0.0, "hold_ms_max": 0.0,
+             "hold_bursts_median": 0.0, "held": []},
             {"feeder": "F-watermark", "probe_reports_complete_through_10": False,
              "signalled": False, "false_fresh_count": 0,
              "artifacts": [{"name": "a1", "served_digest": "x", "oracle_digest_epoch10": "y",
-                           "false_fresh": False}]},
+                           "false_fresh": False, "held": True}],
+             "held_artifacts": 1, "refused_answers": 1,
+             "hold_ms_median": 12.5, "hold_ms_min": 12.5, "hold_ms_max": 12.5,
+             "hold_bursts_median": 1.0,
+             "held": [{"name": "a1", "hold_ms": 12.5, "hold_bursts": 1}]},
         ],
     }
 
@@ -319,6 +327,41 @@ def test_check_withheld_without_tgms_numbers() -> None:
     assert out["ivm_f_watermark_unanswerable"] is True
     assert out["tgms_false_fresh"] is None
     assert any("not supplied" in n for n in out["notes"])
+
+
+def test_check_withheld_forwards_the_hold_duration_fields() -> None:
+    out = external_check.check_withheld(_withheld_result())
+    assert out["ivm_f_watermark_held_artifacts"] == 1
+    assert out["ivm_f_watermark_refused_answers"] == 1
+    assert out["ivm_f_watermark_hold_ms_median"] == 12.5
+    assert out["ivm_f_watermark_hold_ms_min"] == 12.5
+    assert out["ivm_f_watermark_hold_ms_max"] == 12.5
+    assert out["ivm_f_watermark_hold_bursts_median"] == 1.0
+    assert out["ivm_inter_burst_wall_ms"] == 12.5
+
+
+def test_check_withheld_hold_fields_are_none_against_the_pre_p_ext2_h_shape() -> None:
+    """A withheld-result.json written before memo P-EXT2-H's extension
+    (e.g. the committed 2026-10-07 run) has no hold fields at all --
+    `check_withheld` must still read it, surfacing the gap as `None`
+    rather than raising a KeyError."""
+    legacy = _withheld_result()
+    del legacy["inter_burst_wall_ms"]
+    for feeder in legacy["feeders"]:
+        for key in ("held_artifacts", "refused_answers", "hold_ms_median",
+                    "hold_ms_min", "hold_ms_max", "hold_bursts_median", "held"):
+            del feeder[key]
+        for artifact in feeder["artifacts"]:
+            del artifact["held"]
+
+    out = external_check.check_withheld(legacy)
+    assert out["ivm_f_watermark_held_artifacts"] is None
+    assert out["ivm_f_watermark_refused_answers"] is None
+    assert out["ivm_f_watermark_hold_ms_median"] is None
+    assert out["ivm_f_watermark_hold_ms_min"] is None
+    assert out["ivm_f_watermark_hold_ms_max"] is None
+    assert out["ivm_f_watermark_hold_bursts_median"] is None
+    assert out["ivm_inter_burst_wall_ms"] is None
 
 
 def test_check_withheld_with_tgms_numbers() -> None:

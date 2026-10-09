@@ -31,7 +31,7 @@ pub struct HostSnapshot {
     pub free_g: String,
 }
 
-fn median(xs: &mut [f64]) -> Option<f64> {
+pub fn median(xs: &mut [f64]) -> Option<f64> {
     if xs.is_empty() {
         return None;
     }

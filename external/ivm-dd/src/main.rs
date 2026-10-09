@@ -219,12 +219,52 @@ fn cmd_shape_test(cell_dir: &Path) {
     }
 }
 
+/// The withheld-correction cell's own batch schedule (module docstring of
+/// `withheld.rs`): batch 10 is delayed, delivered together with batch 11.
+/// Memo P-EXT2-H reads the hold as "1 burst by construction" against
+/// exactly this pair.
+const WITHHELD_HELD_EPOCH: u64 = 10;
+const WITHHELD_DELIVERED_EPOCH: u64 = 11;
+/// This check evaluates a single read point (R10); each held artifact
+/// therefore refuses exactly once during the hold window.
+const WITHHELD_READS_PER_HOLD: usize = 1;
+
 fn cmd_withheld(cell_dir: &Path, out: &Path) {
     let bundle = load_bundle(cell_dir);
-    let results = withheld::run_from_bundle(&bundle);
+    let cl = changelog::build(&bundle);
+    let results = withheld::run_withheld_check(&bundle, &cl.epoch0, &cl.updates, &bundle.artifacts);
+
+    // The cell's measured inter-burst wall: a real timed run (single
+    // worker, same changelog) over the ordinary per-burst path
+    // (`dataflow::run`, the same one `ivm-dd run` uses), median of
+    // refresh_ms + publish_ms across its bursts. Memo P-EXT2-H predicts
+    // hold_ms ~= this value (the hold spans exactly one burst interval by
+    // construction -- see WITHHELD_HELD_EPOCH/WITHHELD_DELIVERED_EPOCH
+    // above), so the prediction is checked against a genuine wall-clock
+    // measurement, not asserted.
+    let cl_timed = changelog::build(&bundle);
+    let outcome = dataflow::run(cl_timed, bundle.artifacts.clone());
+    let mut burst_wall_ms: Vec<f64> =
+        outcome.bursts.iter().map(|b| b.refresh_ms + b.publish_ms).collect();
+    let inter_burst_wall_ms = record::median(&mut burst_wall_ms).unwrap_or(0.0);
+
+    let holds: Vec<withheld::HoldStats> = results
+        .iter()
+        .map(|r| {
+            withheld::compute_hold(
+                r,
+                WITHHELD_HELD_EPOCH,
+                WITHHELD_DELIVERED_EPOCH,
+                inter_burst_wall_ms,
+                WITHHELD_READS_PER_HOLD,
+            )
+        })
+        .collect();
+
     let json = serde_json::json!({
         "cell_id": bundle.cell_id,
-        "feeders": results.iter().map(|r| serde_json::json!({
+        "inter_burst_wall_ms": inter_burst_wall_ms,
+        "feeders": results.iter().zip(holds.iter()).map(|(r, hold)| serde_json::json!({
             "feeder": r.feeder,
             "probe_reports_complete_through_10": r.probe_reports_complete_through_10,
             "signalled": r.signalled,
@@ -232,12 +272,27 @@ fn cmd_withheld(cell_dir: &Path, out: &Path) {
             "artifacts": r.artifacts.iter().map(|a| serde_json::json!({
                 "name": a.name, "served_digest": a.served_digest,
                 "oracle_digest_epoch10": a.oracle_digest_epoch10, "false_fresh": a.false_fresh,
+                "held": a.held,
+            })).collect::<Vec<_>>(),
+            "held_artifacts": hold.held_artifacts,
+            "refused_answers": hold.refused_answers,
+            "hold_ms_median": hold.hold_ms_median,
+            "hold_ms_min": hold.hold_ms_min,
+            "hold_ms_max": hold.hold_ms_max,
+            "hold_bursts_median": hold.hold_bursts_median,
+            "held": hold.held.iter().map(|h| serde_json::json!({
+                "name": h.name, "hold_ms": h.hold_ms, "hold_bursts": h.hold_bursts,
             })).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
     });
     std::fs::create_dir_all(out).unwrap();
     std::fs::write(out.join("withheld-result.json"), serde_json::to_string_pretty(&json).unwrap() + "\n").unwrap();
-    for r in &results {
-        println!("{}: probe_complete_through_10={} false_fresh_count={}", r.feeder, r.probe_reports_complete_through_10, r.false_fresh_count);
+    for (r, hold) in results.iter().zip(holds.iter()) {
+        println!(
+            "{}: probe_complete_through_10={} false_fresh_count={} held_artifacts={} refused_answers={} hold_ms_median={:.3} hold_bursts_median={:.1}",
+            r.feeder, r.probe_reports_complete_through_10, r.false_fresh_count,
+            hold.held_artifacts, hold.refused_answers, hold.hold_ms_median, hold.hold_bursts_median
+        );
     }
+    println!("inter_burst_wall_ms={inter_burst_wall_ms:.3}");
 }

@@ -43,6 +43,13 @@ pub struct ArtifactAtR10 {
     pub served_digest: String,
     pub oracle_digest_epoch10: Option<String>,
     pub false_fresh: bool,
+    /// Memo P-EXT2-H (frozen 2026-10-09T14:30:27Z): true exactly when this
+    /// artifact's served value (`table_through(9)`) disagrees with the
+    /// epoch-10 oracle *and* the probe does not claim completeness --
+    /// i.e. the watermark variant correctly refuses to answer rather than
+    /// (like F-epoch) silently serving the stale value as fresh. Always
+    /// `false` under F-epoch (`probe_complete` is always `true` there).
+    pub held: bool,
 }
 
 pub struct FeederResult {
@@ -57,6 +64,108 @@ pub struct FeederResult {
     pub signalled: bool,
     pub artifacts: Vec<ArtifactAtR10>,
     pub false_fresh_count: usize,
+    /// Count of `artifacts` with `held == true` (memo P-EXT2-H). Always 0
+    /// under F-epoch.
+    pub held_count: usize,
+}
+
+/// One held artifact's hold duration (memo P-EXT2-H). `hold_bursts` and
+/// `hold_ms` are the same for every entry a given `compute_hold` call
+/// produces -- the hold is a property of the *burst schedule* (how many
+/// burst intervals elapse between the held read point and the delayed
+/// batch's actual delivery), not of the individual artifact, since this
+/// cell delays exactly one batch (10, delivered together with 11) for
+/// every artifact alike. The per-artifact shape is kept anyway because
+/// the task this computes for is stated per artifact, and a cell that
+/// someday delays more than one batch would want distinct values here.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeldArtifactHold {
+    pub name: String,
+    pub hold_ms: f64,
+    pub hold_bursts: u64,
+}
+
+/// Hold-duration statistics for one feeder's held artifacts.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HoldStats {
+    pub held: Vec<HeldArtifactHold>,
+    pub held_artifacts: usize,
+    /// Count of refused read attempts across the hold window: each held
+    /// artifact refuses once per read point inside the hold
+    /// (`reads_per_hold`, generically the number of distinct read
+    /// attempts this check models during the hold -- 1 for this cell,
+    /// which only evaluates the single read point R10).
+    pub refused_answers: usize,
+    pub hold_ms_median: f64,
+    pub hold_ms_min: f64,
+    pub hold_ms_max: f64,
+    pub hold_bursts_median: f64,
+}
+
+fn median_f64(xs: &[f64]) -> f64 {
+    if xs.is_empty() {
+        return 0.0;
+    }
+    let mut v = xs.to_vec();
+    v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let n = v.len();
+    if n % 2 == 1 { v[n / 2] } else { (v[n / 2 - 1] + v[n / 2]) / 2.0 }
+}
+
+fn min_f64(xs: &[f64]) -> f64 {
+    if xs.is_empty() { 0.0 } else { xs.iter().cloned().fold(f64::INFINITY, f64::min) }
+}
+
+fn max_f64(xs: &[f64]) -> f64 {
+    if xs.is_empty() { 0.0 } else { xs.iter().cloned().fold(f64::NEG_INFINITY, f64::max) }
+}
+
+/// Hold-duration statistics for `feeder`'s held artifacts (memo P-EXT2-H,
+/// frozen 2026-10-09T14:30:27Z): "hold = 1 burst by construction; ms ~=
+/// the inter-burst wall" -- `held_epoch` is the epoch whose batch was
+/// delayed (10 for this cell), `delivered_epoch` is the epoch at which it
+/// actually lands (11, delivered together with batch 11), and
+/// `inter_burst_wall_ms` is the cell's own measured per-burst wall time
+/// (median over a real timed run's bursts). `reads_per_hold` is the
+/// number of distinct read attempts this check models during the hold
+/// window (1 for this cell: only R10 is evaluated).
+///
+/// Always returns an empty/zeroed `HoldStats` for a feeder with no held
+/// artifacts (F-epoch, always -- `ArtifactAtR10::held` is always `false`
+/// there since its probe always claims completeness).
+pub fn compute_hold(
+    feeder: &FeederResult,
+    held_epoch: u64,
+    delivered_epoch: u64,
+    inter_burst_wall_ms: f64,
+    reads_per_hold: usize,
+) -> HoldStats {
+    assert!(
+        delivered_epoch > held_epoch,
+        "compute_hold: the delayed batch must be delivered at a later epoch than it was held \
+         (held_epoch={held_epoch}, delivered_epoch={delivered_epoch})"
+    );
+    let hold_bursts = delivered_epoch - held_epoch;
+    let hold_ms = hold_bursts as f64 * inter_burst_wall_ms;
+    let held: Vec<HeldArtifactHold> = feeder
+        .artifacts
+        .iter()
+        .filter(|a| a.held)
+        .map(|a| HeldArtifactHold { name: a.name.clone(), hold_ms, hold_bursts })
+        .collect();
+    let held_artifacts = held.len();
+    let refused_answers = held_artifacts * reads_per_hold;
+    let ms_vals: Vec<f64> = held.iter().map(|h| h.hold_ms).collect();
+    let bursts_vals: Vec<f64> = held.iter().map(|h| h.hold_bursts as f64).collect();
+    HoldStats {
+        held,
+        held_artifacts,
+        refused_answers,
+        hold_ms_median: median_f64(&ms_vals),
+        hold_ms_min: min_f64(&ms_vals),
+        hold_ms_max: max_f64(&ms_vals),
+        hold_bursts_median: median_f64(&bursts_vals),
+    }
 }
 
 /// Snapshot the live version table through epoch `through` (inclusive),
@@ -141,11 +250,14 @@ pub fn run_withheld_check(bundle: &CellBundle, epoch0: &[VersionRow], updates: &
     ] {
         let mut artifacts_out = Vec::with_capacity(meta.len());
         let mut false_fresh_count = 0usize;
+        let mut held_count = 0usize;
         for (name, (fam, args)) in &meta {
             let payload = served_payload(*fam, args, served);
             let canon = crate::digest::canonical_json(&crate::digest::canonicalize_floats(&payload));
             let served_digest = crate::digest::sha256_hex(&canon);
             let oracle_digest = oracle10.get(name).cloned().flatten();
+            let disagrees_with_oracle10 =
+                oracle_digest.as_deref().map(|od| od != served_digest).unwrap_or(false);
             // False-fresh *only* makes sense when the probe claims
             // completeness ("IVM false-fresh = artifacts whose
             // served value != oracle while the probe reports complete
@@ -153,16 +265,25 @@ pub fn run_withheld_check(bundle: &CellBundle, epoch0: &[VersionRow], updates: &
             // completeness, so nothing here is scored false-fresh even
             // when the served value happens to disagree with the epoch-10
             // oracle -- that is the whole point of the signal.
-            let false_fresh = probe_complete
-                && oracle_digest.as_deref().map(|od| od != served_digest).unwrap_or(false);
+            let false_fresh = probe_complete && disagrees_with_oracle10;
+            // Held (memo P-EXT2-H): the mirror image of false-fresh. When
+            // the probe does *not* claim completeness and the served
+            // value would in fact disagree with the epoch-10 oracle, the
+            // watermark variant is correctly refusing an answer it cannot
+            // yet stand behind, rather than serving it silently wrong.
+            let held = !probe_complete && disagrees_with_oracle10;
             if false_fresh {
                 false_fresh_count += 1;
+            }
+            if held {
+                held_count += 1;
             }
             artifacts_out.push(ArtifactAtR10 {
                 name: name.clone(),
                 served_digest,
                 oracle_digest_epoch10: oracle_digest,
                 false_fresh,
+                held,
             });
         }
         out.push(FeederResult {
@@ -171,6 +292,7 @@ pub fn run_withheld_check(bundle: &CellBundle, epoch0: &[VersionRow], updates: &
             signalled: false,
             artifacts: artifacts_out,
             false_fresh_count,
+            held_count,
         });
     }
     out

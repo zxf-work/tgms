@@ -555,3 +555,108 @@ def test_written_t1_record_conforms_to_result_manifest_schema(tmp_path: Path) ->
     schema = json.loads(SCHEMA_PATH.read_text())
     written = json.loads(record_path.read_text())
     jsonschema.Draft202012Validator(schema).validate(written)
+
+
+# ---------------------------------------------------------------------------
+# standalone withheld-hold record (lane D-W, memo P-EXT2-H)
+# ---------------------------------------------------------------------------
+
+def _withheld_check() -> dict:
+    """A tiny `external_check.py::check_withheld`-shaped dict -- exactly
+    what `tests/test_external_check.py::test_check_withheld_forwards_the_hold_duration_fields`
+    exercises `check_withheld` into producing, restated here so this
+    module's test does not import that test module."""
+    return {
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+        "ivm_f_epoch_false_fresh": 39,
+        "ivm_f_epoch_probe_complete_through_10": True,
+        "ivm_f_watermark_false_fresh": 0,
+        "ivm_f_watermark_probe_complete_through_10": False,
+        "ivm_f_watermark_unanswerable": True,
+        "ivm_f_watermark_held_artifacts": 39,
+        "ivm_f_watermark_refused_answers": 39,
+        "ivm_f_watermark_hold_ms_median": 239.57,
+        "ivm_f_watermark_hold_ms_min": 239.57,
+        "ivm_f_watermark_hold_ms_max": 239.57,
+        "ivm_f_watermark_hold_bursts_median": 1.0,
+        "ivm_inter_burst_wall_ms": 239.57,
+        "tgms_false_fresh": None,
+        "tgms_stale_marked": None,
+        "notes": [],
+    }
+
+
+def test_build_withheld_hold_record_carries_the_check_dict_verbatim() -> None:
+    record = external_record.build_withheld_hold_record(
+        _withheld_check(), git_commit="deadbeef", timestamp_utc="2026-10-09T14:30:27Z")
+
+    assert record["schema_version"] == "1.0.0"
+    assert record["config"]["campaign"] == "ivm-differential-withheld-hold"
+    assert record["config"]["cell_id"] == "synth-iv-60k-c4-deep-n1000-s0"
+    assert record["n_cells"] == 1
+    assert record["summary"]["withheld"] == _withheld_check()
+    # never silently drops the hold-duration fields this lane added:
+    assert record["summary"]["withheld"]["ivm_f_watermark_held_artifacts"] == 39
+    assert record["summary"]["withheld"]["ivm_inter_burst_wall_ms"] == 239.57
+
+
+def test_build_withheld_hold_record_uses_the_supplied_host_block() -> None:
+    host = {"host": "xzgpu", "platform": "Linux-test", "cpus": 8, "ram_gb": 64.0}
+    record = external_record.build_withheld_hold_record(
+        _withheld_check(), git_commit="deadbeef", timestamp_utc="2026-10-09T14:30:27Z",
+        host=host)
+    assert record["machine"] == host
+
+
+def test_written_withheld_hold_record_conforms_to_result_manifest_schema(
+        tmp_path: Path) -> None:
+    record = external_record.build_withheld_hold_record(
+        _withheld_check(), git_commit="deadbeef", timestamp_utc="2026-10-09T14:30:27Z")
+    record_path = tmp_path / "ivm-differential-2026-10-09-withheld-hold.json"
+    record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+
+    schema = json.loads(SCHEMA_PATH.read_text())
+    written = json.loads(record_path.read_text())
+    jsonschema.Draft202012Validator(schema).validate(written)
+
+
+def test_cli_withheld_hold_only_writes_the_standalone_record(tmp_path: Path) -> None:
+    withheld_path = tmp_path / "check-withheld.json"
+    withheld_path.write_text(json.dumps(_withheld_check()))
+    out_dir = tmp_path / "out"
+
+    rc = external_record.main([
+        "--withheld-hold-only", "--withheld-check", str(withheld_path),
+        "--git-commit", "deadbeef", "--timestamp-utc", "2026-10-09T14:30:27Z",
+        "--date", "2026-10-09", "--out-dir", str(out_dir),
+    ])
+    assert rc == 0
+
+    record_path = out_dir / "ivm-differential-2026-10-09-withheld-hold.json"
+    assert record_path.exists()
+    written = json.loads(record_path.read_text())
+    assert written["config"]["campaign"] == "ivm-differential-withheld-hold"
+    assert written["summary"]["withheld"]["ivm_f_watermark_held_artifacts"] == 39
+
+    schema = json.loads(SCHEMA_PATH.read_text())
+    jsonschema.Draft202012Validator(schema).validate(written)
+
+
+def test_cli_withheld_hold_only_requires_withheld_check(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit):
+        external_record.main(["--withheld-hold-only", "--out-dir", str(tmp_path)])
+
+
+def test_cli_withheld_hold_only_rejects_campaign_flags(tmp_path: Path) -> None:
+    withheld_path = tmp_path / "check-withheld.json"
+    withheld_path.write_text(json.dumps(_withheld_check()))
+    with pytest.raises(SystemExit):
+        external_record.main([
+            "--withheld-hold-only", "--withheld-check", str(withheld_path),
+            "--campaign", "ivm-differential",
+        ])
+
+
+def test_cli_requires_campaign_without_withheld_hold_only() -> None:
+    with pytest.raises(SystemExit):
+        external_record.main([])

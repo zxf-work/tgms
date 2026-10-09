@@ -381,28 +381,51 @@ def tally_line(check: dict[str, Any]) -> str:
 def check_withheld(withheld_result: dict, *, tgms_false_fresh: int | None = None,
                    tgms_stale_marked: int | None = None) -> dict[str, Any]:
     """Reads `ivm_dd::withheld`'s `withheld-result.json`
-    (`{"cell_id", "feeders": [{"feeder", "probe_reports_complete_through_10",
-    "signalled", "false_fresh_count", "artifacts"}, ...]}`) and restates its
-    two feeders' numbers next to TGMS's own (memo §3.5): TGMS's
-    `false_fresh` is 0 by contract and its stale-marked count comes from a
-    separate `ext_export.py --check-at 10` run this script does not itself
-    have — pass them in if available, else they are reported `null` with a
-    note (never fabricated).
+    (`{"cell_id", "inter_burst_wall_ms", "feeders": [{"feeder",
+    "probe_reports_complete_through_10", "signalled", "false_fresh_count",
+    "artifacts", "held_artifacts", "refused_answers", "hold_ms_median",
+    "hold_ms_min", "hold_ms_max", "hold_bursts_median", "held"}, ...]}`)
+    and restates its two feeders' numbers next to TGMS's own (memo §3.5):
+    TGMS's `false_fresh` is 0 by contract and its stale-marked count comes
+    from a separate `ext_export.py --check-at 10` run this script does not
+    itself have — pass them in if available, else they are reported `null`
+    with a note (never fabricated).
 
-    Not exercised against real withheld-cell data as of this writing: the
-    37th cell (`synth-iv-60k/c4/deep/seed0`, batch 10 delayed into 11) has
-    not been exported yet, so this path is covered only by
+    The hold-duration fields (`ivm_f_watermark_held_artifacts` and
+    siblings, memo P-EXT2-H frozen 2026-10-09T14:30:27Z) are read with
+    `.get(...)`, not direct indexing, so a `withheld-result.json` written
+    by the pre-P-EXT2-H binary (no hold fields at all — e.g. the original
+    2026-10-07 run) still reads here, those fields simply coming back
+    `None`.
+
+    Exercised against real withheld-cell data by lane D-W (2026-10-09, the
+    `synth-iv-60k-c4-deep-n1000-s0` withheld-correction cell, hold-duration
+    extension); still covered independently by
     `tests/test_external_check.py`'s synthetic fixture, matching
     `withheld.rs`'s own field names exactly.
     """
     feeders = {f["feeder"]: f for f in withheld_result["feeders"]}
+    watermark = feeders["F-watermark"]
     out = {
         "cell_id": withheld_result["cell_id"],
         "ivm_f_epoch_false_fresh": feeders["F-epoch"]["false_fresh_count"],
         "ivm_f_epoch_probe_complete_through_10": feeders["F-epoch"]["probe_reports_complete_through_10"],
-        "ivm_f_watermark_false_fresh": feeders["F-watermark"]["false_fresh_count"],
-        "ivm_f_watermark_probe_complete_through_10": feeders["F-watermark"]["probe_reports_complete_through_10"],
-        "ivm_f_watermark_unanswerable": not feeders["F-watermark"]["probe_reports_complete_through_10"],
+        "ivm_f_watermark_false_fresh": watermark["false_fresh_count"],
+        "ivm_f_watermark_probe_complete_through_10": watermark["probe_reports_complete_through_10"],
+        "ivm_f_watermark_unanswerable": not watermark["probe_reports_complete_through_10"],
+        # Hold-duration fields (memo P-EXT2-H, frozen 2026-10-09T14:30:27Z,
+        # `ivm_dd::withheld::compute_hold` / `cmd_withheld`). `.get(...)`
+        # rather than direct indexing: a `withheld-result.json` written by
+        # the pre-P-EXT2-H binary (e.g. the original 2026-10-07 run) has
+        # none of these keys, and this reader stays usable against that
+        # older shape too, surfacing the gap as `None` rather than raising.
+        "ivm_f_watermark_held_artifacts": watermark.get("held_artifacts"),
+        "ivm_f_watermark_refused_answers": watermark.get("refused_answers"),
+        "ivm_f_watermark_hold_ms_median": watermark.get("hold_ms_median"),
+        "ivm_f_watermark_hold_ms_min": watermark.get("hold_ms_min"),
+        "ivm_f_watermark_hold_ms_max": watermark.get("hold_ms_max"),
+        "ivm_f_watermark_hold_bursts_median": watermark.get("hold_bursts_median"),
+        "ivm_inter_burst_wall_ms": withheld_result.get("inter_burst_wall_ms"),
         "tgms_false_fresh": tgms_false_fresh,
         "tgms_stale_marked": tgms_stale_marked,
         "notes": [],

@@ -55,7 +55,11 @@ into the repository's engine workspace (`crates/tgms-engine-core`,
 ```sh
 ivm-dd run <cell-dir> --out <out-dir>        # full per-burst run; writes result.json + run.log
 ivm-dd shape-test <cell-dir>                 # epoch-0 digest vs oracle.jsonl, every artifact
-ivm-dd withheld <cell-dir> --out <out-dir>   # the withheld-correction check (needs >= 11 bursts)
+ivm-dd withheld <cell-dir> --out <out-dir>   # the withheld-correction check (needs >= 11 bursts);
+                                              # also runs a real single-worker `dataflow::run` over
+                                              # the same changelog to measure `inter_burst_wall_ms`,
+                                              # and reports the F-watermark feeder's held/refused
+                                              # artifacts and hold duration (memo P-EXT2-H)
 ```
 
 ## Architecture

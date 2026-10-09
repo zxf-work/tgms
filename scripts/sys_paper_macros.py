@@ -516,6 +516,16 @@ EXTERNAL_IVM_ROWS = EXTERNAL_V1 / "ivm-differential-2026-10-07-rows.jsonl"
 # read there, as the "before" comparison point only -- never rewritten.
 EXTERNAL_NEO4J_RERUN = EXTERNAL_V1 / "neo4j-recompute-2026-10-09-rerun.json"
 EXTERNAL_NEO4J_RERUN_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-09-rerun-rows.jsonl"
+# Lane D-W (2026-10-09, memo P-EXT2-H frozen 2026-10-09T14:30:27Z): the
+# watermark variant's hold duration under a withheld correction, on the
+# same withheld-correction cell EXTERNAL_IVM's own c_withheld section
+# names (synth-iv-60k-c4-deep-n1000-s0). A standalone single-cell record
+# (built by scripts/external_record.py's build_withheld_hold_record /
+# --withheld-hold-only), not a re-assembly of the 43-cell EXTERNAL_IVM
+# record above -- that record and its c_withheld section stay untouched.
+# See benchmarks/external-v1/README.md's "Watermark hold duration under a
+# withheld correction (2026-10-09)" section.
+EXTERNAL_IVM_WITHHELD_HOLD = EXTERNAL_V1 / "ivm-differential-2026-10-09-withheld-hold.json"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 # Lane W2af: the per-cell equality-manifest sidecar (never read by any
 # function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
@@ -9752,11 +9762,12 @@ def compute_external_baselines(m: Macros) -> None:
           "synth-iv-60k-c4-deep-n1000-s0 -- fallback source, since "
           f"{relpath(EXTERNAL_IVM)}'s own c_withheld.tgms_false_fresh is null (not supplied to "
           "lane D1's check run)")
-    m.add("recExt2UnanswerableMs", "not measured",
-          f"{relpath(EXTERNAL_IVM)}'s predictions_measured.ext2.c_withheld carries only "
-          "booleans (ivm_f_{epoch,watermark}_probe_complete_through_10) for the withheld "
-          "cell, no timing field -- this number cannot be computed from the committed "
-          "records; landed as the literal text \"not measured\" rather than improvised")
+    # recExt2UnanswerableMs used to land here as the literal text "not
+    # measured" (predictions_measured.ext2.c_withheld carries only
+    # booleans, no timing field). Lane D-W (2026-10-09, memo P-EXT2-H)
+    # measured it for real -- see compute_external_withheld_hold below,
+    # which now defines this macro (and its siblings) against the new
+    # standalone ivm-differential-2026-10-09-withheld-hold.json record.
 
 
 # --------------------------------------------------------------------------
@@ -10400,6 +10411,106 @@ def compute_external_rerun_n1b(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane D-W (2026-10-09) -- watermark hold duration under a withheld
+# correction (memo P-EXT2-H, frozen 2026-10-09T14:30:27Z): on the
+# withheld-correction cell synth-iv-60k-c4-deep-n1000-s0 (the same cell
+# EXTERNAL_IVM's own c_withheld section names, landed 2026-10-07 and left
+# untouched by this lane), the F-watermark feeder holds (refuses) every
+# artifact whose correct epoch-10 value depends on the still-undelivered
+# batch 10 -- exactly the 39 artifacts EXTERNAL_IVM's own
+# ivm_f_epoch_false_fresh already names as affected
+# (recExt2WithheldFalseFreshIvm above). P-EXT2-H's frozen prediction is
+# "hold = 1 burst by construction; ms ~= the inter-burst wall" -- checked
+# here against `ivm_dd::withheld::compute_hold`'s real output on a real
+# timed run (`ivm-dd withheld`'s own `dataflow::run` pass over the same
+# changelog), not assumed. See benchmarks/external-v1/README.md's
+# "Watermark hold duration under a withheld correction (2026-10-09)"
+# section for the full provenance and host protocol.
+# --------------------------------------------------------------------------
+
+def compute_external_withheld_hold(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    eq(sha256_file(EXTERNAL_IVM_WITHHELD_HOLD), sums.get(EXTERNAL_IVM_WITHHELD_HOLD.name),
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: sha256 matches "
+       f"{relpath(EXTERNAL_V1_SHA256SUMS)}'s entry")
+
+    record = json.loads(EXTERNAL_IVM_WITHHELD_HOLD.read_text(encoding="utf-8"))
+    eq(record["config"]["campaign"], "ivm-differential-withheld-hold",
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: config.campaign")
+    withheld = record["summary"]["withheld"]
+    eq(withheld["cell_id"], "synth-iv-60k-c4-deep-n1000-s0",
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld.cell_id")
+
+    # The snapshot-level numbers this lane's own binary did NOT change
+    # (withheld.rs's false_fresh/probe_complete bookkeeping is untouched;
+    # only the new held/hold fields are added) -- cross-checked against
+    # the original 2026-10-07 record's own c_withheld section so a
+    # silent regression in the untouched path would fail loudly here,
+    # not just in the Rust test suite.
+    eq(withheld["ivm_f_epoch_false_fresh"], 39,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld.ivm_f_epoch_false_fresh "
+       f"(unchanged from {relpath(EXTERNAL_IVM)}'s own c_withheld.ivm_f_epoch_false_fresh)")
+    eq(withheld["ivm_f_watermark_false_fresh"], 0,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld.ivm_f_watermark_false_fresh "
+       f"(unchanged from {relpath(EXTERNAL_IVM)}'s own c_withheld.ivm_f_watermark_false_fresh)")
+    require(withheld["ivm_f_watermark_unanswerable"] is True,
+            f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld."
+            "ivm_f_watermark_unanswerable is true")
+
+    held_artifacts = withheld["ivm_f_watermark_held_artifacts"]
+    refused_answers = withheld["ivm_f_watermark_refused_answers"]
+    hold_ms_median = withheld["ivm_f_watermark_hold_ms_median"]
+    hold_ms_min = withheld["ivm_f_watermark_hold_ms_min"]
+    hold_ms_max = withheld["ivm_f_watermark_hold_ms_max"]
+    hold_bursts_median = withheld["ivm_f_watermark_hold_bursts_median"]
+    inter_burst_wall_ms = withheld["ivm_inter_burst_wall_ms"]
+
+    eq(held_artifacts, 39,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld.ivm_f_watermark_held_artifacts "
+       "-- the same 39 artifacts ivm_f_epoch_false_fresh names as affected by the withheld "
+       "batch, now correctly held (refused) rather than served stale")
+    eq(refused_answers, held_artifacts,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: ivm_f_watermark_refused_answers == "
+       "ivm_f_watermark_held_artifacts -- this check models a single read point (R10), so "
+       "each held artifact refuses exactly once")
+    eq(hold_bursts_median, 1.0,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: ivm_f_watermark_hold_bursts_median -- "
+       "P-EXT2-H frozen: hold = 1 burst by construction (batch 10 held, delivered "
+       "together with batch 11)")
+    eq(hold_ms_min, hold_ms_max,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: hold_ms_min == hold_ms_max -- every held "
+       "artifact shares the same 1-burst hold, so its hold_ms is uniform across the 39")
+    eq(hold_ms_median, hold_ms_min,
+       f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: hold_ms_median == hold_ms_min (uniform "
+       "per-artifact hold_ms)")
+    close(hold_ms_median, inter_burst_wall_ms, 1e-6,
+          f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: hold_ms_median == 1 burst * "
+          "inter_burst_wall_ms (P-EXT2-H frozen: \"ms ~= the inter-burst wall\")")
+    close(inter_burst_wall_ms, 69.52254149999999, 1e-6,
+          "external-v1 D-W frozen (2026-10-09, quiet-box timed run, Memgraph stopped, no "
+          "nice, 5m27.71s wall per /usr/bin/time -v): this cell's measured inter-burst "
+          "wall (median refresh_ms + publish_ms across the dataflow run's bursts)")
+
+    m.add("recExt2UnanswerableMs", f"{round(hold_ms_median):.0f}",
+          f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld."
+          "ivm_f_watermark_hold_ms_median, rounded -- was the literal text \"not measured\" "
+          "before this lane (compute_external_baselines's module comment above)")
+    m.add("recExt2UnanswerableBursts", f"{hold_bursts_median:.1f}",
+          f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld."
+          "ivm_f_watermark_hold_bursts_median")
+    m.add("recExt2WithheldHeldArtifacts", held_artifacts,
+          f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld."
+          "ivm_f_watermark_held_artifacts")
+    m.add("recExt2WithheldRefusedAnswers", refused_answers,
+          f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld."
+          "ivm_f_watermark_refused_answers")
+    m.add("recExt2WithheldInterBurstMs", f"{round(inter_burst_wall_ms):.0f}",
+          f"{relpath(EXTERNAL_IVM_WITHHELD_HOLD)}: summary.withheld.ivm_inter_burst_wall_ms, "
+          "rounded -- this cell's own measured per-burst wall (median refresh_ms + "
+          "publish_ms), the quantity P-EXT2-H's frozen prediction reads hold_ms against")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -10506,6 +10617,7 @@ def main() -> int:
     compute_ext_sum_mode(m)
     compute_external_arc5(m)
     compute_external_rerun_n1b(m)
+    compute_external_withheld_hold(m)
     add_pending_stubs(m)
 
     if FAILURES:

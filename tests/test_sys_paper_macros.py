@@ -770,7 +770,13 @@ FROZEN_LANDED_VALUES = {
     "recExt2WithheldFalseFreshIvm": "39",
     "recExt2WithheldFalseFreshWatermark": "0",
     "recExt2WithheldFalseFreshTgms": "0",
-    "recExt2UnanswerableMs": "not measured",
+    # recExt2UnanswerableMs used to land here as "not measured" (produced
+    # by compute_external_baselines). Lane D-W (2026-10-09) measured it
+    # for real; compute_external_baselines no longer defines this macro
+    # at all -- it now comes from compute_external_withheld_hold, a
+    # dedicated function outside _run_all_landed/FROZEN_LANDED_VALUES,
+    # the same convention compute_external_rerun_n1b/compute_external_arc5
+    # already use. See the "watermark hold duration" test section below.
 }
 
 
@@ -3537,19 +3543,22 @@ def test_external_baselines_speedup_scored_and_meeting_are_a_consistent_pair():
     assert 0 <= meeting <= scored
 
 
-def test_external_baselines_unanswerable_ms_is_literal_text_not_a_number():
-    """The withheld-correction cell's own record carries only booleans for
-    the F-epoch/F-watermark probes, no timing field -- recExt2UnanswerableMs
-    must land as the literal text "not measured", never a fabricated
-    number nor a PENDING \\errmessage stub (the record itself landed; only
-    this one field within it did not)."""
+def test_external_baselines_no_longer_defines_unanswerable_ms():
+    """Lane D-W (2026-10-09) moved recExt2UnanswerableMs off
+    compute_external_baselines entirely -- it used to land here as the
+    literal text "not measured" (the withheld-correction cell's
+    2026-10-07 record carries only booleans for the F-epoch/F-watermark
+    probes, no timing field). The real measurement now comes from
+    compute_external_withheld_hold (see the dedicated test section
+    below), reading the new standalone
+    ivm-differential-2026-10-09-withheld-hold.json record; this function
+    must not also still define it (that would be a duplicate-macro
+    assertion error the moment both ran together, per Macros.add)."""
     mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_external_baselines(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["recExt2UnanswerableMs"] == "not measured"
-    with pytest.raises(ValueError):
-        float(values["recExt2UnanswerableMs"])
+    assert "recExt2UnanswerableMs" not in values
 
 
 def test_external_baselines_crossover_band_is_none_when_every_band_is_below_one():
@@ -4735,6 +4744,89 @@ def test_tampered_external_rerun_n1b_rows_sha256_mismatch_fails(tmp_path):
     assert mod.FAILURES, "an edited neo4j-recompute-2026-10-09-rerun-rows.jsonl must fail " \
         "the SHA256SUMS.txt check"
     assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# watermark hold duration under a withheld correction (lane D-W,
+# 2026-10-09, memo P-EXT2-H) -- compute_external_withheld_hold, outside
+# _run_all_landed/FROZEN_LANDED_VALUES, same convention
+# compute_external_rerun_n1b/compute_external_arc5 above already use.
+# --------------------------------------------------------------------------
+
+def test_external_withheld_hold_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_withheld_hold(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt2WithheldHeldArtifacts"] == "39"
+    assert values["recExt2WithheldRefusedAnswers"] == "39"
+    assert values["recExt2UnanswerableBursts"] == "1.0"
+    # the macro now lands as a real number, never "not measured" again:
+    assert values["recExt2UnanswerableMs"] != "not measured"
+    float(values["recExt2UnanswerableMs"])
+    float(values["recExt2WithheldInterBurstMs"])
+
+
+def test_external_withheld_hold_unanswerable_ms_matches_the_inter_burst_wall():
+    """P-EXT2-H's frozen prediction: hold = 1 burst by construction, so
+    hold_ms (recExt2UnanswerableMs) should equal 1 * the cell's own
+    measured inter-burst wall (recExt2WithheldInterBurstMs), both rounded
+    to 0 decimals from the same record -- not merely close by coincidence
+    of independent measurements."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_withheld_hold(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt2UnanswerableMs"] == values["recExt2WithheldInterBurstMs"]
+
+
+def test_tampered_external_withheld_hold_sha256_mismatch_fails(tmp_path):
+    """Sibling of test_tampered_external_rerun_n1b_sha256_mismatch_fails
+    for the new 2026-10-09 withheld-hold record -- an edit must fail the
+    SHA256SUMS.txt gate before anything in it is trusted."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_IVM_WITHHELD_HOLD.read_text(encoding="utf-8"))
+    data["summary"]["withheld"]["ivm_f_watermark_held_artifacts"] = 999
+    tampered = tmp_path / mod.EXTERNAL_IVM_WITHHELD_HOLD.name
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.EXTERNAL_IVM_WITHHELD_HOLD = tampered
+    m = mod.Macros()
+    mod.compute_external_withheld_hold(m)
+    assert mod.FAILURES, "an edited ivm-differential-2026-10-09-withheld-hold.json must " \
+        "fail the SHA256SUMS.txt check"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_tampered_external_withheld_hold_count_fails_even_with_a_patched_digest(tmp_path):
+    """Sibling of the many `test_tampered_*_fails_even_with_a_patched_digest`
+    tests elsewhere in this file: patching SHA256SUMS.txt to match a
+    tampered copy must still fail, on the frozen
+    ivm_f_watermark_held_artifacts == 39 assertion (the same 39 artifacts
+    ivm_f_epoch_false_fresh names as affected)."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_IVM_WITHHELD_HOLD.read_text(encoding="utf-8"))
+    data["summary"]["withheld"]["ivm_f_watermark_held_artifacts"] = 38
+    tampered = tmp_path / mod.EXTERNAL_IVM_WITHHELD_HOLD.name
+    tampered_bytes = json.dumps(data).encode()
+    tampered.write_bytes(tampered_bytes)
+
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    patched_digest = hashlib.sha256(tampered_bytes).hexdigest()
+    patched_sums = re.sub(
+        r"^[0-9a-f]{64}(\s+\S*ivm-differential-2026-10-09-withheld-hold\.json)$",
+        patched_digest + r"\1", sums_text, flags=re.MULTILINE)
+    assert patched_sums != sums_text, "fixture did not find the row to patch"
+    patched_sums_path = tmp_path / "SHA256SUMS.txt"
+    patched_sums_path.write_text(patched_sums, encoding="utf-8")
+
+    mod.EXTERNAL_IVM_WITHHELD_HOLD = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = patched_sums_path
+    m = mod.Macros()
+    mod.compute_external_withheld_hold(m)
+    assert mod.FAILURES, "held_artifacts == 38 (not the frozen 39) must still fail even " \
+        "though the sha256 gate was patched to match"
 
 
 # --------------------------------------------------------------------------

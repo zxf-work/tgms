@@ -667,6 +667,68 @@ def _sha256_of(obj: Any) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()
 
 
+# ---------------------------------------------------------------------------
+# standalone withheld-hold record (lane D-W, memo P-EXT2-H frozen
+# 2026-10-09T14:30:27Z) — EXT2 (c)'s hold-duration measurement, landed as
+# its own single-cell record rather than folded into a re-assembled
+# 43-cell ivm-differential record (that record's own c_withheld section,
+# landed 2026-10-07, stays untouched -- see benchmarks/external-v1/
+# README.md's "Watermark hold duration under a withheld correction
+# (2026-10-09)" section).
+# ---------------------------------------------------------------------------
+
+def build_withheld_hold_record(withheld_check: dict[str, Any], *, git_commit: str,
+                               timestamp_utc: str,
+                               host: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Assembles the standalone withheld-correction hold-duration record:
+    `benchmarks/external-v1/ivm-differential-<date>-withheld-hold.json`.
+
+    `withheld_check` is `external_check.py::check_withheld`'s own output
+    dict (not `ivm_dd::withheld`'s raw `withheld-result.json` -- this
+    function does not re-derive the hold statistics, it restates the
+    already-independently-checked numbers). Unlike `build_record` above (a
+    43-cell campaign summary with EXT1/EXT2 predictions), this record
+    covers exactly the one withheld-correction cell and carries
+    `withheld_check` verbatim under `summary.withheld` -- satisfying
+    `result_manifest.schema.json`'s generic required top-level fields
+    (schema_version/git_commit/timestamp_utc/machine/config/seed/dataset/
+    result_digest/protocol/record, all `additionalProperties: true`)
+    without inventing a 43-cell `per_cell`/`predictions_measured` shape
+    this single-cell record has no use for.
+    """
+    cell_id_value = withheld_check["cell_id"]
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "git_commit": git_commit,
+        "timestamp_utc": timestamp_utc,
+        "machine": host or {
+            "host": "xzgpu", "platform": "unknown", "cpus": 1, "ram_gb": 1.0,
+            "note": "placeholder -- pass host=... (e.g. from the run's own host "
+                    "snapshot) for a real machine block",
+        },
+        "config": {"campaign": "ivm-differential-withheld-hold", "cell_id": cell_id_value},
+        "seed": {"value": None, "reason": "cell identity carries the seed; see config.cell_id"},
+        "dataset": {
+            "name": "storm-v2 withheld-correction cell (differential-dataflow IVM, "
+                    "F-epoch/F-watermark feeders)",
+            "digest": _sha256_of(cell_id_value), "digest_kind": "manifest",
+        },
+        "result_digest": _sha256_of(withheld_check),
+        "protocol": {
+            "warmups": 0, "reps": 1,
+            "ceilings": {"note": "single read point (R10); see benchmarks/external-v1/"
+                                 "README.md's \"Watermark hold duration under a withheld "
+                                 "correction (2026-10-09)\" section for the full timed-run "
+                                 "protocol (quiet box, Memgraph stopped, no nice, single "
+                                 "worker)"},
+        },
+        "record": "benchmarks/external-v1/ivm-differential-2026-10-09-withheld-hold.json",
+        "n_cells": 1,
+        "summary": {"withheld": withheld_check},
+    }
+    return record
+
+
 def write_record(record: dict[str, Any], rows: list[dict[str, Any]], out_dir: Path,
                  campaign: str, date: str) -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -688,8 +750,9 @@ def write_record(record: dict[str, Any], rows: list[dict[str, Any]], out_dir: Pa
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--campaign", required=True,
-                    choices=["neo4j-recompute", "ivm-differential", "tgms-control"])
+    ap.add_argument("--campaign", required=False, default=None,
+                    choices=["neo4j-recompute", "ivm-differential", "tgms-control"],
+                    help="required unless --withheld-hold-only is given")
     ap.add_argument("--cell", nargs=3, action="append", default=[],
                     metavar=("EXPORT_DIR", "RESULT_JSON", "CHECK_JSON"),
                     help="one exported cell's bundle dir, its configuration's "
@@ -702,7 +765,17 @@ def main(argv: list[str] | None = None) -> int:
                         "t1-equality.json); repeatable (tgms-control only)")
     ap.add_argument("--withheld-check", type=Path, default=None,
                     help="check.json's \"withheld\" section (from "
-                        "external_check.py --withheld-result ...), for EXT2 (c)")
+                        "external_check.py --withheld-result ...), for EXT2 (c); also "
+                        "the sole input --withheld-hold-only reads")
+    ap.add_argument("--withheld-hold-only", action="store_true",
+                    help="write a standalone single-cell "
+                        "ivm-differential-<date>-withheld-hold.json from "
+                        "--withheld-check alone (no --cell/--t1-cell/--campaign needed) "
+                        "-- lane D-W, memo P-EXT2-H")
+    ap.add_argument("--host-json", type=Path, default=None,
+                    help="--withheld-hold-only only: optional "
+                        "{host,platform,cpus,ram_gb} snapshot for the record's machine "
+                        "field (default: an unknown-xzgpu placeholder)")
     ap.add_argument("--git-commit", default="unknown")
     ap.add_argument("--timestamp-utc", default=None, help="default: now, UTC")
     ap.add_argument("--out-dir", type=Path, default=ROOT / "benchmarks" / "external-v1")
@@ -715,6 +788,26 @@ def main(argv: list[str] | None = None) -> int:
     now = datetime.datetime.now(datetime.UTC)
     timestamp_utc = args.timestamp_utc or now.strftime("%Y-%m-%dT%H:%M:%SZ")
     date = args.date or now.strftime("%Y-%m-%d")
+
+    if args.withheld_hold_only:
+        if args.campaign is not None or args.cell or args.t1_cell:
+            ap.error("--withheld-hold-only takes no --campaign/--cell/--t1-cell")
+        if not args.withheld_check:
+            ap.error("--withheld-hold-only requires --withheld-check")
+        withheld_check = json.loads(args.withheld_check.read_text())
+        host = json.loads(args.host_json.read_text()) if args.host_json else None
+        record = build_withheld_hold_record(withheld_check, git_commit=args.git_commit,
+                                            timestamp_utc=timestamp_utc, host=host)
+        args.out_dir.mkdir(parents=True, exist_ok=True)
+        record_path = args.out_dir / f"ivm-differential-{date}-withheld-hold.json"
+        record["record"] = str(record_path.relative_to(ROOT)) if record_path.is_relative_to(ROOT) \
+            else str(record_path)
+        record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+        print(f"wrote {record_path}")
+        return 0
+
+    if args.campaign is None:
+        ap.error("--campaign is required unless --withheld-hold-only is given")
 
     if args.campaign == "tgms-control":
         if args.cell:
