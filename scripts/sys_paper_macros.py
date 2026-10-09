@@ -898,6 +898,20 @@ LDBC_FMT3_README_SHA256 = "2868631a2d6e4dd1be6816e2138f0b18218a8f26e27af90457284
 LDBC_FMT3_INTERACTIVE_README_SHA256 = (
     "fd75776917dc49865e78998cc6e51c828a76394d9bd2bc653b96418be6fc8930")
 
+# The LDBC SF1 coverage record (D-134 second-annotator pass): the 41
+# templates' completeness-certification partition. Its
+# claim_full_contract_counts.CURRENT_ECQR_FRAGMENT counts the templates
+# whose whole answer contract -- ordering included -- is inside the
+# certifiable fragment ("certify complete under full ordering"), and its
+# flat_projection_in_fragment counts those whose projection alone is (the
+# answer as an unordered set). No SHA256SUMS file covers results-v1/, so
+# the record is gated on a frozen whole-file sha256 (same convention as
+# LDBC_FMT3_README_SHA256 above), and its 41 is cross-checked against the
+# independently written template inventory in ldbc-fit-v1/.
+LDBC_COVERAGE = ROOT / "benchmarks" / "results-v1" / "eval-ldbc-coverage.json"
+LDBC_COVERAGE_SHA256 = "af9dd7c518e58c1bbfce8fcf81b56c76e1c802a51e2dc4ce94bdca754380c42c"
+LDBC_FIT_CLASSIFICATION = ROOT / "benchmarks" / "ldbc-fit-v1" / "classification.json"
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -2930,6 +2944,12 @@ def compute_c7_storm_v1(m: Macros) -> None:
     window_overlap_nonzero_batches = 0
     total_batches = 0
     new_identity_row_touch_ratios: list[float] = []
+    # Pre-rollout siblings of compute_c7_storm_v2's recStormV2SurvivorFraction/
+    # PrecisionC1Median (same per-batch definitions, same 12 c1-mix cells x
+    # 20 batches population), so a figure can set the pre- and post-rollout
+    # c1 medians side by side from one definition.
+    c1_survivor_fracs: list[float] = []
+    c1_precisions: list[float] = []
 
     with tarfile.open(STORM_V1_RECORDS_TARBALL, "r:gz") as tf:
         tar_names = set(tf.getnames())
@@ -2964,6 +2984,10 @@ def compute_c7_storm_v1(m: Macros) -> None:
                     window_overlap_nonzero_batches += 1
                 if br["correction_placement"] == "new-identity" and changed_count > 0:
                     new_identity_row_touch_ratios.append(row_ff / changed_count)
+                if r["config"]["mix"] == "c1":
+                    survivors = br["candidate_survivors"]
+                    c1_survivor_fracs.append(survivors / r["config"]["n_registered"])
+                    c1_precisions.append(changed_count / survivors)
 
             require(cell_changed > 0,
                     f"storm-v1 records tarball task {tid}: at least one changed artifact "
@@ -3060,6 +3084,21 @@ def compute_c7_storm_v1(m: Macros) -> None:
     m.add("recStormV1NewIdentityRowTouchMedian", f"{new_identity_row_touch_median:.3f}",
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: median row-touch arms.false_fresh_count / "
           "changed_count over the 195 new-identity batches")
+    eq(len(c1_survivor_fracs), 240, "storm-v1 c1 batches: total rows over the 12 c1-mix "
+       "cells (12 x 20 batches)")
+    c1_survivor_median = statistics.median(c1_survivor_fracs)
+    c1_precision_median = statistics.median(c1_precisions)
+    close(c1_survivor_median, 0.693, 0.001, "storm-v1 c1 frozen: median candidate_survivors / "
+          "n_registered over the 240 c1-mix batches")
+    close(c1_precision_median, 0.066, 0.001, "storm-v1 c1 frozen: median changed_count / "
+          "candidate_survivors over the 240 c1-mix batches")
+    m.add("recStormV1SurvivorFractionC1Median", f"{c1_survivor_median:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median(candidate_survivors / "
+          "config.n_registered) over the 240 c1-mix batches (pre-rollout sibling of "
+          "recStormV2SurvivorFractionC1Median)")
+    m.add("recStormV1PrecisionC1Median", f"{c1_precision_median:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
+          "over the 240 c1-mix batches (pre-rollout sibling of recStormV2PrecisionC1Median)")
     m.add("recStormV1P4ViolationCells", tex_num(p4_violations),
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: cells (of 36) where summary.arms.tgms-L1."
           "avoided_recompute_wall is not < avoided_recompute_decision (P4: check cost is "
@@ -8607,6 +8646,52 @@ def compute_ldbc_format3_rebuild(m: Macros) -> None:
           "\"12.8% more, in band\"")
 
 
+def compute_ldbc_coverage(m: Macros) -> None:
+    """The completeness-certification axis of the LDBC SF1 generality
+    paragraph ("N of 41 certify complete under full ordering (M of 41
+    unordered)"), read from the D-134 coverage record rather than typed."""
+    eq(sha256_file(LDBC_COVERAGE), LDBC_COVERAGE_SHA256,
+       f"{relpath(LDBC_COVERAGE)}: sha256 matches this lane's frozen value")
+    cov = json.loads(LDBC_COVERAGE.read_text(encoding="utf-8"))
+    inventory = json.loads(LDBC_FIT_CLASSIFICATION.read_text(encoding="utf-8"))
+    eq(cov["status"], "second-annotator adjudicated (D-134)",
+       f"{relpath(LDBC_COVERAGE)}: status")
+
+    n_templates = cov["n_templates"]
+    eq(n_templates, len(inventory),
+       f"{relpath(LDBC_COVERAGE)}: n_templates matches {relpath(LDBC_FIT_CLASSIFICATION)}'s "
+       "own template count")
+    eq(len({row["id"] for row in inventory}), len(inventory),
+       f"{relpath(LDBC_FIT_CLASSIFICATION)}: template ids are distinct")
+    claims = cov["claim_full_contract_counts"]
+    eq(sum(claims.values()), n_templates,
+       f"{relpath(LDBC_COVERAGE)}: claim_full_contract_counts partitions all n_templates")
+    eq(set(claims), set(cov["claim_partition_precedence"]),
+       f"{relpath(LDBC_COVERAGE)}: every claim class is in claim_partition_precedence")
+    ordered = claims["CURRENT_ECQR_FRAGMENT"]
+    unordered = cov["flat_projection_in_fragment"]
+    eq(unordered + len(cov["projection_excluded"]), n_templates,
+       f"{relpath(LDBC_COVERAGE)}: flat_projection_in_fragment + len(projection_excluded) "
+       "== n_templates")
+    require(ordered <= unordered,
+            f"{relpath(LDBC_COVERAGE)}: full-contract certifications are a subset of the "
+            "projection-only ones")
+    eq(n_templates, 41, "LDBC coverage frozen: SF1 templates")
+    eq(ordered, 7, "LDBC coverage frozen: templates certifiable complete under the full "
+       "contract (ordering included)")
+    eq(unordered, 38, "LDBC coverage frozen: templates certifiable complete as an unordered "
+       "set (projection in fragment)")
+
+    m.add("recLdbcSfOneTemplates", n_templates,
+          f"{relpath(LDBC_COVERAGE)}: n_templates (== len({relpath(LDBC_FIT_CLASSIFICATION)}))")
+    m.add("recLdbcCertifiedOrdered", ordered,
+          f"{relpath(LDBC_COVERAGE)}: claim_full_contract_counts.CURRENT_ECQR_FRAGMENT -- "
+          "templates whose full answer contract, ordering included, is certifiable complete")
+    m.add("recLdbcCertifiedUnordered", unordered,
+          f"{relpath(LDBC_COVERAGE)}: flat_projection_in_fragment -- templates whose answer "
+          "is certifiable complete as an unordered set")
+
+
 # --------------------------------------------------------------------------
 # B7 -- scale campaign (Stage 0 iTiger calibration + Stage 1 30M)
 # --------------------------------------------------------------------------
@@ -10612,6 +10697,7 @@ def main() -> int:
     compute_c10_live_osv(m)
     compute_ldbc_ref_v1(m)
     compute_ldbc_format3_rebuild(m)
+    compute_ldbc_coverage(m)
     compute_b7_scale(m)
     compute_external_baselines(m)
     compute_ext_sum_mode(m)

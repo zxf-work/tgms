@@ -102,6 +102,7 @@ def _run_all_landed(mod):
     mod.compute_c10_live_osv(m)
     mod.compute_ldbc_ref_v1(m)
     mod.compute_ldbc_format3_rebuild(m)
+    mod.compute_ldbc_coverage(m)
     mod.compute_b7_scale(m)
     mod.compute_external_baselines(m)
     mod.compute_ext_sum_mode(m)
@@ -252,6 +253,8 @@ FROZEN_LANDED_VALUES = {
     "recStormV1AvoidedDecisionC3Median": "0.312",
     "recStormV1AvoidedDecisionC4Median": "0.312",
     "recStormV1Batches": "720",
+    "recStormV1SurvivorFractionC1Median": "0.693",
+    "recStormV1PrecisionC1Median": "0.066",
     "recStormV1RowTouchFalseFreshMedian": "1.000",
     "recStormV1EntityTouchFalseFreshMedian": "0.993",
     "recStormV1WindowOverlapFalseFreshMedian": "0.189",
@@ -687,6 +690,10 @@ FROZEN_LANDED_VALUES = {
     "recSoakGenerationWindowSThree": "63.1",
     "recStormV2CleanCells": "34",
     "recLdbcFormatThreeRebuildPct": "12.8",
+    # the completeness-certification axis of the LDBC generality paragraph
+    "recLdbcSfOneTemplates": "41",
+    "recLdbcCertifiedOrdered": "7",
+    "recLdbcCertifiedUnordered": "38",
     # Lane W2ab (P-SOAK4, 24h, D-088-fixed engine)
     "recSoakCommitFour": "b6cdde0",
     "recSoakHoursFour": "24",
@@ -4865,3 +4872,61 @@ def test_generated_output_directory_is_the_documented_convention():
     # ever meant to be committed.
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "paper/" in gitignore.splitlines()
+
+
+# --------------------------------------------------------------------------
+# figure-driven additions: the pre-rollout c1 survivor/precision medians
+# and the LDBC completeness-certification counts
+# --------------------------------------------------------------------------
+
+def test_storm_v1_c1_survivor_and_precision_medians_are_recomputed_from_the_tarball():
+    import tarfile
+
+    mod = _load("sys_paper_macros")
+    rows = [json.loads(line) for line in
+            mod.STORM_V1_MAIN_GRID_ROWS.read_text(encoding="utf-8").splitlines() if line.strip()]
+    survivors, precisions = [], []
+    with tarfile.open(mod.STORM_V1_RECORDS_TARBALL, "r:gz") as tf:
+        for r in rows:
+            if r["config"]["mix"] != "c1":
+                continue
+            member = r["record"][r["record"].index("records/"):]
+            batch_rows = [json.loads(line) for line in
+                          tf.extractfile(member).read().decode("utf-8").splitlines()
+                          if line.strip()]
+            for br in batch_rows:
+                survivors.append(br["candidate_survivors"] / r["config"]["n_registered"])
+                precisions.append(br["changed_count"] / br["candidate_survivors"])
+    assert len(survivors) == 240
+    m = mod.Macros()
+    mod.compute_c7_storm_v1(m)
+    values = {name: value for name, value, _ in m.items}
+    assert not mod.FAILURES
+    assert values["recStormV1SurvivorFractionC1Median"] == f"{statistics.median(survivors):.3f}"
+    assert values["recStormV1PrecisionC1Median"] == f"{statistics.median(precisions):.3f}"
+
+
+def test_ldbc_coverage_counts_come_from_the_record():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_ldbc_coverage(m)
+    assert not mod.FAILURES
+    values = {name: value for name, value, _ in m.items}
+    record = json.loads(mod.LDBC_COVERAGE.read_text(encoding="utf-8"))
+    assert values["recLdbcSfOneTemplates"] == str(record["n_templates"])
+    assert values["recLdbcCertifiedOrdered"] == str(
+        record["claim_full_contract_counts"]["CURRENT_ECQR_FRAGMENT"])
+    assert values["recLdbcCertifiedUnordered"] == str(record["flat_projection_in_fragment"])
+
+
+def test_tampered_ldbc_coverage_record_fails_its_sha_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+    tampered = tmp_path / mod.LDBC_COVERAGE.name
+    record = json.loads(mod.LDBC_COVERAGE.read_text(encoding="utf-8"))
+    record["claim_full_contract_counts"]["CURRENT_ECQR_FRAGMENT"] = 8
+    record["claim_full_contract_counts"]["REQUIRES_TOP_K"] -= 1
+    tampered.write_text(json.dumps(record, indent=1), encoding="utf-8")
+    mod.LDBC_COVERAGE = tampered
+    mod.compute_ldbc_coverage(mod.Macros())
+    assert any("sha256" in f for f in mod.FAILURES)
+    assert any("frozen" in f for f in mod.FAILURES)
