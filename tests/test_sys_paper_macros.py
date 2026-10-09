@@ -3697,29 +3697,54 @@ def test_dag_versions_csv_matches_frozen_values(tmp_path, monkeypatch):
     assert len(rows) == 4  # header + v1/v2/v3
 
 
-def test_r18_crossover_csv_has_five_batches_a_p50_row_and_a_landed_n1000_row(tmp_path, monkeypatch):
-    """The main correction-load grid (storm-v1-main-grid-2026-09-15) landed
-    at 36/36 cells, so f8's N=1,000 c1 seed-0 point is no longer a PENDING
-    annotation -- it reads the same cell
-    scripts/sys_paper_macros.py's compute_c7_storm_v1 lands as
-    recStormV1SpeedupN1kSeed0 (frozen at 1.938, close tol 0.001 there)."""
+def test_r18_crossover_csv_plots_the_corrected_sum_mode_arc(tmp_path, monkeypatch):
+    """F6a / \ref{fig:arc} was cut in draft pass 15: its committed N=1,000
+    point (recStormV1SpeedupN1kSeed0, frozen at 1.938) is the check-only
+    end-to-end timer, an instrument error (ledger
+    storm-e2e-l1-interval-after-l0-refresh). The re-plot reads every point
+    back from scripts/sys_paper_macros.py's own macros (never re-derived,
+    never typed): pre-rollout (storm-v1, 3/14 narrowing) at both N, and
+    post-rollout (13/14 narrowing) both as reconstructed (storm-v2) and as
+    re-measured after the fifth arc's fixes (storm-v3)."""
     fig_mod = _load_figures()
     monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
     data = fig_mod.build_r18_crossover_data()
-    assert len(data["batches"]) == 5
-    assert 0.80 <= data["ttf_global_p50_s"] / data["ttf_l1_p50_s"] <= 0.82
-    assert data["n1000_status"] == "measured"
-    assert abs(data["n1000_speedup"] - 1.938) < 0.001
+
+    assert data["n_values"] == [1_000, 10_000]
+
+    pre = data["pre_rollout"]
+    assert abs(pre["speedup_n1k"] - 0.829) < 0.001
+    assert abs(pre["speedup_n10k"] - 0.807) < 0.001
+    assert abs(pre["grid_min"] - 0.77) < 0.005
+    assert abs(pre["grid_max"] - 0.85) < 0.005
+    assert abs(data["pre_rollout_first_recorded_n1k"] - 1.938) < 0.001
+
+    v2 = data["post_rollout_v2"]
+    assert abs(v2["speedup_n1k"] - 2.16) < 0.005
+    assert abs(v2["speedup_n10k"] - 1.95) < 0.005
+    assert abs(v2["grid_min"] - 1.66) < 0.005
+    assert abs(v2["grid_max"] - 4.35) < 0.005
+
+    v3 = data["post_rollout_v3"]
+    assert abs(v3["speedup_n1k"] - 2.035) < 0.001
+    assert abs(v3["speedup_n10k"] - 1.419) < 0.001
+    assert abs(v3["grid_min"] - 1.509) < 0.001
+    assert abs(v3["grid_max"] - 5.023) < 0.001
+
+    # the refutation survives rollout: both post-rollout campaigns are
+    # above 1 at both scales, and both still shrink from N=1,000 to
+    # N=10,000 -- the slope the fix did not change, only the level.
+    for d in (v2, v3):
+        assert d["speedup_n1k"] > 1 and d["speedup_n10k"] > 1
+        assert d["speedup_n10k"] < d["speedup_n1k"]
+    assert pre["speedup_n1k"] < 1 and pre["speedup_n10k"] < 1
+
     text = fig_mod.write_r18_crossover_csv(data)
     rows = list(csv.reader(text.splitlines()))
-    assert rows[0] == ["batch_index", "check_seconds_tgms_L1", "lookup_ms",
-                        "global_recompute_seconds", "ttf_tgms_L1_seconds",
-                        "ttf_global_recompute_seconds"]
-    assert len(rows) == 1 + 5 + 1 + 1  # header + 5 batches + p50 row + N=1000 row
-    n1000_row = rows[-1]
-    assert n1000_row[0] == "N=1000 c1 seed0"
-    assert float(n1000_row[4]) > 0 and float(n1000_row[5]) > 0
-    assert abs(float(n1000_row[5]) / float(n1000_row[4]) - 1.938) < 0.001
+    assert rows[0] == ["campaign", "mode", "n_artifacts", "speedup", "grid_min", "grid_max",
+                        "source_macro"]
+    # 3 campaigns x 2 N values, plus the superseded first-recorded row
+    assert len(rows) == 1 + 3 * 2 + 1
 
 
 def test_corruption_matrix_csv_matches_frozen_values(tmp_path, monkeypatch):

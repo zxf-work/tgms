@@ -64,6 +64,7 @@ import csv
 import io
 import json
 import math
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -89,11 +90,22 @@ STORM_V1 = ROOT / "benchmarks" / "storm-v1"
 DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
 DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
 DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
-R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
-# the now-complete 36/36 main correction-load grid (see
-# scripts/sys_paper_macros.py's compute_c7_storm_v1, recStormV1SpeedupN1kSeed0)
-# -- read here for the N=1,000 point f8's title used to wait on.
-STORM_V1_MAIN_GRID_ROWS = STORM_V1 / "storm-v1-main-grid-2026-09-15-rows.jsonl"
+# scripts/sys_paper_macros.py's own generated output (not a raw record): it
+# already applies every sha gate to the records below before landing a
+# macro, so reading a value back from here is reading those same
+# sha-gated records at one remove, not a typed literal. Used only for the
+# sum-mode arc figure (build_r18_crossover_data) below, which needs the
+# corrected (sum-mode / fixed end-to-end) speedups that macro file's own
+# compute_c7_storm_v1_sum_mode / compute_c7_storm_v2_sum_mode /
+# compute_c7_storm_v2_probe_sum_mode / compute_c7_storm_v3_probe /
+# compute_c7_storm_v3 already derive from:
+#   benchmarks/storm-v1/storm-v1-records-36-tasks.tar.gz
+#   benchmarks/storm-v1/storm-r18-probe-2026-09-rows.jsonl
+#   benchmarks/storm-v1/storm-v2-records-36-tasks.tar.gz
+#   benchmarks/storm-v1/storm-v2-r18-probe-2026-09-15-rows.jsonl
+#   benchmarks/storm-v1/storm-v3-main-grid-2026-10-08-rows.jsonl
+#   benchmarks/storm-v1/storm-v3-r18-probe-2026-10-08-rows.jsonl
+SYS_PAPER_MACROS = OUT_DIR / "sys-paper-macros.tex"
 
 CORRUPTION_PRE = ROOT / "benchmarks" / "corruption-v1" / "eval-corruption-campaign-2026-09-14.json"
 CORRUPTION_POST = (ROOT / "benchmarks" / "corruption-v1"
@@ -125,6 +137,36 @@ SCALE_RECOVERY_100M_CE5000 = SCALE_V1 / "recovery-100m-ce5000.json"
 
 def load_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+_MACRO_DEF_RE = re.compile(r"\\csname\s+([A-Za-z0-9]+)\\endcsname\{([^}]*)\}")
+
+
+def load_macro_values(names: list[str]) -> dict[str, float]:
+    """Read the requested macros' own values out of SYS_PAPER_MACROS.
+
+    scripts/sys_paper_macros.py is the only place that touches the raw
+    storm-v1/v2/v3 records and their sha gates; this never re-derives a
+    number from those records, it only reads back what that script already
+    landed, so a figure here can never show a value the macro layer
+    disagrees with.
+    """
+    assert SYS_PAPER_MACROS.exists(), (
+        f"{relpath(SYS_PAPER_MACROS)} does not exist -- run "
+        "scripts/sys_paper_macros.py before scripts/sys_paper_figures.py"
+    )
+    text = SYS_PAPER_MACROS.read_text(encoding="utf-8")
+    defined = dict(_MACRO_DEF_RE.findall(text))
+    missing = [n for n in names if n not in defined]
+    assert not missing, (
+        f"{relpath(SYS_PAPER_MACROS)} is missing macro(s) {missing} -- regenerate it "
+        "with scripts/sys_paper_macros.py"
+    )
+    return {n: float(defined[n]) for n in names}
+
+
+def relpath(path: Path) -> str:
+    return str(path.relative_to(ROOT))
 
 try:
     import matplotlib
@@ -694,115 +736,154 @@ def plot_dag_versions(data: dict) -> None:
 
 
 # --------------------------------------------------------------------------
-# 8. R-18 probe crossover, N=10,000 c1 seed 0 (C7, partial)
+# 8. the correction-load arc (skeleton F6a, \ref{fig:arc}): both ends
+#    (N=1,000 and the N=10,000 probe) of both rollout states (pre-rollout
+#    storm-v1, post-rollout storm-v2/storm-v3), all in sum mode (C7,
+#    partial)
 # --------------------------------------------------------------------------
 
+# Cut from draft pass 15 (\S\ref{sec:eval:q4}): the committed N=1,000
+# point was recStormV1SpeedupN1kSeed0, the check-only end-to-end timer --
+# an instrument error (storm-e2e-l1-interval-after-l0-refresh,
+# \S\ref{sec:wrong:instruments} row 19), not check_wall_ms + refresh_wall_ms.
+# Every point plotted below is the sum-mode (or already-sum/fixed
+# end-to-end) sibling instead, read back from scripts/sys_paper_macros.py's
+# own macros via load_macro_values -- the generator is the only place that
+# opens the raw storm-v1/v2/v3 tarballs/rows.jsonl and checks their sha
+# gates, so this never re-derives (or types) a number independently of it.
+R18_CROSSOVER_MACROS = [
+    # pre-rollout (storm-v1, 3 of 14 operators narrowing): the refutation.
+    "recStormV1CrossoverSpeedupSumN1k",
+    "recStormV1CrossoverSpeedupSumN10k",
+    "recStormV1SpeedupSumGridMin",
+    "recStormV1SpeedupSumGridMax",
+    # the superseded first-recorded N=1,000 figure, kept only as an
+    # annotation (never plotted as a series) so the correction is legible.
+    "recStormV1SpeedupN1kSeed0",
+    # post-rollout (13 of 14 narrowing), reconstructed on the check-only
+    # timer's own sum-mode sibling: storm-v2.
+    "recStormV2SpeedupSumN1kSeed0",
+    "recStormV2SpeedupSumProbe",
+    "recStormV2SpeedupSumGridMin",
+    "recStormV2SpeedupSumGridMax",
+    # post-rollout, re-measured after the fifth arc's timer fix: storm-v3.
+    "recStormV3SpeedupN1kSeed0",
+    "recStormV3ProbeSpeedup",
+    "recStormV3SpeedupGridMin",
+    "recStormV3SpeedupGridMax",
+]
+
+
 def build_r18_crossover_data() -> dict:
-    rows = load_jsonl(R18_PROBE_ROWS)
-    rows.sort(key=lambda r: r["batch_index"])
-
-    batches = [r["batch_index"] for r in rows]
-    check_s_l1 = [r["arms"]["tgms-L1"]["check_wall_ms"] / 1000 for r in rows]
-    lookup_ms = [r["lookup_wall_ms"] for r in rows]
-    global_s = [r["global_recompute_wall_ms"] / 1000 for r in rows]
-    ttf_l1_s = [r["arms"]["tgms-L1"]["ttf_ms"] / 1000 for r in rows]
-    ttf_global_s = [r["arms"]["global-recompute"]["ttf_ms"] / 1000 for r in rows]
-
-    # N=1,000's own c1 seed-0 point: the main correction-load grid is now
-    # complete (36/36 cells, storm-v1-main-grid-2026-09-15{,-rows.jsonl}),
-    # so this reads the same (store=synth-iv-60k, mix=c1, age=None, seed=0)
-    # cell scripts/sys_paper_macros.py's compute_c7_storm_v1 lands as
-    # recStormV1SpeedupN1kSeed0, computed the same way here: the ratio of
-    # that cell's own summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms.
-    main_grid_rows = load_jsonl(STORM_V1_MAIN_GRID_ROWS)
-    n1000_target = [r for r in main_grid_rows if r["config"]["store"] == "synth-iv-60k"
-                    and r["config"]["mix"] == "c1" and r["config"]["age"] is None
-                    and r["config"]["seed"] == 0]
-    if len(n1000_target) == 1 and n1000_target[0]["config"]["n_artifacts"] == 1000:
-        arms = n1000_target[0]["summary"]["arms"]
-        n1000_ttf_global_s = arms["global-recompute"]["ttf_p50_ms"] / 1000
-        n1000_ttf_l1_s = arms["tgms-L1"]["ttf_p50_ms"] / 1000
-        n1000_speedup = n1000_ttf_global_s / n1000_ttf_l1_s
-        n1000_status = "measured"
-    else:
-        # honest fallback: the record's own shape no longer matches what
-        # this figure expects (e.g. more/fewer than one matching cell, or
-        # a different n_artifacts) -- report that from the record's own
-        # fields, never a typed placeholder string.
-        n1000_ttf_global_s = n1000_ttf_l1_s = n1000_speedup = None
-        n1000_status = (f"unresolved: {len(n1000_target)} matching cells in "
-                         f"{STORM_V1_MAIN_GRID_ROWS.name} (expected 1 at n_artifacts=1000)")
+    v = load_macro_values(R18_CROSSOVER_MACROS)
 
     return {
-        "batches": batches,
-        "check_s_l1": check_s_l1,
-        "lookup_ms": lookup_ms,
-        "global_s": global_s,
-        "ttf_l1_s": ttf_l1_s,
-        "ttf_global_s": ttf_global_s,
-        "ttf_l1_p50_s": statistics.median(ttf_l1_s),
-        "ttf_global_p50_s": statistics.median(ttf_global_s),
-        "n1000_ttf_global_s": n1000_ttf_global_s,
-        "n1000_ttf_l1_s": n1000_ttf_l1_s,
-        "n1000_speedup": n1000_speedup,
-        "n1000_status": n1000_status,
+        "n_values": [1_000, 10_000],
+        "pre_rollout": {
+            "label": "storm-v1, pre-rollout (3/14 narrowing)",
+            "speedup_n1k": v["recStormV1CrossoverSpeedupSumN1k"],
+            "speedup_n10k": v["recStormV1CrossoverSpeedupSumN10k"],
+            "grid_min": v["recStormV1SpeedupSumGridMin"],
+            "grid_max": v["recStormV1SpeedupSumGridMax"],
+            "source_n1k": "recStormV1CrossoverSpeedupSumN1k",
+            "source_n10k": "recStormV1CrossoverSpeedupSumN10k",
+        },
+        "post_rollout_v2": {
+            "label": "storm-v2, post-rollout (13/14, reconstructed)",
+            "speedup_n1k": v["recStormV2SpeedupSumN1kSeed0"],
+            "speedup_n10k": v["recStormV2SpeedupSumProbe"],
+            "grid_min": v["recStormV2SpeedupSumGridMin"],
+            "grid_max": v["recStormV2SpeedupSumGridMax"],
+            "source_n1k": "recStormV2SpeedupSumN1kSeed0",
+            "source_n10k": "recStormV2SpeedupSumProbe",
+        },
+        "post_rollout_v3": {
+            "label": "storm-v3, post-rollout (13/14, fifth-arc re-measurement)",
+            "speedup_n1k": v["recStormV3SpeedupN1kSeed0"],
+            "speedup_n10k": v["recStormV3ProbeSpeedup"],
+            "grid_min": v["recStormV3SpeedupGridMin"],
+            "grid_max": v["recStormV3SpeedupGridMax"],
+            "source_n1k": "recStormV3SpeedupN1kSeed0",
+            "source_n10k": "recStormV3ProbeSpeedup",
+        },
+        "pre_rollout_first_recorded_n1k": v["recStormV1SpeedupN1kSeed0"],
+        "pre_rollout_first_recorded_source": (
+            "recStormV1SpeedupN1kSeed0 (superseded: check-only end-to-end timer, "
+            "ledger storm-e2e-l1-interval-after-l0-refresh)"
+        ),
     }
 
 
 def write_r18_crossover_csv(data: dict) -> str:
-    header = ["batch_index", "check_seconds_tgms_L1", "lookup_ms", "global_recompute_seconds",
-              "ttf_tgms_L1_seconds", "ttf_global_recompute_seconds"]
-    rows = [[b, round(c, 3), round(lk, 3), round(g, 3), round(tl, 3), round(tg, 3)]
-            for b, c, lk, g, tl, tg in zip(data["batches"], data["check_s_l1"],
-                                            data["lookup_ms"], data["global_s"],
-                                            data["ttf_l1_s"], data["ttf_global_s"])]
-    rows.append(["p50", "", "", "", round(data["ttf_l1_p50_s"], 3),
-                 round(data["ttf_global_p50_s"], 3)])
-    if data["n1000_speedup"] is not None:
-        rows.append(["N=1000 c1 seed0", "", "", "",
-                     round(data["n1000_ttf_l1_s"], 3), round(data["n1000_ttf_global_s"], 3)])
-    else:
-        rows.append(["N=1000 c1 seed0", data["n1000_status"], data["n1000_status"],
-                     data["n1000_status"], data["n1000_status"], data["n1000_status"]])
+    header = ["campaign", "mode", "n_artifacts", "speedup", "grid_min", "grid_max",
+              "source_macro"]
+    rows = []
+    for key in ("pre_rollout", "post_rollout_v2", "post_rollout_v3"):
+        d = data[key]
+        n1k, n10k = data["n_values"]
+        rows.append([d["label"], "sum", n1k, round(d["speedup_n1k"], 3),
+                     round(d["grid_min"], 3), round(d["grid_max"], 3), d["source_n1k"]])
+        rows.append([d["label"], "sum", n10k, round(d["speedup_n10k"], 3), "", "",
+                     d["source_n10k"]])
+    rows.append(["storm-v1, pre-rollout -- superseded", "end-to-end (check-only, bug)",
+                 data["n_values"][0], round(data["pre_rollout_first_recorded_n1k"], 3), "", "",
+                 data["pre_rollout_first_recorded_source"]])
     return write_csv(OUT_DIR / "f8_r18_crossover.csv", header, rows)
 
 
 def plot_r18_crossover(data: dict) -> None:
     _require_mpl()
+    n1k, n10k = data["n_values"]
     with plt.rc_context(STYLE):
-        fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.2))
+        fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.6))
 
         ax = axes[0]
-        ax.plot(data["batches"], data["check_s_l1"], marker="o", color="0.15",
-                label="tgms-L1 check, s")
-        ax.plot(data["batches"], data["global_s"], marker="s", color="0.55",
-                label="global-recompute, s")
-        ax2 = ax.twinx()
-        ax2.plot(data["batches"], data["lookup_ms"], marker="^", color="0.35",
-                 linestyle="--", label="lookup, ms (right axis)")
-        ax.set_xlabel("batch index")
-        ax.set_ylabel("seconds")
-        ax2.set_ylabel("lookup_wall_ms")
-        lines1, labels1 = ax.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines1 + lines2, labels1 + labels2, fontsize=6, loc="center left")
-        ax.set_title("N=10,000 c1 seed 0: per-batch cost")
+        pre = data["pre_rollout"]
+        ax.plot([n1k, n10k], [pre["speedup_n1k"], pre["speedup_n10k"]],
+                marker="o", color="0.1", label=pre["label"])
+        ax.errorbar([n1k], [pre["speedup_n1k"]],
+                     yerr=[[pre["speedup_n1k"] - pre["grid_min"]],
+                           [pre["grid_max"] - pre["speedup_n1k"]]],
+                     fmt="none", ecolor="0.4", capsize=3,
+                     label=f"grid {pre['grid_min']:.2f}-{pre['grid_max']:.2f}x (36 cells)")
+        ax.axhline(1.0, linestyle=":", color="0.6", linewidth=1, label="breakeven")
+        ax.annotate(f"first recorded {data['pre_rollout_first_recorded_n1k']:.2f}x\n"
+                    "(check-only timer, superseded)",
+                    xy=(n1k, pre["speedup_n1k"]), xycoords="data",
+                    xytext=(0.32, 0.78), textcoords="axes fraction",
+                    fontsize=6, color="0.35",
+                    arrowprops={"arrowstyle": "->", "color": "0.5", "linewidth": 0.7})
+        ax.set_xscale("log")
+        ax.set_xticks([n1k, n10k])
+        ax.set_xticklabels([f"$10^{int(math.log10(n1k))}$", f"$10^{int(math.log10(n10k))}$"])
+        ax.set_xlabel("N (artifacts)")
+        ax.set_ylabel("speedup, global-recompute / tgms-L1 (sum mode)")
+        ax.legend(fontsize=6, loc="upper right")
+        ax.set_title("Pre-rollout (3/14 narrowing): predicted to grow;\n"
+                     f"{pre['speedup_n1k']:.2f}x at $10^3$ to "
+                     f"{pre['speedup_n10k']:.2f}x at $10^4$ -- inverted", fontsize=7.5)
 
         ax = axes[1]
-        x = [0, 1]
-        ax.bar(x, [data["ttf_global_p50_s"], data["ttf_l1_p50_s"]],
-               color=["0.55", "0.15"], edgecolor="black", hatch=["", "///"])
-        ax.set_xticks(x)
-        ax.set_xticklabels(["global-recompute", "tgms-L1"])
-        ax.set_ylabel("time-to-fresh p50, s")
-        ratio = data["ttf_global_p50_s"] / data["ttf_l1_p50_s"]
-        if data["n1000_speedup"] is not None:
-            n1000_line = f"N=1,000: speedup {data['n1000_speedup']:.2f}x (main grid 36/36)"
-        else:
-            n1000_line = f"N=1,000: {data['n1000_status']}"
-        ax.set_title(f"N=10,000: speedup {ratio:.2f}x\n{n1000_line}")
+        v2, v3 = data["post_rollout_v2"], data["post_rollout_v3"]
+        for d, marker, color, ls in ((v2, "s", "0.5", "--"), (v3, "o", "0.1", "-")):
+            ax.plot([n1k, n10k], [d["speedup_n1k"], d["speedup_n10k"]],
+                    marker=marker, color=color, linestyle=ls, label=d["label"])
+            ax.errorbar([n1k], [d["speedup_n1k"]],
+                         yerr=[[d["speedup_n1k"] - d["grid_min"]],
+                               [d["grid_max"] - d["speedup_n1k"]]],
+                         fmt="none", ecolor=color, capsize=3)
+        ax.axhline(1.0, linestyle=":", color="0.6", linewidth=1)
+        ax.set_xscale("log")
+        ax.set_xticks([n1k, n10k])
+        ax.set_xticklabels([f"$10^{int(math.log10(n1k))}$", f"$10^{int(math.log10(n10k))}$"])
+        ax.set_xlabel("N (artifacts)")
+        ax.legend(fontsize=6, loc="upper right")
+        ax.set_title("Post-rollout (13/14 narrowing): above 1 at both\n"
+                     "scales, still shrinking with N", fontsize=7.5)
 
-        fig.tight_layout()
+        fig.suptitle("The correction-load arc, both ends measured (sum mode throughout)",
+                      fontsize=8.5)
+        fig.tight_layout(rect=(0, 0, 1, 0.94))
         _savefig(fig, OUT_DIR / "f8_r18_crossover")
 
 
