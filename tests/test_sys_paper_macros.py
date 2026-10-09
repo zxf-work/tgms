@@ -81,6 +81,7 @@ def _run_all_landed(mod):
     mod.compute_c7_dag(m)
     mod.compute_c7_r18(m)
     mod.compute_c7_storm_v1(m)
+    mod.compute_c7_storm_v1_sum_mode(m)
     mod.compute_c7_storm_v2_probe(m)
     mod.compute_c7_storm_v2(m)
     mod.compute_c7_storm_v2_sum_mode(m)
@@ -258,6 +259,13 @@ FROZEN_LANDED_VALUES = {
     "recStormV1NewIdentityBatches": "195",
     "recStormV1NewIdentityRowTouchMedian": "1.000",
     "recStormV1P4ViolationCells": "0",
+    "recStormV1SpeedupSumN1kSeed0": "0.83",
+    "recStormV1SpeedupSumGridMin": "0.77",
+    "recStormV1SpeedupSumGridMedian": "0.83",
+    "recStormV1SpeedupSumGridMax": "0.85",
+    "recStormV1LOneE2eOverCheckMedian": "1.004",
+    "recStormV1CrossoverSpeedupSumN1k": "0.829",
+    "recStormV1CrossoverSpeedupSumN10k": "0.807",
     "recStormV2ProbeCommit": "fdd393c",
     "recStormV2ProbeBatches": "5",
     "recStormV2ProbeWallS": "12{,}452.8",
@@ -1723,6 +1731,160 @@ def test_tampered_storm_v2_records_tarball_sha_mismatch_fails_sum_mode(tmp_path)
     mod.compute_c7_storm_v2_sum_mode(m)
     assert mod.FAILURES, "a tampered tarball byte must fail the sha256 check"
     assert any("sha256" in f.lower() or "sum-mode" in f.lower() for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# Lane W2ag (2026-10-08) -- storm-v1 sum-mode time-to-fresh reconstruction
+# (the pre-D-161-rollout grid is affected by the same end-to-end
+# instrument bug as storm-v2) and the N=1,000-vs-N=10,000 crossover pair.
+# Exact sibling of the storm-v2 sum-mode tests above, on
+# compute_c7_storm_v1_sum_mode instead of compute_c7_storm_v2_sum_mode.
+# --------------------------------------------------------------------------
+
+def test_storm_v1_sum_mode_runs_without_verification_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c7_storm_v1_sum_mode(m)
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 50
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV1SpeedupSumN1kSeed0"] == "0.83"
+    assert values["recStormV1SpeedupSumGridMin"] == "0.77"
+    assert values["recStormV1SpeedupSumGridMedian"] == "0.83"
+    assert values["recStormV1SpeedupSumGridMax"] == "0.85"
+    assert values["recStormV1LOneE2eOverCheckMedian"] == "1.004"
+    assert values["recStormV1CrossoverSpeedupSumN1k"] == "0.829"
+    assert values["recStormV1CrossoverSpeedupSumN10k"] == "0.807"
+
+
+def test_storm_v1_sum_mode_n1k_speedup_is_below_one_unlike_storm_v2s():
+    """The headline finding this lane's task brief asked for: once the
+    full refresh cost is counted (sum mode), the pre-rollout engine's
+    tgms-L1 was actually SLOWER than global-recompute at this cell
+    (ratio < 1), not faster -- the opposite of storm-v2's own sum-mode
+    sibling (recStormV2SpeedupSumN1kSeed0, > 1, same cell, post-rollout
+    engine). The apparent 1.938x speedup in recStormV1SpeedupN1kSeed0
+    (compute_c7_storm_v1's own end-to-end-mode macro) was entirely an
+    artifact of the end-to-end instrument bug."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c7_storm_v1(m)
+    mod.compute_c7_storm_v1_sum_mode(m)
+    mod.compute_c7_storm_v2_sum_mode(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert float(values["recStormV1SpeedupN1kSeed0"]) > 1.0
+    assert float(values["recStormV1SpeedupSumN1kSeed0"]) < 1.0
+    assert float(values["recStormV2SpeedupSumN1kSeed0"]) > 1.0
+
+
+def test_storm_v1_sum_mode_speedup_independently_recomputed_from_tarball():
+    """Recompute recStormV1SpeedupSumN1kSeed0 here, independently of
+    compute_c7_storm_v1_sum_mode's own code path, straight from the
+    committed tarball: _e2e_percentile(check_wall_ms + refresh_wall_ms)
+    over the 20 batches, vs. the committed global-recompute ttf_p50_ms,
+    at the single (synth-iv-60k, c1, age=none, seed=0) cell."""
+    mod = _load("sys_paper_macros")
+    rows = mod.load_jsonl(mod.STORM_V1_MAIN_GRID_ROWS)
+    target = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+              and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+              and r["config"]["seed"] == 0]
+    assert len(target) == 1
+    tid = target[0]["_task_id"]
+    gr_p50 = target[0]["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+
+    import tarfile
+    with tarfile.open(mod.STORM_V1_RECORDS_TARBALL, "r:gz") as tf:
+        idx = target[0]["record"].index("records/")
+        member = target[0]["record"][idx:]
+        raw = tf.extractfile(member).read().decode("utf-8")
+    batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+    sum_vals = [b["arms"]["tgms-L1"]["check_wall_ms"] + b["arms"]["tgms-L1"]["refresh_wall_ms"]
+                for b in batch_rows]
+    sum_p50 = mod._e2e_percentile(sum_vals, 0.5)
+    expected = gr_p50 / sum_p50
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v1_sum_mode(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV1SpeedupSumN1kSeed0"] == f"{expected:.2f}"
+    assert tid == target[0]["_task_id"]  # sanity: same row throughout
+
+
+def test_storm_v1_crossover_n10k_matches_the_landed_r18_speedup():
+    """recStormV1CrossoverSpeedupSumN10k is independently recomputed from
+    the v1 R-18 probe's own rows (already sum-mode, needs no end-to-end
+    correction), not imported from recR18Speedup -- but the two values
+    must agree, since they score the exact same cell the exact same way
+    (median(global-recompute ttf_ms) / median(tgms-L1 ttf_ms) over the
+    probe's 5 batches)."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c7_r18(m)
+    mod.compute_c7_storm_v1_sum_mode(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert values["recR18Speedup"] == "0.807"
+    assert values["recStormV1CrossoverSpeedupSumN10k"] == "0.807"
+    # and the N=1,000 sibling is a different cell's number, not a copy
+    assert values["recStormV1CrossoverSpeedupSumN1k"] != values[
+        "recStormV1CrossoverSpeedupSumN10k"]
+
+
+def test_tampered_storm_v1_records_tarball_sha_mismatch_fails_sum_mode(tmp_path):
+    """Sibling of test_tampered_storm_v1_records_tarball_sha_mismatch_fails
+    (compute_c7_storm_v1's own tamper test, elsewhere in this file) for
+    compute_c7_storm_v1_sum_mode -- a second, independent function that
+    also reads storm-v1-records-36-tasks.tar.gz and re-runs its own
+    sha256 gate rather than assuming compute_c7_storm_v1 already checked
+    it in the same process."""
+    mod = _load("sys_paper_macros")
+    original = mod.STORM_V1_RECORDS_TARBALL.read_bytes()
+    tampered_bytes = bytearray(original)
+    tampered_bytes[-1] ^= 0xFF
+    tampered = tmp_path / "storm-v1-records-36-tasks.tar.gz"
+    tampered.write_bytes(bytes(tampered_bytes))
+    assert tampered.read_bytes() != original
+
+    mod.STORM_V1_RECORDS_TARBALL = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v1_sum_mode(m)
+    assert mod.FAILURES, "a tampered tarball byte must fail the sha256 check"
+    assert any("sha256" in f.lower() or "sum-mode" in f.lower() for f in mod.FAILURES)
+
+
+def test_storm_v1_sum_mode_pooled_e2e_over_check_sample_is_720_batches_only():
+    """Unlike recStormV2LOneE2eOverCheckMedian (which additionally pools
+    the external-v1 control's 18 end-to-end cells),
+    recStormV1LOneE2eOverCheckMedian pools only the storm-v1 main grid's
+    own 720 batches (36 cells x 20) -- the task asked only for this
+    grid's own evidence. Recomputed independently here from the
+    committed tarball."""
+    mod = _load("sys_paper_macros")
+    rows = mod.load_jsonl(mod.STORM_V1_MAIN_GRID_ROWS)
+    assert len(rows) == 36
+
+    import tarfile
+    ratios: list[float] = []
+    with tarfile.open(mod.STORM_V1_RECORDS_TARBALL, "r:gz") as tf:
+        for r in rows:
+            idx = r["record"].index("records/")
+            member = r["record"][idx:]
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            assert len(batch_rows) == 20
+            for b in batch_rows:
+                c = b["arms"]["tgms-L1"]["check_wall_ms"]
+                t = b["arms"]["tgms-L1"]["ttf_ms"]
+                if c:
+                    ratios.append(t / c)
+    assert len(ratios) == 720
+    expected_median = statistics.median(ratios)
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v1_sum_mode(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV1LOneE2eOverCheckMedian"] == f"{expected_median:.3f}"
 
 
 def test_tampered_d160_rows_digest_mismatch_fails(tmp_path):
@@ -4203,29 +4365,136 @@ def test_external_arc5_runs_without_verification_failure():
     assert values["recExt1RatioGrArcFiveMedianCollegeMsg"] == "1.38"
     assert values["recExt1SpeedupLOneArcFiveProbe"] == "8.51"
     assert values["recExt2RatioArcFiveProbe"] == "0.042"
+    # Lane W2ag (2026-10-08): the per-check-cost addendum closed the
+    # candidate_survivors gap below -- these three now land as real
+    # numbers, not "not measured" (see the superseded test this one
+    # replaces, test_external_arc5_per_check_ms_lands_as_not_measured_
+    # not_a_number, in git history).
+    assert values["recExt1ControlArcFivePerCheckMsSynth"] == "12.3"
+    assert values["recExt1ControlArcFivePerCheckMsCollegeMsg"] == "12.3"
+    assert values["recExt1ControlPreArcPerCheckMsSynth"] == "204.0"
+    assert values["recExt1ControlPreArcPerCheckMsCollegeMsg"] == "185.9"
+    assert values["recExt1ControlArcFiveProbePerCheckMs"] == "11.9"
 
 
-def test_external_arc5_per_check_ms_lands_as_not_measured_not_a_number():
-    """candidate_survivors is absent from both the pre-arc and arc5
-    tgms-control per-batch records (checked directly by
-    compute_external_arc5 itself) -- recExt1ControlArcFivePerCheckMs{Synth,
-    CollegeMsg} must land as the literal text "not measured", never a
-    fabricated number nor a PENDING stub (the record itself landed; only
-    this one field within it did not)."""
+def test_external_arc5_per_check_ms_is_a_real_number_computed_from_the_checks_addendum():
+    """Lane W2ag (2026-10-08): candidate_survivors is absent from both the
+    pre-arc and arc5 tgms-control-*-batches.jsonl per-batch records
+    (checked directly by compute_external_arc5 itself, confirming the gap
+    is real), but IS present in the per-check-cost addendum
+    (tgms-control-checks-2026-10-08.jsonl, pulled read-only from xzgpu's
+    own per-batch rows for both controls) -- so
+    recExt1ControlArcFivePerCheckMs{Synth,CollegeMsg},
+    recExt1ControlPreArcPerCheckMs{Synth,CollegeMsg}, and
+    recExt1ControlArcFiveProbePerCheckMs must all land as real numbers,
+    never the literal text "not measured" nor a PENDING stub."""
     mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_external_arc5(m)
     values = {name: value for name, value, _ in m.items}
     for tok in ("Synth", "CollegeMsg"):
-        name = f"recExt1ControlArcFivePerCheckMs{tok}"
-        assert values[name] == "not measured"
-        with pytest.raises(ValueError):
-            float(values[name])
+        for prefix in ("recExt1ControlArcFivePerCheckMs", "recExt1ControlPreArcPerCheckMs"):
+            name = f"{prefix}{tok}"
+            assert values[name] not in ("not measured", ""), name
+            float(values[name])  # must parse as a number, not raise
+    assert values["recExt1ControlArcFiveProbePerCheckMs"] not in ("not measured", "")
+    float(values["recExt1ControlArcFiveProbePerCheckMs"])
     # and the PerArtifactPublishMs sibling (which uses n_registered, not
-    # candidate_survivors) IS measured, proving the gap is specific to
-    # candidate_survivors, not a blanket refusal for this record.
+    # candidate_survivors) is also measured, same as before.
     assert values["recExt1ControlArcFivePerArtifactPublishMsSynth"] not in (
         "not measured", "")
+
+
+def test_external_arc5_per_check_ms_independently_recomputed_from_the_checks_addendum():
+    """Recompute recExt1ControlArcFivePerCheckMs{Synth,CollegeMsg} and
+    recExt1ControlPreArcPerCheckMs{Synth,CollegeMsg} here, independently
+    of compute_external_arc5's own code path, straight from the
+    committed tgms-control-checks-2026-10-08.jsonl: median over the
+    store's 9 N=1,000 cells of that cell's own median-over-batches
+    (tgms_l0_check_wall_ms / candidate_survivors)."""
+    mod = _load("sys_paper_macros")
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_TGMS_CONTROL_CHECKS.read_text(encoding="utf-8").splitlines()
+            if line.strip()]
+    assert len(rows) == 730
+
+    arc5 = json.loads(mod.EXTERNAL_TGMS_CONTROL_ARC5.read_text(encoding="utf-8"))
+    arc5_pc = {c["cell_id"]: c for c in arc5["summary"]["per_cell"]}
+    probe_cid = "synth-iv-60k-c1-none-n10000-s0"
+
+    def per_check_median(control, cell_id):
+        vals = [r["tgms_l0_check_wall_ms"] / r["candidate_survivors"] for r in rows
+                if r["control"] == control and r["cell_id"] == cell_id]
+        return statistics.median(vals)
+
+    m = mod.Macros()
+    mod.compute_external_arc5(m)
+    values = {name: value for name, value, _ in m.items}
+    for store, tok in (("synth-iv-60k", "Synth"), ("collegemsg", "CollegeMsg")):
+        cells = [c for c in arc5_pc if c != probe_cid and arc5_pc[c]["store"] == store]
+        assert len(cells) == 9
+        expected_arc5 = statistics.median(per_check_median("2026-10-08-arc5", c)
+                                           for c in cells)
+        expected_prearc = statistics.median(per_check_median("2026-10-05", c) for c in cells)
+        assert values[f"recExt1ControlArcFivePerCheckMs{tok}"] == f"{expected_arc5:.1f}"
+        assert values[f"recExt1ControlPreArcPerCheckMs{tok}"] == f"{expected_prearc:.1f}"
+
+    expected_probe = per_check_median("2026-10-08-arc5", probe_cid)
+    assert values["recExt1ControlArcFiveProbePerCheckMs"] == f"{expected_probe:.1f}"
+
+
+def test_tampered_external_control_checks_sha256_mismatch_fails(tmp_path):
+    """Sibling of test_tampered_external_arc5_sha256_mismatch_fails for the
+    new per-check-cost addendum file -- an edit must fail the
+    SHA256SUMS.txt gate before anything in it is trusted. Edits a field
+    rather than flipping a raw byte (unlike the tar.gz tamper tests
+    elsewhere in this file): this is a plain-text .jsonl, and a raw byte
+    flip near the end risks an invalid UTF-8 sequence that would raise
+    before the gate even runs, rather than failing it cleanly."""
+    mod = _load("sys_paper_macros")
+    lines = mod.EXTERNAL_TGMS_CONTROL_CHECKS.read_text(encoding="utf-8").splitlines()
+    rows = [json.loads(line) for line in lines if line.strip()]
+    rows[0]["candidate_survivors"] = rows[0]["candidate_survivors"] + 1
+    tampered = tmp_path / mod.EXTERNAL_TGMS_CONTROL_CHECKS.name
+    tampered.write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rows) + "\n", encoding="utf-8")
+
+    mod.EXTERNAL_TGMS_CONTROL_CHECKS = tampered
+    m = mod.Macros()
+    mod.compute_external_arc5(m)
+    assert mod.FAILURES, "an edited tgms-control-checks-2026-10-08.jsonl must fail the " \
+        "SHA256SUMS.txt check"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_per_check_ms_reconstruction_on_a_tiny_two_control_two_cell_fixture():
+    """Exercises the exact reconstruction arithmetic compute_external_arc5
+    runs for recExt1ControlArcFivePerCheckMs{Synth,CollegeMsg}/
+    recExt1ControlPreArcPerCheckMs{Synth,CollegeMsg} -- per-(control,
+    cell) median(tgms_l0_check_wall_ms / candidate_survivors) -- against a
+    tiny, hand-computed fixture in exactly the schema
+    tgms-control-checks-2026-10-08.jsonl uses."""
+    rows = [
+        {"control": "2026-10-08-arc5", "cell_id": "cell-a", "batch_index": 0,
+         "candidate_survivors": 40, "tgms_l0_check_wall_ms": 80.0},
+        {"control": "2026-10-08-arc5", "cell_id": "cell-a", "batch_index": 1,
+         "candidate_survivors": 50, "tgms_l0_check_wall_ms": 100.0},
+        {"control": "2026-10-05", "cell_id": "cell-a", "batch_index": 0,
+         "candidate_survivors": 40, "tgms_l0_check_wall_ms": 800.0},
+        {"control": "2026-10-05", "cell_id": "cell-a", "batch_index": 1,
+         "candidate_survivors": 50, "tgms_l0_check_wall_ms": 1000.0},
+    ]
+
+    def per_check_median(control, cell_id):
+        vals = [r["tgms_l0_check_wall_ms"] / r["candidate_survivors"] for r in rows
+                if r["control"] == control and r["cell_id"] == cell_id]
+        return statistics.median(vals)
+
+    arc5_val = per_check_median("2026-10-08-arc5", "cell-a")
+    prearc_val = per_check_median("2026-10-05", "cell-a")
+    assert arc5_val == 2.0  # [2.0, 2.0] -> median 2.0
+    assert prearc_val == 20.0  # [20.0, 20.0] -> median 20.0
+    assert prearc_val == arc5_val * 10  # pre-arc pays 10x per check, by construction
 
 
 def test_tampered_external_arc5_sha256_mismatch_fails(tmp_path):

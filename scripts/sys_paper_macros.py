@@ -545,6 +545,19 @@ EXTERNAL_TGMS_CONTROL_ARC5_BATCHES = (
 EXTERNAL_TGMS_CONTROL_ARC5_BATCHES_SOURCES = (
     EXTERNAL_V1 / "tgms-control-2026-10-08-arc5-batches.SOURCES.txt")
 
+# Lane W2ag (2026-10-08): the per-check-cost addendum. Neither control's
+# own per-batch rows above carries `candidate_survivors` (checked
+# directly in compute_external_arc5 below, not assumed) -- this file
+# supplies it, pulled read-only from xzgpu's own per-cell
+# `storm-*-rows.jsonl` for both controls (pre-arc `external-v1/t1/` and
+# fifth-arc `external-v1/t1b/`). See benchmarks/external-v1/README.md's
+# "Per-check cost addendum" section. sha256-gated against
+# EXTERNAL_V1_SHA256SUMS the same way every other file in this
+# directory is.
+EXTERNAL_TGMS_CONTROL_CHECKS = EXTERNAL_V1 / "tgms-control-checks-2026-10-08.jsonl"
+EXTERNAL_TGMS_CONTROL_CHECKS_SOURCES = (
+    EXTERNAL_V1 / "tgms-control-checks-2026-10-08.SOURCES.txt")
+
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
 D160_ROWS = D160_DIR / "rows-2026-09-14.json"
@@ -3032,6 +3045,235 @@ def compute_c7_storm_v1(m: Macros) -> None:
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: cells (of 36) where summary.arms.tgms-L1."
           "avoided_recompute_wall is not < avoided_recompute_decision (P4: check cost is "
           "O(prefix), paid regardless)")
+
+
+# --------------------------------------------------------------------------
+# W2ag -- sum-mode time-to-fresh reconstruction, storm-v1 main grid
+# (pre-D-161-rollout, commit 8962b78). Exact sibling of
+# compute_c7_storm_v2_sum_mode above, on the pre-rollout grid instead of
+# the post-rollout rerun: the same end-to-end instrument bug (harness
+# timed the tgms-L1 interval after tgms-L0's, so the committed
+# summary.arms.tgms-L1.ttf_p50_ms in storm-v1-main-grid-2026-09-15-rows.jsonl
+# is really just check_wall_ms, not check_wall_ms + refresh_wall_ms) applies
+# here too -- every row's own config.measure_ttf is "end-to-end" (see
+# compute_c7_storm_v1 above; no row in this grid is already sum-mode).
+# Reads STORM_V1_RECORDS_TARBALL fresh, independent of compute_c7_storm_v1
+# having already run (and re-checks its own sha256 gate), same discipline
+# as compute_c7_storm_v2_sum_mode. None of compute_c7_storm_v1's own macros
+# (recStormV1Speedup*, recStormV1SpeedupGridMin/Max, ...) are read,
+# recomputed differently, or overwritten here -- every macro below is a
+# new name.
+#
+# Also lands the crossover pair (recStormV1CrossoverSpeedupSum{N1k,N10k}):
+# the v1 R-18 probe (compute_c7_r18 above, R18_PROBE/R18_PROBE_ROWS) is the
+# *same* (store=synth-iv-60k, mix=c1, age=none, seed=0) cell at N=10,000
+# instead of N=1,000, and its own config.measure_ttf is "sum" already (not
+# end-to-end) -- so it needs no correction, and the two numbers below put
+# the N=1,000-vs-N=10,000 crossover statement in one (sum) mode for the
+# first time: the N=10,000 value is recR18Speedup's own ratio, recomputed
+# independently here rather than imported, under a name that pairs with
+# the N=1,000 sibling.
+# --------------------------------------------------------------------------
+
+def compute_c7_storm_v1_sum_mode(m: Macros) -> None:
+    readme_text = STORM_V1_README.read_text(encoding="utf-8")
+    readme_sha_match = re.search(
+        r"storm-v1-records-36-tasks\.tar\.gz`\s*\(sha256\s*\n?`([0-9a-f]{64})`\)", readme_text)
+    require(readme_sha_match is not None,
+            f"storm-v1 sum-mode: {relpath(STORM_V1_README)} names a sha256 for "
+            "storm-v1-records-36-tasks.tar.gz in its storm-v1 main grid section")
+    if readme_sha_match is not None:
+        eq(readme_sha_match.group(1), STORM_V1_RECORDS_TARBALL_SHA256,
+           "storm-v1 sum-mode: frozen sha256 constant matches "
+           f"{relpath(STORM_V1_README)}'s own quoted value")
+    eq(sha256_file(STORM_V1_RECORDS_TARBALL), STORM_V1_RECORDS_TARBALL_SHA256,
+       f"storm-v1 sum-mode: {relpath(STORM_V1_RECORDS_TARBALL)} sha256 matches the frozen/"
+       "README-quoted value")
+
+    rows = load_jsonl(STORM_V1_MAIN_GRID_ROWS)
+    eq(len(rows), 36, "storm-v1 sum-mode: rows.jsonl line count")
+
+    with tarfile.open(STORM_V1_RECORDS_TARBALL, "r:gz") as tf:
+        tar_names = set(tf.getnames())
+        sum_l1_p50: dict[int, float] = {}
+        gr_p50: dict[int, float] = {}
+        e2e_over_check: list[float] = []
+        max_l1_dev = 0.0
+        max_gr_dev = 0.0
+        for r in rows:
+            tid = r["_task_id"]
+            idx = r["record"].index("records/")
+            member = r["record"][idx:]
+            require(member in tar_names,
+                    f"storm-v1 sum-mode: task {tid}'s own record field names a member "
+                    f"({member}) present in the tarball")
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            eq(len(batch_rows), r["config"]["batches"],
+               f"storm-v1 sum-mode task {tid}: batch row count matches config.batches")
+
+            l1_check = [b["arms"]["tgms-L1"]["check_wall_ms"] for b in batch_rows]
+            l1_refresh = [b["arms"]["tgms-L1"]["refresh_wall_ms"] for b in batch_rows]
+            l1_ttf = [b["arms"]["tgms-L1"]["ttf_ms"] for b in batch_rows]
+            gr_ttf = [b["arms"]["global-recompute"]["ttf_ms"] for b in batch_rows]
+            modes = {b.get("ttf_mode") for b in batch_rows}
+            eq(modes, {"end-to-end"},
+               f"storm-v1 sum-mode task {tid}: every batch row's own ttf_mode is "
+               "end-to-end (the committed main grid's config.ttf_modes == "
+               "[\"end-to-end\"])")
+
+            # Reproduction check (verify the file mapping and the nearest-
+            # rank percentile match tgms/eval/storm.py's own aggregation,
+            # before trusting the sum-mode value below): recompute both
+            # tgms-L1's and global-recompute's end-to-end ttf_p50_ms from
+            # the raw per-batch ttf_ms and compare against the committed
+            # summary.arms[*].ttf_p50_ms this same row already carries.
+            recomputed_l1_ttf_p50 = _e2e_percentile(l1_ttf, 0.5)
+            recomputed_gr_ttf_p50 = _e2e_percentile(gr_ttf, 0.5)
+            committed_l1_ttf_p50 = r["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"]
+            committed_gr_ttf_p50 = r["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+            close_rel(recomputed_l1_ttf_p50, committed_l1_ttf_p50, 0.005,
+                      f"storm-v1 sum-mode task {tid}: recomputed end-to-end tgms-L1 "
+                      "ttf_p50_ms (nearest-rank over raw per-batch ttf_ms) reproduces "
+                      "the committed summary.arms.tgms-L1.ttf_p50_ms")
+            close_rel(recomputed_gr_ttf_p50, committed_gr_ttf_p50, 0.005,
+                      f"storm-v1 sum-mode task {tid}: recomputed global-recompute "
+                      "ttf_p50_ms reproduces the committed summary.arms.global-recompute"
+                      ".ttf_p50_ms")
+            dev_l1 = abs(recomputed_l1_ttf_p50 - committed_l1_ttf_p50) / committed_l1_ttf_p50
+            dev_gr = abs(recomputed_gr_ttf_p50 - committed_gr_ttf_p50) / committed_gr_ttf_p50
+            max_l1_dev = max(max_l1_dev, dev_l1)
+            max_gr_dev = max(max_gr_dev, dev_gr)
+
+            sum_vals = [c + rf for c, rf in zip(l1_check, l1_refresh)]
+            sum_l1_p50[tid] = _e2e_percentile(sum_vals, 0.5)
+            gr_p50[tid] = committed_gr_ttf_p50
+            for c, t in zip(l1_check, l1_ttf):
+                if c:
+                    e2e_over_check.append(t / c)
+
+    close(max_l1_dev, 0.0, 0.0005, "storm-v1 sum-mode frozen: max relative deviation, "
+          "recomputed vs. committed end-to-end tgms-L1 ttf_p50_ms, over all 36 cells "
+          "(0.5% was the task's own bar; this reproduces exactly)")
+    close(max_gr_dev, 0.0, 0.0005, "storm-v1 sum-mode frozen: max relative deviation, "
+          "recomputed vs. committed end-to-end global-recompute ttf_p50_ms, over all 36 "
+          "cells")
+
+    speedup_sum = {tid: gr_p50[tid] / sum_l1_p50[tid] for tid in sum_l1_p50}
+
+    groups: dict[tuple[str, str, str | None], list[int]] = {}
+    for r in rows:
+        cfg = r["config"]
+        groups.setdefault((cfg["store"], cfg["mix"], cfg["age"]), []).append(r["_task_id"])
+    eq(len(groups), 12, "storm-v1 sum-mode: 12 distinct (store, mix, age) groups")
+
+    for key, tids in groups.items():
+        eq(len(tids), 3, f"storm-v1 sum-mode: group {key} covers exactly 3 seeds")
+
+    all_speedups_sum = list(speedup_sum.values())
+    grid_min_sum = min(all_speedups_sum)
+    grid_median_sum = statistics.median(all_speedups_sum)
+    grid_max_sum = max(all_speedups_sum)
+    close(grid_min_sum, 0.7701, 0.0005, "storm-v1 sum-mode frozen: minimum per-cell "
+          "(global-recompute ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells")
+    close(grid_median_sum, 0.8270, 0.0005, "storm-v1 sum-mode frozen: median per-cell "
+          "(global-recompute ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells")
+    close(grid_max_sum, 0.8518, 0.0005, "storm-v1 sum-mode frozen: maximum per-cell "
+          "(global-recompute ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells")
+    m.add("recStormV1SpeedupSumGridMin", f"{grid_min_sum:.2f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: minimum per-cell (global-recompute "
+          "ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells -- the corrected "
+          "sibling of recStormV1SpeedupGridMin")
+    m.add("recStormV1SpeedupSumGridMedian", f"{grid_median_sum:.2f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median per-cell (global-recompute "
+          "ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells (compute_c7_storm_v1's "
+          "own recStormV1Speedup{Grid}* has no Median sibling; added here)")
+    m.add("recStormV1SpeedupSumGridMax", f"{grid_max_sum:.2f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: maximum per-cell (global-recompute "
+          "ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells -- the corrected "
+          "sibling of recStormV1SpeedupGridMax")
+
+    n1k_target = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+                  and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+                  and r["config"]["seed"] == 0]
+    eq(len(n1k_target), 1, "storm-v1 sum-mode: exactly one cell at (synth-iv-60k, c1, "
+       "age none, seed 0)")
+    n1k_tid = n1k_target[0]["_task_id"]
+    close(speedup_sum[n1k_tid], 0.8286, 0.0005, "storm-v1 sum-mode frozen: N=1,000 "
+          "sum-mode speedup at synth-iv-60k/c1/age-none/seed-0")
+    m.add("recStormV1SpeedupSumN1kSeed0", f"{speedup_sum[n1k_tid]:.2f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: (global-recompute ttf_p50_ms / "
+          "sum-mode tgms-L1 p50) at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
+          "n_artifacts=1000) -- the corrected sibling of recStormV1SpeedupN1kSeed0, "
+          "same cell. Unlike the post-rollout storm-v2 sibling "
+          "(recStormV2SpeedupSumN1kSeed0, > 1), this ratio is < 1: once the full "
+          "refresh cost is counted, pre-rollout tgms-L1 was slower than "
+          "global-recompute at this cell, not faster -- the apparent 1.938x speedup "
+          "in recStormV1SpeedupN1kSeed0 was entirely an artifact of the end-to-end "
+          "instrument bug")
+
+    # recStormV1LOneE2eOverCheckMedian: pooled over every end-to-end batch
+    # in this grid (36 cells x 20 batches == 720) -- the storm-v1-specific
+    # evidence that the committed end-to-end tgms-L1.ttf_ms is really just
+    # tgms-L1.check_wall_ms, restated on this pre-rollout grid the way
+    # recStormV2LOneE2eOverCheckMedian restates it on the post-rollout one
+    # (that macro additionally pools the external-v1 control's 18
+    # end-to-end cells; this one does not, since the task only asks for
+    # the storm-v1 grid's own evidence).
+    eq(len(e2e_over_check), 720, "storm-v1 sum-mode: pooled end-to-end (ttf_ms / "
+       "check_wall_ms) sample size (36 cells x 20 batches)")
+    e2e_over_check_median = statistics.median(e2e_over_check)
+    close(e2e_over_check_median, 1.004, 0.001, "storm-v1 sum-mode frozen: median "
+          "(tgms-L1 ttf_ms / tgms-L1 check_wall_ms) pooled over every batch in the "
+          "storm-v1 main grid -- the instrument-error evidence that the end-to-end "
+          "TTF mode's recorded tgms-L1.ttf_ms is really just its own check_wall_ms, "
+          "not check_wall_ms + refresh_wall_ms")
+    m.add("recStormV1LOneE2eOverCheckMedian", f"{e2e_over_check_median:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)} (720 batches): median over all 720 "
+          "batches of arms.tgms-L1.ttf_ms / arms.tgms-L1.check_wall_ms")
+
+    # Crossover pair: this main grid's N=1,000 target cell (above) vs. the
+    # v1 R-18 probe's N=10,000 cell at the same (store, mix, age, seed) --
+    # R18_PROBE_ROWS/R18_PROBE (compute_c7_r18 above). The probe's own
+    # config.measure_ttf is already "sum", so its ttf_p50_ms needs no
+    # end-to-end correction; restated here under a name that pairs with
+    # the N=1,000 sum-mode value so the crossover statement can be read
+    # in one mode.
+    probe_rows = load_jsonl(R18_PROBE_ROWS)
+    eq(len(probe_rows), 5, "storm-v1 sum-mode crossover: R-18 probe rows.jsonl line count")
+    probe_modes = {pr.get("ttf_mode") for pr in probe_rows}
+    eq(probe_modes, {"sum"}, "storm-v1 sum-mode crossover: every R-18 probe batch's own "
+       "ttf_mode is sum (no end-to-end correction needed at N=10,000)")
+    probe_cfg = json.loads(R18_PROBE.read_text(encoding="utf-8"))["config"]
+    eq((probe_cfg["store"], probe_cfg["mix"], probe_cfg["age"], probe_cfg["seed"]),
+       ("synth-iv-60k", "c1", None, 0),
+       "storm-v1 sum-mode crossover: R-18 probe cell matches the main grid's N=1,000 "
+       "target cell on (store, mix, age, seed)")
+    probe_l1_ttf = [pr["arms"]["tgms-L1"]["ttf_ms"] for pr in probe_rows]
+    probe_gr_ttf = [pr["arms"]["global-recompute"]["ttf_ms"] for pr in probe_rows]
+    probe_l1_p50 = statistics.median(probe_l1_ttf)
+    probe_gr_p50 = statistics.median(probe_gr_ttf)
+    crossover_n10k = probe_gr_p50 / probe_l1_p50
+    close(crossover_n10k, 0.8067, 0.001, "storm-v1 sum-mode crossover frozen: N=10,000 "
+          "speedup (median global-recompute ttf_ms / median tgms-L1 ttf_ms over the 5 "
+          "sum-mode probe batches) -- independently recomputed, same value as "
+          "recR18Speedup")
+
+    m.add("recStormV1CrossoverSpeedupSumN1k", f"{speedup_sum[n1k_tid]:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: (global-recompute ttf_p50_ms / "
+          "sum-mode tgms-L1 p50) at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
+          "n_artifacts=1000) -- same value as recStormV1SpeedupSumN1kSeed0, restated "
+          "at 3 decimals to pair with recStormV1CrossoverSpeedupSumN10k")
+    m.add("recStormV1CrossoverSpeedupSumN10k", f"{crossover_n10k:.3f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) / "
+          "median(arms.tgms-L1.ttf_ms) over the 5 sum-mode batches at "
+          "(store=synth-iv-60k, mix=c1, age=none, seed=0, n_artifacts=10000) -- same "
+          "cell as recStormV1CrossoverSpeedupSumN1k, N=10,000 instead of N=1,000, both "
+          "already in sum mode (no end-to-end correction at N=10,000); same value as "
+          "recR18Speedup, restated under this name so the N=1,000-vs-N=10,000 "
+          "crossover (tgms-L1 already slower than global-recompute by N=1,000 once "
+          "refresh cost is counted, and further behind by N=10,000) can be read in one "
+          "mode")
 
 
 # --------------------------------------------------------------------------
@@ -9675,13 +9917,20 @@ def compute_ext_sum_mode(m: Macros) -> None:
 # each cell's own -rows.jsonl manifest.config.n_registered (the embedded
 # per-cell equality manifest). candidate_survivors (needed for a
 # per-check cost analogous to recStormV3PerCheckMs) is not anywhere in
-# either control record at all -- storm-v1/storm-v2/storm-v3's own
-# per-batch rows carry it, but neither tgms-control-2026-10-05-batches
-# .jsonl nor tgms-control-2026-10-08-arc5-batches.jsonl do (checked
-# directly below, not assumed). recExt1ControlArcFivePerCheckMs{Synth,
-# CollegeMsg} therefore land as the literal text "not measured", per
-# this lane's own task brief, rather than improvised from a field that
-# is not there.
+# either control's own COMMITTED per-batch rows -- storm-v1/storm-v2/
+# storm-v3's own per-batch rows carry it, but neither
+# tgms-control-2026-10-05-batches.jsonl nor
+# tgms-control-2026-10-08-arc5-batches.jsonl do (checked directly below,
+# not assumed). It previously had no sibling to compute
+# recExt1ControlArcFivePerCheckMs{Synth,CollegeMsg} from, so those two
+# landed as the literal text "not measured" (Lane R1's own task brief).
+# Lane W2ag (2026-10-08) closed that gap with a read-only xzgpu pull of
+# both controls' own per-batch rows (which DO carry candidate_survivors)
+# into EXTERNAL_TGMS_CONTROL_CHECKS -- see that constant's own comment
+# and benchmarks/external-v1/README.md's "Per-check cost addendum"
+# section. recExt1ControlArcFivePerCheckMs{Synth,CollegeMsg} are now
+# computed from it, and recExt1ControlPreArcPerCheckMs{Synth,CollegeMsg}
+# + recExt1ControlArcFiveProbePerCheckMs land beside them as new names.
 # --------------------------------------------------------------------------
 
 _ARC5_PROBE_CID = "synth-iv-60k-c1-none-n10000-s0"
@@ -9739,17 +9988,46 @@ def compute_external_arc5(m: Macros) -> None:
     eq(set(arc5_pc), set(prearc_pc), f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: cell_id set "
        f"matches {relpath(EXTERNAL_TGMS_CONTROL)}'s own (the exact T1 loop replayed)")
 
-    # candidate_survivors is absent from both control records' per-batch
-    # rows (checked directly, not assumed) -- see the module comment
-    # above this function for why recExt1ControlArcFivePerCheckMs{Synth,
-    # CollegeMsg} cannot be computed.
+    # candidate_survivors is absent from both control records' own
+    # COMMITTED per-batch rows (checked directly, not assumed) -- this is
+    # exactly why the per-check-cost addendum below (EXTERNAL_TGMS_CONTROL_
+    # CHECKS, pulled separately from xzgpu) exists; recExt1ControlArcFivePerCheckMs{Synth,
+    # CollegeMsg} are computed from that addendum, not from these two files.
     require(not any("candidate_survivors" in b for b in arc5_batches),
             f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)}: candidate_survivors is absent "
             "from every batch row (confirms recExt1ControlArcFivePerCheckMs cannot be "
-            "computed from this record)")
+            "computed from this record directly -- the addendum below supplies it)")
     require(not any("candidate_survivors" in b for b in prearc_batches),
             f"{relpath(EXTERNAL_TGMS_CONTROL_BATCHES)}: candidate_survivors is absent from "
             "every batch row (same gap on the pre-arc side)")
+
+    # Per-check-cost addendum (2026-10-08): neither control's own committed
+    # per-batch rows carries candidate_survivors (just confirmed above),
+    # but the per-batch rows on xzgpu do -- tgms-control-checks-2026-10-08
+    # .jsonl is that field, pulled read-only for both controls. See
+    # benchmarks/external-v1/README.md's "Per-check cost addendum" section
+    # and this module's own EXTERNAL_TGMS_CONTROL_CHECKS comment.
+    checks_sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_TGMS_CONTROL_CHECKS, EXTERNAL_TGMS_CONTROL_CHECKS_SOURCES):
+        eq(sha256_file(path), checks_sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for "
+           f"{path.name}")
+    check_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_CHECKS)
+    eq(len(check_rows), 730, f"{relpath(EXTERNAL_TGMS_CONTROL_CHECKS)}: line count (2 "
+       "controls x (18 cells x 20 batches + 1 probe cell x 5 batches))")
+    eq({r["control"] for r in check_rows}, {"2026-10-05", "2026-10-08-arc5"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_CHECKS)}: control field values")
+
+    by_control_cell: dict[tuple[str, str], list[dict]] = {}
+    for r in check_rows:
+        by_control_cell.setdefault((r["control"], r["cell_id"]), []).append(r)
+    eq(len(by_control_cell), 2 * 19, f"{relpath(EXTERNAL_TGMS_CONTROL_CHECKS)}: distinct "
+       "(control, cell_id) pairs (2 controls x 19 cells)")
+
+    def _per_check_cell_median(control: str, cell_id: str) -> float:
+        batch_rows = by_control_cell[(control, cell_id)]
+        vals = [b["tgms_l0_check_wall_ms"] / b["candidate_survivors"] for b in batch_rows]
+        return statistics.median(vals)
 
     nonprobe = sorted(c for c in arc5_pc if c != _ARC5_PROBE_CID)
     eq(len(nonprobe), 18, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: non-probe cell count")
@@ -9805,6 +10083,11 @@ def compute_external_arc5(m: Macros) -> None:
               f"external-v1 T1 (pre-arc) frozen: {store} median per-cell median "
               "(global_recompute_wall_ms / n_registered)")
 
+        arc5_per_check_median = statistics.median(
+            _per_check_cell_median("2026-10-08-arc5", c) for c in cells)
+        prearc_per_check_median = statistics.median(
+            _per_check_cell_median("2026-10-05", c) for c in cells)
+
         m.add(f"recExt1ControlArcFive{tok}SpeedupMedian", f"{store_speedup_median:.2f}",
               f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: median over the {store} grid's 9 "
               "N=1,000 cells of arms.global-recompute.ttf_p50_ms / arms.tgms-L1.ttf_p50_ms")
@@ -9815,15 +10098,22 @@ def compute_external_arc5(m: Macros) -> None:
               f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)}: median over the {store} grid's "
               "9 N=1,000 cells of each cell's own median(per-batch global_recompute_wall_ms / "
               f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_ROWS)}'s manifest.config.n_registered)")
-        m.add(f"recExt1ControlArcFivePerCheckMs{tok}", "not measured",
-              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)} carries no candidate_survivors "
-              "field (checked directly above) -- this quantity cannot be computed from the "
-              "committed record; landed as the literal text \"not measured\" rather than "
-              "improvised")
+        m.add(f"recExt1ControlArcFivePerCheckMs{tok}", f"{arc5_per_check_median:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_CHECKS)}: median over the {store} grid's 9 "
+              "N=1,000 cells of that cell's own median-over-batches "
+              "(tgms_l0_check_wall_ms / candidate_survivors), control=2026-10-08-arc5 -- "
+              "the corrected sibling of the once-\"not measured\" "
+              f"recExt1ControlArcFivePerCheckMs{tok}, now computed from the per-check-cost "
+              "addendum pulled from xzgpu's own per-batch rows")
         m.add(f"recExt1ControlArcFivePreArcPublishMs{tok}", f"{prearc_publish:.1f}",
               f"{relpath(EXTERNAL_TGMS_CONTROL_BATCHES)}: same quantity as "
               f"recExt1ControlArcFivePerArtifactPublishMs{tok}, from the pre-arc "
               f"(2026-10-05) control -- the \"before\" number")
+        m.add(f"recExt1ControlPreArcPerCheckMs{tok}", f"{prearc_per_check_median:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_CHECKS)}: same quantity as "
+              f"recExt1ControlArcFivePerCheckMs{tok}, control=2026-10-05 (the pre-arc "
+              "\"before\" number -- no --check-cache on this control, so every check "
+              "re-walks the full event log)")
 
     m.add("recExt1ControlArcFiveSpeedupMedian", f"{speedup_median:.2f}",
           f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: median over the 18 N=1,000 cells (both "
@@ -9850,6 +10140,14 @@ def compute_external_arc5(m: Macros) -> None:
     m.add("recExt1ControlPreArcProbeWallS", str(round(prearc_probe_wall_s)),
           f"{relpath(EXTERNAL_TGMS_CONTROL)}: summary.per_cell[{_ARC5_PROBE_CID!r}].wall_s "
           "(the pre-arc, 2026-10-05 \"before\" number)")
+
+    probe_per_check_median = _per_check_cell_median("2026-10-08-arc5", _ARC5_PROBE_CID)
+    m.add("recExt1ControlArcFiveProbePerCheckMs", f"{probe_per_check_median:.1f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_CHECKS)}: median over the probe cell "
+          f"({_ARC5_PROBE_CID})'s own batches of (tgms_l0_check_wall_ms / "
+          "candidate_survivors), control=2026-10-08-arc5, N=10,000 instead of the "
+          "N=1,000 cells recExt1ControlArcFivePerCheckMs{Synth,CollegeMsg} median over -- "
+          "landed separately rather than folded into either store's median")
 
     # --- corrected external ratios, scored against R1 instead of T1 ---
     neo = json.loads(EXTERNAL_NEO4J.read_text(encoding="utf-8"))
@@ -10045,6 +10343,7 @@ def main() -> int:
     compute_c7_dag(m)
     compute_c7_r18(m)
     compute_c7_storm_v1(m)
+    compute_c7_storm_v1_sum_mode(m)
     compute_c7_storm_v2_probe(m)
     compute_c7_storm_v2(m)
     compute_c7_storm_v2_sum_mode(m)
