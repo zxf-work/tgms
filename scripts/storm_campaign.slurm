@@ -87,6 +87,13 @@ IFS=',' read -r -a TTF_MODES <<< "${TGMS_MEASURE_TTF_LIST:-sum,end-to-end}"
 BATCHES_PER_TASK="${TGMS_BATCHES_PER_TASK:-2000}"
 ALLOW_R18_TRIP_FLAG=""
 [ "${TGMS_ALLOW_R18_TRIP:-0}" = "1" ] && ALLOW_R18_TRIP_FLAG="--allow-r18-trip"
+# additive passthrough (ARC5-A, storm-v1-addendum-3): empty default keeps
+# this script's committed behaviour (no --check-cache flag, the harness's
+# own "none" default) byte-for-byte; TGMS_CHECK_CACHE=chain is what the
+# re-measurement campaign sets to record every cell's check path against a
+# ChainCache instead of the uncached default.
+CHECK_CACHE_FLAG=""
+[ -n "${TGMS_CHECK_CACHE:-}" ] && CHECK_CACHE_FLAG="--check-cache ${TGMS_CHECK_CACHE}"
 
 n_stores=${#STORES[@]}
 n_mixes=${#MIXES[@]}
@@ -190,6 +197,7 @@ ec=0
     --mix "$MIX" \
     $AGE_FLAG \
     --measure-ttf "$MEASURE_TTF" \
+    $CHECK_CACHE_FLAG \
     $ALLOW_R18_TRIP_FLAG \
     $ADDENDUM_ID_FLAG \
     $FREEZE_SHA_FLAG \

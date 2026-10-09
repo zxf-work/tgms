@@ -62,6 +62,12 @@ MIX="${TGMS_R18_MIX:-c1}"
 N_ARTIFACTS="${TGMS_R18_N_ARTIFACTS:-10000}"
 SEED="${TGMS_R18_SEED:-0}"
 BATCHES="${TGMS_R18_BATCHES:-5}"
+# additive passthrough (ARC5-A, storm-v1-addendum-3), same convention as
+# scripts/storm_campaign.slurm's own: empty default keeps this script's
+# committed behaviour byte-for-byte; TGMS_CHECK_CACHE=chain appends
+# --check-cache chain for the re-measurement campaign.
+CHECK_CACHE_FLAG=""
+[ -n "${TGMS_CHECK_CACHE:-}" ] && CHECK_CACHE_FLAG="--check-cache ${TGMS_CHECK_CACHE}"
 WALL_CAP_S="${TGMS_R18_WALL_CAP_S:-32400}"  # 9h -- signal fires at 3h before
                                             # the 12h hard limit (--signal
                                             # above); this is the value the
@@ -132,6 +138,7 @@ exec "$VENV_PY" scripts/bench_correction_storm.py \
     --seed "$SEED" \
     --mix "$MIX" \
     --measure-ttf sum \
+    $CHECK_CACHE_FLAG \
     --allow-r18-trip \
     --wall-cap-s "$WALL_CAP_S" \
     --addendum-id "$ADDENDUM_ID" \
