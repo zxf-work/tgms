@@ -267,15 +267,26 @@ class T1CellInput:
     storm-v2 `per_cell` row -- `config`, `summary.arms`, `machine`,
     `git_commit`, ...) plus lane C1's own `t1-equality.json` (the
     byte-identical-eventlog check against the matching export bundle).
-    The manifest's own `-rows.jsonl` (per-batch detail) is not read here --
-    everything this record needs is in the manifest's own `summary.arms`
-    medians and `t1-equality.json`."""
+    The manifest's own `-rows.jsonl` (per-batch detail) was not read here
+    originally -- the T1 (2026-10-05) cells' `summary.arms` medians and
+    `t1-equality.json` covered everything the record needed at the time.
+    As of the fifth-arc re-measurement (Addendum ARC5-B, 2026-10-08),
+    `summary.arms` has no `e2e_refresh_calls`/`check_cache`/
+    `check_cache_misses` field at all -- those were added to `ArmOutcome`/
+    `BatchResult` (`tgms/eval/storm.py`) as *per-batch* fields, never
+    folded into the manifest's own per-cell medians -- so a cell's
+    `-rows.jsonl` sidecar is now read too, via `load_batch_rows` below,
+    whenever it sits alongside the manifest. A cell without that sidecar
+    (e.g. a T1 cell directory that never had its per-batch rows pulled to
+    this host) gets explicit `None`/`{}` aggregates, never a guessed
+    value -- see `e2e_and_check_cache_aggregates`."""
 
     def __init__(self, t1_cell_dir: Path):
         self.t1_cell_dir = t1_cell_dir
         manifest_path = find_t1_manifest(t1_cell_dir)
         self.manifest = json.loads(manifest_path.read_text())
         self.manifest_path = manifest_path
+        self.rows_path = manifest_path.with_name(manifest_path.stem + "-rows.jsonl")
         self.equality = load_t1_equality(t1_cell_dir)
 
         cfg = self.manifest.get("config", {})
@@ -297,6 +308,54 @@ class T1CellInput:
         path = self.t1_cell_dir / f"host-snapshot-{label}.txt"
         return parse_loadavg1(path.read_text()) if path.exists() else None
 
+    def load_batch_rows(self) -> list[dict[str, Any]]:
+        """This cell's own raw per-batch rows (`storm-<store>-<task>-
+        rows.jsonl`, `BatchResult.to_json()`'s shape) -- `[]` when the
+        sidecar is not present next to the manifest, never an error (the
+        2026-10-05 T1 cells were summarized from the manifest alone, with
+        no per-batch sidecar on this host; a cell that genuinely lacks one
+        must get empty/`None` aggregates, not a crash)."""
+        if not self.rows_path.exists():
+            return []
+        return [json.loads(line) for line in self.rows_path.open() if line.strip()]
+
+
+#: the per-batch fields `BatchResult`/`ArmOutcome` added after the T1
+#: (2026-10-05) control landed -- never in the manifest's own
+#: `summary.arms` medians (module docstring on `T1CellInput`), so they are
+#: computed here from each cell's own `-rows.jsonl`, by median over
+#: batches, exactly like every other per-batch aggregate in this file
+#: (e.g. `CellInput.per_burst_timing_ms`'s median in `summarize_cell`).
+def e2e_and_check_cache_aggregates(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """`{"check_cache": ..., "check_cache_misses_median": ...,
+    "e2e_refresh_calls_median": {<arm>: ...}}` from a cell's raw per-batch
+    rows. `check_cache` is the batches' own setting (`"none"` if every row
+    omits the field, matching `BatchResult.check_cache`'s own default);
+    `check_cache_misses_median` is `None` when no batch recorded a miss
+    count (sum-mode-style `"none"` caching never writes the field, per
+    `BatchResult.to_json`). `e2e_refresh_calls_median` only has an entry
+    for an arm that recorded the field on at least one batch (end-to-end
+    TTF mode only, per `ArmOutcome.to_json`) -- an arm with no entry here
+    simply never measured it, not a zero. `rows=[]` (no sidecar found)
+    returns the same shape with every value `None`/`{}`, never guessed."""
+    if not rows:
+        return {"check_cache": None, "check_cache_misses_median": None,
+                "e2e_refresh_calls_median": {}}
+    check_cache_values = sorted({r.get("check_cache", "none") for r in rows})
+    check_cache = check_cache_values[0] if len(check_cache_values) == 1 else check_cache_values
+    misses = [r["check_cache_misses"] for r in rows if r.get("check_cache_misses") is not None]
+    per_arm_calls: dict[str, list[float]] = {}
+    for r in rows:
+        for arm_name, arm in r.get("arms", {}).items():
+            v = arm.get("e2e_refresh_calls")
+            if v is not None:
+                per_arm_calls.setdefault(arm_name, []).append(v)
+    return {
+        "check_cache": check_cache,
+        "check_cache_misses_median": statistics.median(misses) if misses else None,
+        "e2e_refresh_calls_median": {a: statistics.median(vs) for a, vs in per_arm_calls.items()},
+    }
+
 
 def summarize_t1_cell(ci: T1CellInput) -> dict[str, Any]:
     arms = ci.manifest.get("summary", {}).get("arms", {})
@@ -306,6 +365,12 @@ def summarize_t1_cell(ci: T1CellInput) -> dict[str, Any]:
     l1_match = ci.equality.get("l1_eventlog_sha_match")
     equality_level = "L1" if l1_match is True else (
         "unknown" if l1_match is None else "no-L1 (eventlog sha mismatch)")
+    agg = e2e_and_check_cache_aggregates(ci.load_batch_rows())
+    arms_out = {name: {k: v for k, v in arm.items() if k in T1_ARM_FIELDS}
+               for name, arm in arms.items()}
+    for arm_name, median_calls in agg["e2e_refresh_calls_median"].items():
+        if arm_name in arms_out:
+            arms_out[arm_name]["e2e_refresh_calls_median"] = median_calls
     return {
         "cell_id": ci.cell_id,
         "store": ci.store_name, "mix": ci.mix, "age": ci.age,
@@ -314,10 +379,11 @@ def summarize_t1_cell(ci: T1CellInput) -> dict[str, Any]:
         "batches_realized": ci.equality.get("batches_realized"),
         "batches_requested": ci.manifest.get("config", {}).get("batches"),
         "equality_level": equality_level,
-        "arms": {name: {k: v for k, v in arm.items() if k in T1_ARM_FIELDS}
-                for name, arm in arms.items()},
+        "arms": arms_out,
         "speedup_global_recompute_over_l1": speedup,
         "host_load": {"before": ci.host_load("before"), "after": ci.host_load("after")},
+        "check_cache": agg["check_cache"],
+        "check_cache_misses_median": agg["check_cache_misses_median"],
     }
 
 

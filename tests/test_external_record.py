@@ -456,6 +456,89 @@ def test_build_t1_record(tmp_path: Path) -> None:
     assert "manifest" in rows[0] and "t1_equality" in rows[0]
 
 
+def _write_t1_rows_sidecar(t1_cell_dir: Path, *, check_cache: str = "chain") -> None:
+    """A tiny 3-batch `storm-tiny-0-rows.jsonl` sidecar beside `_write_t1_cell`'s
+    own `storm-tiny-0.json` manifest -- `BatchResult.to_json()`'s shape,
+    restated minimally (just the fields `e2e_and_check_cache_aggregates`
+    reads): `check_cache`/`check_cache_misses` per batch, `e2e_refresh_calls`
+    on `tgms-L1` only (the other arm, `global-recompute`, never times an
+    end-to-end interval, matching `ArmOutcome.to_json`'s real behavior of
+    omitting the field entirely for an arm that never set it)."""
+    rows = [
+        {"batch_index": 0, "check_cache": check_cache, "check_cache_misses": 1,
+         "arms": {"global-recompute": {"arm": "global-recompute"},
+                  "tgms-L1": {"arm": "tgms-L1", "e2e_refresh_calls": 200}}},
+        {"batch_index": 1, "check_cache": check_cache, "check_cache_misses": 1,
+         "arms": {"global-recompute": {"arm": "global-recompute"},
+                  "tgms-L1": {"arm": "tgms-L1", "e2e_refresh_calls": 240}}},
+        {"batch_index": 2, "check_cache": check_cache, "check_cache_misses": 3,
+         "arms": {"global-recompute": {"arm": "global-recompute"},
+                  "tgms-L1": {"arm": "tgms-L1", "e2e_refresh_calls": 260}}},
+    ]
+    with (t1_cell_dir / "storm-tiny-0-rows.jsonl").open("w") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+
+
+def test_e2e_and_check_cache_aggregates_empty_rows() -> None:
+    agg = external_record.e2e_and_check_cache_aggregates([])
+    assert agg == {"check_cache": None, "check_cache_misses_median": None,
+                   "e2e_refresh_calls_median": {}}
+
+
+def test_e2e_and_check_cache_aggregates_from_rows(tmp_path: Path) -> None:
+    cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    _write_t1_rows_sidecar(cell_dir)
+
+    ci = external_record.T1CellInput(cell_dir)
+    rows = ci.load_batch_rows()
+    assert len(rows) == 3
+
+    agg = external_record.e2e_and_check_cache_aggregates(rows)
+    assert agg["check_cache"] == "chain"
+    assert agg["check_cache_misses_median"] == 1  # median of [1, 1, 3]
+    assert agg["e2e_refresh_calls_median"] == {"tgms-L1": 240}  # median of [200, 240, 260]
+    assert "global-recompute" not in agg["e2e_refresh_calls_median"]
+
+
+def test_t1_cell_input_load_batch_rows_missing_sidecar(tmp_path: Path) -> None:
+    cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    ci = external_record.T1CellInput(cell_dir)
+    assert ci.load_batch_rows() == []
+
+
+def test_summarize_t1_cell_carries_e2e_and_check_cache_when_sidecar_present(
+        tmp_path: Path) -> None:
+    cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    _write_t1_rows_sidecar(cell_dir)
+
+    ci = external_record.T1CellInput(cell_dir)
+    summary = external_record.summarize_t1_cell(ci)
+
+    assert summary["check_cache"] == "chain"
+    assert summary["check_cache_misses_median"] == 1
+    assert summary["arms"]["tgms-L1"]["e2e_refresh_calls_median"] == 240
+    # global-recompute never recorded the field -- never a fabricated 0/None key
+    assert "e2e_refresh_calls_median" not in summary["arms"]["global-recompute"]
+
+
+def test_summarize_t1_cell_without_sidecar_leaves_fields_none(tmp_path: Path) -> None:
+    """The 2026-10-05 T1 cells have no `-rows.jsonl` sidecar on this host
+    (module docstring) -- their summaries must keep working exactly as
+    before, with the new fields explicitly absent/`None`, never guessed."""
+    cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    ci = external_record.T1CellInput(cell_dir)
+    summary = external_record.summarize_t1_cell(ci)
+
+    assert summary["check_cache"] is None
+    assert summary["check_cache_misses_median"] is None
+    assert "e2e_refresh_calls_median" not in summary["arms"]["tgms-L1"]
+
+
 def test_written_t1_record_conforms_to_result_manifest_schema(tmp_path: Path) -> None:
     cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
     _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
