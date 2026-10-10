@@ -1,0 +1,415 @@
+{
+ "protocol": {
+  "cells": "tgms.evidence.faultbench_topk.cases() (claim kind top_k; sequence and set forms; one candidate relation, faultbench_topk.CANDIDATES)",
+  "checkers": [
+   "ecqr",
+   "b1_value_only",
+   "b2_taint_all"
+  ],
+  "integrity_precheck": "result digest vs descriptor result_id (A4) before every checker",
+  "blocked_cell": "ecqr=None: the step is blocked by Lemma 3.10 rule (a) and emits no descriptor (BLOCKED); the baselines judge the descriptor a non-blocking executor would emit (Cell.unblocked)",
+  "false_certification": "SUPPORTED on a must_not_certify cell",
+  "false_rejection": "not SUPPORTED on a must_certify cell",
+  "reference_oracle": "faultbench_topk.truth(); every expectation is checked against it",
+  "deterministic": true
+ },
+ "n_cells": 20,
+ "cells_by_expectation": {
+  "must_certify": 6,
+  "must_not_certify": 14
+ },
+ "truth_disagreements": [],
+ "summary": {
+  "ecqr": {
+   "false_certifications": 0,
+   "false_rejections": 0,
+   "false_certification_cells": [],
+   "false_rejection_cells": [],
+   "verdict_differs_from_expected": [],
+   "certified": 6
+  },
+  "b1_value_only": {
+   "false_certifications": 12,
+   "false_rejections": 0,
+   "false_certification_cells": [
+    "limit_without_order",
+    "ties_without_tiebreak",
+    "execution_incomplete",
+    "k_mismatch",
+    "fewer_than_k_uncertified",
+    "over_truncated_input",
+    "order_mismatch",
+    "wrong_snapshot",
+    "sequence_boundary_strict_inner_tie",
+    "set_boundary_tie",
+    "set_boundary_other_basis",
+    "sequence_strict_other_basis"
+   ],
+   "false_rejection_cells": [],
+   "verdict_differs_from_expected": [],
+   "certified": 18
+  },
+  "b2_taint_all": {
+   "false_certifications": 1,
+   "false_rejections": 3,
+   "false_certification_cells": [
+    "wrong_snapshot"
+   ],
+   "false_rejection_cells": [
+    "clean",
+    "set_boundary_strict_inner_tie",
+    "sequence_strict"
+   ],
+   "verdict_differs_from_expected": [],
+   "certified": 4
+  }
+ },
+ "cells": [
+  {
+   "claim": "top_k",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "truth": true,
+   "note": "a full page of k rows needs no delivery certificate",
+   "verdicts": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "clean_k_equals_n",
+   "expectation": "must_certify",
+   "truth": true,
+   "note": "",
+   "verdicts": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   },
+   "expected": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "fewer_than_k_certified",
+   "expectation": "must_certify",
+   "truth": true,
+   "note": "the completed LIMIT 5 statement returned 3 rows",
+   "verdicts": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   },
+   "expected": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "limit_without_order",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "not a ranking at all; the claim names an order no one ran",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "ties_without_tiebreak",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "n1 has the same score; which row is 'first' is undefined",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "execution_incomplete",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "n3 and n7 were never ranked",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_EXECUTION_NOT_CERTIFIED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_EXECUTION_NOT_CERTIFIED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "k_mismatch",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_K_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_K_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "fewer_than_k_uncertified",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "over_truncated_input",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "the top-2 of a 4-row input page; n1 and n3 are the full top-2",
+   "verdicts": {
+    "ecqr": "BLOCKED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "BLOCKED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "order_mismatch",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "the highest three called the lowest three",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_ORDER_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_ORDER_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "wrong_rows",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_VALUE_MISMATCH",
+    "b1_value_only": "REJECT",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_VALUE_MISMATCH",
+    "b1_value_only": "REJECT",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "wrong_snapshot",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_BASIS_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_BASIS_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "digest_mismatch",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "",
+   "verdicts": {
+    "ecqr": "REJECTED_INTEGRITY",
+    "b1_value_only": "REJECTED_INTEGRITY",
+    "b2_taint_all": "REJECTED_INTEGRITY"
+   },
+   "expected": {
+    "ecqr": "REJECTED_INTEGRITY",
+    "b1_value_only": "REJECTED_INTEGRITY",
+    "b2_taint_all": "REJECTED_INTEGRITY"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "set_boundary_strict_inner_tie",
+   "expectation": "must_certify",
+   "truth": true,
+   "note": "{n1, n3} is the unique top-2 set; their order is a tie",
+   "verdicts": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "sequence_boundary_strict_inner_tie",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "the set is certified, the sequence n1 before n3 is not",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "set_boundary_tie",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "rank 1 and rank 2 tie: {n1} and {n3} are both valid top-1",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_ORDER_NOT_TOTAL",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "set_boundary_fewer_than_k_certified",
+   "expectation": "must_certify",
+   "truth": true,
+   "note": "3 < k+1 candidates: the boundary is strict trivially",
+   "verdicts": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   },
+   "expected": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "SUPPORTED"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "set_boundary_other_basis",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "strict on another state; on this one rank 1 and 2 tie",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_BASIS_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_BASIS_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "sequence_strict",
+   "expectation": "must_certify",
+   "truth": true,
+   "note": "n4, n6, n0: no tie among the first 4 rows",
+   "verdicts": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "SUPPORTED",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  },
+  {
+   "claim": "top_k",
+   "fault": "sequence_strict_other_basis",
+   "expectation": "must_not_certify",
+   "truth": false,
+   "note": "pairwise strict on another state; on this one n1 ties n3",
+   "verdicts": {
+    "ecqr": "UNSUPPORTED_BASIS_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   },
+   "expected": {
+    "ecqr": "UNSUPPORTED_BASIS_MISMATCH",
+    "b1_value_only": "SUPPORTED",
+    "b2_taint_all": "REJECT"
+   }
+  }
+ ],
+ "manifest": {
+  "commit": "47617a10f0779fbd95c3fe79ac77d0f5dfc7e468",
+  "host": "Xiaofeis-Mac-mini.local",
+  "date": "2026-10-10T04:07:26+00:00",
+  "python": "3.12.13"
+ }
+}
