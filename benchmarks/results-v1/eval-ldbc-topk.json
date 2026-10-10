@@ -1,0 +1,91 @@
+{
+ "experiment": "LDBC SNB REQUIRES_TOP_K templates: static TopK expressibility",
+ "commit": "0e32efc16a9064b8ca6d0b0bacf17fc27aecefa2",
+ "host": "Xiaofeis-Mac-mini.local",
+ "date_utc": "2026-10-10T03:22:54+00:00",
+ "executed": false,
+ "execution_note": "static judgment from template text and official SQL only; no LDBC query was executed (no SF data on iTiger), so nothing here is measured",
+ "protocol": {
+  "universe": "the 27 templates with claim_full_contract = REQUIRES_TOP_K in external_workloads/ldbc/coverage_annotation.jsonl",
+  "inputs": {
+   "coverage_annotation.jsonl": "b64dc58d31241bf21e9ddea1ef01f3be5b635e8aa9afe9d756183f265e2cf6ca",
+   "ldbc_read_templates.jsonl": "52963dc03839ba21a2cc3749ef963ccb70d91c24c323d6ed369db6f879dadc48",
+   "official_sql": "external_workloads/ldbc/interactive_v1/umbra/queries (IC, IS) and external_workloads/ldbc/bi/umbra/queries (BI)"
+  },
+  "judgments": {
+   "TOTAL_ORDER": "LIMIT k is explicit and the sort list contains a key unique per result row (an entity id, or every grouping column of the official SQL's GROUP BY), so TopK(S, sort, k) states the full contract under a deterministic total order",
+   "TIEBREAK_MISSING": "LIMIT k is explicit but the sort list ends in a non-key attribute (a name) while rows are per entity; TopK applies only after adding the entity id as the final tie-break",
+   "NOT_TOP_K": "the contract is not a prefix of a ranked candidate result"
+  },
+  "row_grain_source": "the official SQL where it fixes the grain (GROUP BY), else the template result schema",
+  "flags": {
+   "nested_projection": "a result column is a per-row collection; S then compares rows that hold nested values",
+   "official_sql_ranking_lacks_tiebreak": "the template's sort is total but the official SQL ranks in an inner LIMIT whose ORDER BY omits the tie-break"
+  }
+ },
+ "input_sha256": {
+  "topk_expressibility.jsonl": "26d4f176c509737f822f16074595f231108c8c9a7d310017feb9e3e550099368"
+ },
+ "counts": {
+  "n_templates": 27,
+  "expressible_total_order": 25,
+  "expressible_only_with_missing_tiebreak": 2,
+  "not_top_k": 0,
+  "limit_explicit": 27,
+  "total_order_and_flat_rows": 23,
+  "total_order_with_nested_projection": 2,
+  "total_order_via_group_key": 4,
+  "official_sql_ranking_lacks_tiebreak": 2,
+  "limit_in_inner_subquery": 2
+ },
+ "by_judgment": {
+  "TOTAL_ORDER": [
+   "IC1",
+   "IC2",
+   "IC3",
+   "IC4",
+   "IC5",
+   "IC6",
+   "IC7",
+   "IC8",
+   "IC9",
+   "IC10",
+   "IC12",
+   "IS2",
+   "BI3",
+   "BI4",
+   "BI5",
+   "BI6",
+   "BI7",
+   "BI8",
+   "BI9",
+   "BI10",
+   "BI13",
+   "BI16",
+   "BI17",
+   "BI18",
+   "BI20"
+  ],
+  "TIEBREAK_MISSING": [
+   "IC11",
+   "BI2"
+  ],
+  "NOT_TOP_K": []
+ },
+ "flagged": {
+  "nested_projection": [
+   "IC1",
+   "IC12"
+  ],
+  "official_sql_ranking_lacks_tiebreak": [
+   "IC7",
+   "IS2"
+  ],
+  "total_order_via_group_key": [
+   "IC4",
+   "IC6",
+   "BI7",
+   "BI10"
+  ]
+ }
+}
