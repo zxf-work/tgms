@@ -18,6 +18,12 @@ fig-cost (evidence-overhead-itiger.json + eval-verifier-scaling.json +
 eval-unsupported-composition.json) absorbs the former fig-efficiency,
 now an empty-safe stub; fig-conformance restyled to the shared palette
 and type sizes.
+
+Layout round (ECQR campaign F3): fig-cost is one figure* row of three
+panels; fig-ldbc is a side-by-side pair in one column; fig-rq1, fig-probe
+and fig-main are tightened. The BIRD census is now the right half of the
+figure* that scripts/paper_bird_funnel.py emits (bird_census_panel
+below); fig-bird-census.tex is an empty-safe stub.
 """
 
 from __future__ import annotations
@@ -67,9 +73,9 @@ def fig5(pn: dict, uc: dict) -> str:
         f"({DS_SHORT[d]},{round(carry[f'{d}|b6e']*emc[f'{d}|b6e'],4)})"
         for d in DS)
     ax = ("symbolic x coords={MathOverflow,SuperUser,wiki-talk}, "
-          "xtick=data, x tick label style={rotate=25, anchor=north east, "
-          "inner sep=1pt}, ybar, bar width=5pt, width=0.355\\linewidth, "
-          "height=3.4cm, ymin=0, enlarge x limits=0.22, "
+          "xtick=data, x tick label style={inner sep=1pt}, "
+          "ybar, bar width=5pt, width=0.355\\linewidth, "
+          "height=3.2cm, ymin=0, enlarge x limits=0.22, "
           "axis x line*=bottom, axis y line*=left, ymajorgrids, "
           "y tick label style={/pgf/number format/fixed}, " + SQ)
 
@@ -140,8 +146,8 @@ def fig5(pn: dict, uc: dict) -> str:
 \legend{{Operators+ECQR, SQL+ECQR}}
 \end{{axis}}
 \begin{{axis}}[name=d, at={{(a.outer south west)}}, anchor=outer north west,
-  yshift=-1mm, xbar stacked, {SQ}, width=0.975\linewidth,
-  height=4.0cm, symbolic y coords={{{sym}}}, ytick=data, xmin=0,
+  yshift=-2.5mm, xbar stacked, {SQ}, width=0.975\linewidth,
+  height=3.3cm, symbolic y coords={{{sym}}}, ytick=data, xmin=0,
   enlarge y limits=0.1, axis x line*=bottom, axis y line*=left,
   xmajorgrids, xlabel={{unsupported proposed claims (count)}},
   bar width=6pt,
@@ -450,16 +456,16 @@ def fig_probe(tp: dict, mac: dict) -> str:
 \begin{{figure}}[t]
 \centering
 \begin{{tikzpicture}}
-\begin{{axis}}[xbar, bar shift=0pt, {SQ}, width=0.92\linewidth, y=0.62cm,
-  bar width=5pt, xmin=0, xmax=68, xtick={{0,20,40,60}},
+\begin{{axis}}[xbar, bar shift=0pt, {SQ}, width=0.92\linewidth, y=0.5cm,
+  bar width=4.5pt, xmin=0, xmax=100, xtick={{0,20,40,60,80,100}},
   ytick={{{yt}}}, yticklabels={{{ytl}}},
-  ymin=-0.3, ymax=5.4, y tick style={{draw=none}},
+  ymin=-0.2, ymax=5.3, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left, xmajorgrids,
   xlabel={{answers (\%)}},
   point meta=explicit symbolic, nodes near coords,
   every node near coord/.append style={{{DLX}}},
-  legend style={{at={{(0.5,1.02)}}, anchor=south, legend columns=-1,
-    /tikz/every even column/.append style={{column sep=6pt}}}}]
+  legend style={{at={{(0.98,0.98)}}, anchor=north east}},
+  legend cell align=left]
 \addplot[fill=figAccent, draw=none] coordinates {{{pd}}};
 \addplot[fill=figDark, draw=none] coordinates {{{co}}};
 \legend{{page-derived, correct}}
@@ -521,30 +527,30 @@ def fig_rq1(bc: dict, fm: dict, mac: dict) -> str:
                             for f, y in zip(sub, ys))
         xl = f"xlabel={{{xlabel}}}, " if xlabel else ""
         return rf"""\begin{{axis}}[name={name}, {extra}xbar, bar shift=0pt,
-  {SQ}, width=0.84\linewidth, y=0.78cm, bar width=4.5pt, xmin=0, xmax=3.4,
+  {SQ}, width=0.84\linewidth, y=0.6cm, bar width=4pt, xmin=0, xmax=3.4,
   xtick={{0,1,2,3}}, {xl}
   ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
-  ymin=-0.55, ymax={len(sub) - 0.45}, y tick style={{draw=none}},
+  ymin=-0.5, ymax={len(sub) - 0.5}, y tick style={{draw=none}},
   clip=false,
   axis x line*=bottom, axis y line*=left, xmajorgrids,
   title={{{title}}}, title style={{at={{(0,1)}}, anchor=south west,
     xshift=-2pt, yshift=-1pt}},
   point meta=explicit symbolic, nodes near coords,
   every node near coord/.append style={{{DLX}}},
-  legend style={{at={{(0.5,1)}}, anchor=south, yshift=14pt,
+  legend style={{at={{(0.5,1)}}, anchor=south, yshift=13pt,
     legend columns=-1,
     /tikz/every even column/.append style={{column sep=6pt}}}}]
-\addplot[fill=figDark, draw=none] coordinates {{{series(2, 0.25)}}};
+\addplot[fill=figDark, draw=none] coordinates {{{series(2, 0.28)}}};
 \addplot[fill=figMid, draw=none] coordinates {{{series(3, 0.0)}}};
 \addplot[only marks, mark=*, mark size=1.6pt, figAccent, {MK},
   every node near coord/.append style={{text=figAccent, xshift=1.5pt}}]
-  coordinates {{{series(4, -0.25)}}};
+  coordinates {{{series(4, -0.28)}}};
 """
 
     top = panel(lambda f: f[5] == "must_certify", "a", "",
                 r"false rejects on control cells", None)
     bot = panel(lambda f: f[5] != "must_certify", "b",
-                "at={(a.south west)}, anchor=north west, yshift=-1.0cm, ",
+                "at={(a.south west)}, anchor=north west, yshift=-0.85cm, ",
                 r"false accepts on fault cells", "cells in error")
     return rf"""{GEN}
 % Source: benchmarks/results-v1/eval-baseline-checkers.json (b1_value_only,
@@ -568,10 +574,12 @@ in any family.}}
 """
 
 
-def fig_bird_census(ba: dict, mac: dict) -> str:
+def bird_census_panel(ba: dict, mac: dict, place: str) -> tuple:
     """BIRD questions per intent contract, split by certification outcome
     (receipt: eval-bird-agent.json, by_form; the census that
-    scripts/paper_bird_census.py tabulates)."""
+    scripts/paper_bird_census.py tabulates), as one axis for the
+    combined BIRD figure that scripts/paper_bird_funnel.py emits. place:
+    extra axis options (position). Returns (axis TeX, after-axis TeX)."""
     from paper_bird_census import LABEL, ORDER
     lab = dict(LABEL, SET_AND_COUNT="Multipart (set + count)")
     bf = ba["by_form"]
@@ -600,13 +608,8 @@ def fig_bird_census(ba: dict, mac: dict) -> str:
         if r[3]:
             items.append((r[2] + r[3] / 2, y, "text=white", str(r[3])))
     lin, lout = labels(items, "bc")
-    return rf"""{GEN}
-% Source: benchmarks/results-v1/eval-bird-agent.json (by_form).
-\begin{{figure}}[t]
-\centering
-\begin{{tikzpicture}}
-\begin{{axis}}[xbar stacked, {SQ}, width=0.86\linewidth,
-  y=0.5cm, bar width=7pt, xmin=0, xmax={xmax}, xtick={{0,100,200,300}},
+    axis = rf"""\begin{{axis}}[name=cen, {place}xbar stacked, {SQ},
+  y=0.42cm, bar width=7pt, xmin=0, xmax={xmax}, xtick={{0,100,200,300}},
   ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
   ymin=-0.6, ymax={len(rows) - 0.4}, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left, xmajorgrids,
@@ -622,21 +625,24 @@ def fig_bird_census(ba: dict, mac: dict) -> str:
 \legend{{strict full contract, any claim only, no certified claim}}
 {lin}
 \end{{axis}}
-{lout}
-\end{{tikzpicture}}
-\caption{{BIRD Mini-Dev questions by intent contract, split by
-certification outcome; numbers at the bar ends give the questions that
-meet the strict full contract over all questions of that contract. The
-\pnBirdCertPartial\ runs between any-claim and strict-full certification
-all lie in the complete-collection row.}}
-\label{{fig:birdcensus}}
-\end{{figure}}
 """
+    return axis, lout
+
+
+def fig_bird_census_stub() -> str:
+    """fig-bird-census.tex is merged into fig-bird-funnel.tex (one
+    figure*, census on the right; scripts/paper_bird_funnel.py); this
+    file is now an empty-safe stub so a stale \\input{fig-bird-census}
+    is harmless."""
+    return ("% fig-bird-census merged into fig-bird-funnel.tex "
+            "(see fig:birdcensus).\n"
+            "% This file is intentionally empty -- a stale "
+            "\\input{fig-bird-census} is a no-op.\n")
 
 
 def fig_ldbc(ann: list, rec: dict, mac: dict) -> str:
     """LDBC SNB read templates per group (IC/IS/BI): execution coverage
-    and full-contract claim coverage as two stacked panels (sources:
+    and full-contract claim coverage as two side-by-side panels (sources:
     external_workloads/ldbc/coverage_annotation.jsonl, receipt
     eval-ldbc-coverage.json). The claim partition is the annotation's
     claim_full_contract label, assigned by the first missing feature in
@@ -686,7 +692,7 @@ def fig_ldbc(ann: list, rec: dict, mac: dict) -> str:
     ytl = ",".join(f"{{{g} ({sizes[g]})}}" for g, _ in groups)
     xmax = max(sizes.values())
 
-    def panel(name, key, classes, extra, title, xlabel):
+    def panel(name, key, classes, extra, title, ticklabels):
         plots, notes = [], []
         cum = {g: 0 for g, _ in groups}
         for vals, _lab, fill, txt in classes:
@@ -703,36 +709,37 @@ def fig_ldbc(ann: list, rec: dict, mac: dict) -> str:
                          rf"line width=0.4pt] coordinates {{{' '.join(pts)}}};")
         assert cum == sizes, (cum, sizes)
         leg = ", ".join(c[1] for c in classes)
-        xl = f"xlabel={{{xlabel}}}, " if xlabel else ""
         lin, lout = labels(notes, f"l{name}")
+        # the legend is one entry per row above the plot box (the panel
+        # is half a column wide); the title sits above the legend
         return rf"""\begin{{axis}}[name={name}, {extra}xbar stacked, {SQ},
-  width=\linewidth, y=0.5cm, bar width=7pt, xmin=0, xmax={xmax},
-  xtick={{0,5,10,15,20}}, {xl}
-  ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
+  scale only axis, width=0.4\linewidth, y=0.45cm, bar width=7pt,
+  xmin=0, xmax={xmax}, xtick={{0,5,10,15,20}}, xlabel={{templates}},
+  ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ticklabels}}},
   ymin=-0.6, ymax={len(groups) - 0.4}, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left,
   title={{{title}}}, title style={{at={{(0,1)}}, anchor=south west,
-    xshift=-2pt, yshift=10pt}},
-  legend style={{at={{(0,1.0)}}, anchor=south west, legend columns=-1,
-    /tikz/every even column/.append style={{column sep=4pt}}}}]
+    xshift=-2pt, yshift=27pt, align=left}},
+  legend style={{at={{(0,1.0)}}, anchor=south west, legend columns=1,
+    yshift=1pt, row sep=-1.5pt}}, legend cell align=left]
 {chr(10).join(plots)}
 \legend{{{leg}}}
 {lin}
 \end{{axis}}
 {lout}
 """
-    top = panel("a", "exec_coverage", [(c[0],) + c[1:] for c in exec_cls],
-                "", "execution coverage", None)
-    bot = panel("b", "claim_full_contract", claim_cls,
-                "at={(a.south west)}, anchor=north west, yshift=-1.55cm, ",
-                "claim coverage (full result contract)", "templates")
+    left = panel("a", "exec_coverage", [(c[0],) + c[1:] for c in exec_cls],
+                 "", r"execution coverage\\\mbox{}", ytl)
+    right = panel("b", "claim_full_contract", claim_cls,
+                  "at={(a.south east)}, anchor=south west, xshift=0.45cm, ",
+                  r"claim coverage\\(full result contract)", "")
     return rf"""{GEN}
 % Sources: external_workloads/ldbc/coverage_annotation.jsonl and
 % benchmarks/results-v1/eval-ldbc-coverage.json.
 \begin{{figure}}[t]
 \centering
 \begin{{tikzpicture}}
-{top}{bot}\end{{tikzpicture}}
+{left}{right}\end{{tikzpicture}}
 \caption{{LDBC SNB read templates per group (template count in
 parentheses): how each is executed, and the first full-contract feature
 the claim grammar lacks, taking path, groupwise extremum, top-$k$, and
@@ -754,7 +761,7 @@ def fig_efficiency_stub() -> str:
 
 
 def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
-    """RQ4 evidence cost, three stacked panels in one column:
+    """RQ4 evidence cost, three panels in one row of a figure*:
     (a) the SQL path, an uncertified answer (page query) against a
         certified one (page query plus the COUNT-wrapped certificate);
     (b) verifier time against delivered result size (former
@@ -771,11 +778,15 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
     check_macro(mac, "pnSqlCertMs", f"{cert:.1f}")
     assert sc["host"] == ov["host"], "panels a and b must share a host"
 
-    # (a) two stacked rows: y=1 uncertified, y=0 certified
-    a_items = [(page / 2, 1, "text=black", r"page query \pnSqlPageMs"),
-               (page / 2, 0, "text=black", r"page query \pnSqlPageMs"),
-               (page + cert / 2, 0, "text=white",
-                r"certificate \pnSqlCertMs")]
+    # (a) two bar rows: y=1 uncertified, y=0 certified; labels sit
+    # inside the bars on two lines, so the panel keeps its words at a
+    # third of the text width
+    a_items = [(page / 2, 1, "text=black, align=center",
+                r"page query\\\pnSqlPageMs"),
+               (page / 2, 0, "text=black, align=center",
+                r"page query\\\pnSqlPageMs"),
+               (page + cert / 2, 0, "text=white, align=center",
+                r"certificate\\\pnSqlCertMs")]
     a_in, a_out = labels(a_items, "ca")
 
     # (b) verifier scaling, log-log
@@ -818,23 +829,30 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
     c_in, c_out = labels(c_items, "cc")
     xmax_c = 15
     assert max(ops) < xmax_c and max(sql) < min(ops) - 6, "re-place labels"
+    xmax_a = 30
+    assert page + cert < xmax_a, "panel a axis too short"
 
+    # three panels in one row of a figure*: every plot box has the same
+    # height and the same top edge; widths are fixed per panel so the
+    # tick labels and the plot boxes together fill the text width
+    H = r"height=2.6cm"
     title = (r"title style={at={(0,1)}, anchor=south west, xshift=-2pt, "
-             r"yshift=-1pt}")
+             r"yshift=-1pt, align=left}")
     return rf"""{GEN}
 % Sources: benchmarks/results-v1/evidence-overhead-itiger.json
 % (sql_certificate), eval-verifier-scaling.json (timing), and
 % eval-unsupported-composition.json (run_input_tokens,
 % descriptor_tokens_sql_frozen).
-\begin{{figure}}[t]
+\begin{{figure*}}[t]
 \centering
 \begin{{tikzpicture}}
-\begin{{axis}}[name=a, xbar stacked, {SQ}, width=0.86\linewidth,
-  y=0.5cm, bar width=8pt, xmin=0, xmax=30, xtick={{0,10,20,30}},
+\begin{{axis}}[name=a, xbar stacked, {SQ}, scale only axis,
+  width=0.2\textwidth, {H},
+  bar width=20pt, xmin=0, xmax={xmax_a}, xtick={{0,10,20,30}},
   ytick={{1,0}}, yticklabels={{uncertified,certified}},
   ymin=-0.6, ymax=1.6, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left, xlabel={{time (ms)}},
-  title={{SQL path: answer with and without a count certificate}},
+  title={{SQL path: answer with and\\without a count certificate}},
   {title}]
 \addplot[fill=figLight, draw=white, line width=0.4pt]
   coordinates {{({page},1) ({page},0)}};
@@ -843,12 +861,13 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
 {a_in}
 \end{{axis}}
 {a_out}
-\begin{{loglogaxis}}[name=b, at={{(a.south west)}}, anchor=north west,
-  yshift=-1.75cm, width=0.86\linewidth, height=4.8cm,
-  xmin=6, xmax=1.6e5, ymin=1e-4, ymax=3e2,
+\begin{{loglogaxis}}[name=b, at={{(a.north east)}}, anchor=north west,
+  xshift=1.35cm, scale only axis, width=0.25\textwidth, {H},
+  xmin=6, xmax=1.6e5, ymin=1.5e-5, ymax=2e4,
+  ytick={{1e-4,1e-2,1e0,1e2,1e4}},
   axis x line*=bottom, axis y line*=left, ymajorgrids,
   xlabel={{delivered rows}}, ylabel={{time (ms)}},
-  title={{verifier work per delivered result}}, {title},
+  title={{verifier work per\\delivered result}}, {title},
   legend style={{at={{(0.02,0.98)}}, anchor=north west}},
   legend cell align=left,
   every axis plot/.append style={{line width=0.8pt, mark size=1.5pt}}]
@@ -862,18 +881,19 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
 \coordinate (bbuild) at (axis cs:1e5,{t[-1]['build_ecqr_ms']:.5f});
 \coordinate (bcnt) at (axis cs:1e5,{t[-1]['verify_count_cert_ms']:.5f});
 \end{{loglogaxis}}
-\node[{DL}, anchor=south east, yshift=2pt] at (bbuild)
-  {{descriptor construction}};
+\node[{DL}, anchor=south east, yshift=2pt, align=right] at (bbuild)
+  {{descriptor\\construction}};
 \node[{DL}, anchor=north east, yshift=-2pt, text=figAccent] at (bcnt)
   {{exact count via certificate}};
-\begin{{axis}}[name=c, at={{(b.south west)}}, anchor=north west,
-  yshift=-1.75cm, width=0.86\linewidth, y=0.5cm, xmin=0, xmax={xmax_c},
+\begin{{axis}}[name=c, at={{(b.north east)}}, anchor=north west,
+  xshift=2.75cm, scale only axis, width=0.18\textwidth, {H},
+  xmin=0, xmax={xmax_c},
   xtick={{0,5,10,15}}, ytick={{2,1,0}},
   yticklabels={{Operators run input,SQL run input,ECQR descriptor}},
   ymin=-0.6, ymax=2.6, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left, xmajorgrids,
   xlabel={{tokens (thousands)}},
-  title={{model input per run against one descriptor (medians)}},
+  title={{model input per run against\\one descriptor (medians)}},
   {title}]
 \addplot[only marks, mark=*, mark size=1.8pt, figDark]
   coordinates {{{c_ops}}};
@@ -886,14 +906,14 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
 {c_out}
 \end{{tikzpicture}}
 \caption{{Evidence cost: an SQL answer without and with the
-count-wrapped query that certifies its exact cardinality (top), verifier
+count-wrapped query that certifies its exact cardinality (left), verifier
 time against delivered result size (middle), and the median serialized
 descriptor of the SQL runs against the median model input per task-run,
-one dot per dataset (bottom). Checking and carrying evidence are cheap;
+one dot per dataset (right). Checking and carrying evidence are cheap;
 producing a strong certificate can cost as much as the query it
 certifies.}}
 \label{{fig:cost}}
-\end{{figure}}
+\end{{figure*}}
 """
 
 
@@ -920,7 +940,6 @@ def main() -> int:
     sc = json.loads((RES / "eval-verifier-scaling.json").read_text())
     ov = json.loads((RES / "evidence-overhead-itiger.json").read_text())
     tp = json.loads((RES / "eval-trunc-probe.json").read_text())
-    ba = json.loads((RES / "eval-bird-agent.json").read_text())
     lr = json.loads((RES / "eval-ldbc-coverage.json").read_text())
     ann = [json.loads(line) for line in LDBC_ANN.read_text().splitlines()
            if line.strip()]
@@ -939,7 +958,7 @@ def main() -> int:
         "cost": lambda: fig_cost(sc, ov, uc, mac),
         "probe": lambda: fig_probe(tp, mac),
         "rq1": lambda: fig_rq1(bc, fm, mac),
-        "bird-census": lambda: fig_bird_census(ba, mac),
+        "bird-census": fig_bird_census_stub,
         "ldbc": lambda: fig_ldbc(ann, lr, mac),
     }
     names = args.only or ALL_FIGS
