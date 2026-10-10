@@ -460,6 +460,27 @@ def _git(*a: str) -> str:
         return ""
 
 
+def _head_sha() -> str:
+    """HEAD without the git binary (absent on iTiger compute nodes)."""
+    sha = _git("rev-parse", "HEAD")
+    if sha:
+        return sha
+    try:
+        head = (ROOT / ".git" / "HEAD").read_text().strip()
+        if not head.startswith("ref: "):
+            return head
+        ref = head[5:]
+        loose = ROOT / ".git" / ref
+        if loose.exists():
+            return loose.read_text().strip()
+        for line in (ROOT / ".git" / "packed-refs").read_text().splitlines():
+            if line.endswith(" " + ref):
+                return line.split()[0]
+    except OSError:
+        pass
+    return ""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--engines",
@@ -520,9 +541,10 @@ def main() -> int:
                       "concurrent writer",
         "freeze": str(FREEZE.relative_to(ROOT)),
         "freeze_sha256": hashlib.sha256(FREEZE.read_bytes()).hexdigest(),
-        "commit": _git("rev-parse", "HEAD"),
-        "worktree_dirty": bool(_git("status", "--porcelain", "--",
-                                    "tgms", "scripts")),
+        "commit": _head_sha(),
+        "worktree_dirty": (bool(_git("status", "--porcelain", "--",
+                                     "tgms", "scripts"))
+                           if _git("--version") else None),
         "host": socket.gethostname(),
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
         "date_utc": datetime.datetime.now(datetime.timezone.utc)
