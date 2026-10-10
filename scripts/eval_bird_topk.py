@@ -22,6 +22,13 @@ an input to the verdict.
     PYTHONPATH=. python scripts/eval_bird_topk.py \
         --db-root /path/to/MINIDEV/dev_databases \
         --json benchmarks/results-v1/eval-bird-topk.json
+
+With --boundary (receipt eval-bird-topk-v2.json) the ranked statement,
+the unlimited count of Q' and the rank-boundary probe run in ONE read
+transaction (sql_snapshot.consistent_page_and_count); the descriptor
+carries rank-boundary strictness, and each page is judged first as a
+sequence claim (route total_order) and then as a set claim (route
+boundary_strict). The v1 rule is reproduced without the flag.
 """
 
 from __future__ import annotations
@@ -36,6 +43,7 @@ import platform
 import re
 import sqlite3
 import subprocess
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -45,6 +53,8 @@ from sqlglot import expressions as exp
 from tgms.evidence.adapter_sql import (
     build_sql_topk_ecqr,
     parse_topk,
+    ranked_page_in_snapshot,
+    snapshot_context,
     sqlite_unique_keys,
 )
 from tgms.evidence.claims import TopK
@@ -191,6 +201,153 @@ def replay(runner, db: Path, sql: str, ukeys) -> dict:
     return rec
 
 
+def replay_v2(runner, db: Path, sql: str, ukeys) -> dict:
+    """v2: page, count and boundary probe in one read transaction; the
+    sequence claim and the set claim are both verified."""
+    shape = parse_topk(sql, ukeys)
+    rec = {"is_topk": shape.is_topk, "shape_reason": shape.reason,
+           "limit": shape.limit, "order": shape.order,
+           "order_total": shape.order_total,
+           "unique_key": shape.unique_key}
+    if not shape.is_topk:
+        return rec
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    t0 = time.monotonic()
+    con.set_progress_handler(
+        lambda: 1 if time.monotonic() - t0 > runner.CEILING_S else 0, 10_000)
+    try:
+        rr = ranked_page_in_snapshot(con, sql, shape, engine="sqlite")
+    except Exception as e:  # noqa: BLE001
+        rec["exec_error"] = f"{type(e).__name__}: {e}"[:300]
+        return rec
+    finally:
+        con.close()
+    rows = [[runner.norm_cell(v) for v in r] for r in rr.rows]
+    e = build_sql_topk_ecqr(rows=rows, sql=sql, shape=shape,
+                            store_id=f"bird:{db.stem}", engine="sqlite",
+                            engine_version=sqlite3.sqlite_version,
+                            candidate_count=rr.candidate_count,
+                            execution_context=snapshot_context(rr.token),
+                            boundary_strict=rr.boundary_strict,
+                            provenance={"seconds": rr.seconds})
+    key = [p[0] for p in shape.order]
+    dirs = [p[1] for p in shape.order]
+    j_seq = verify(TopK(rows=rows, key=key, dir=dirs, k=shape.limit),
+                   e, {"rows": rows})
+    j_set = verify(TopK(rows=rows, key=key, dir=dirs, k=shape.limit,
+                        as_set=True), e, {"rows": rows})
+    if j_seq.verdict is Verdict.SUPPORTED:
+        outcome = "certified_total_order"
+    elif j_set.verdict is Verdict.SUPPORTED:
+        outcome = "certified_boundary_strict_set"
+    elif not shape.order:
+        outcome = "no_order_by"
+    elif rr.boundary_status != "checked":
+        outcome = ("boundary_probe_unavailable"
+                   if rr.boundary_status == "unavailable"
+                   else "boundary_probe_error")
+    elif not rr.boundary_strict:
+        outcome = "boundary_tie"
+    else:
+        outcome = "other:" + j_set.verdict.value
+    rec.update({
+        "n_rows": len(rows), "n_candidates": rr.candidate_count,
+        "delivery_complete": e.scope.delivery_complete,
+        "boundary_status": rr.boundary_status,
+        "boundary_strict": rr.boundary_strict,
+        "verdict_sequence": j_seq.verdict.value,
+        "verdict_set": j_set.verdict.value,
+        "route": j_seq.route or j_set.route,
+        "outcome": outcome,
+        "seconds": {k: round(v, 6) for k, v in rr.seconds.items()},
+        "snapshot": {k: rr.token[k] for k in ("data_version",
+                                               "journal_mode")
+                     if k in rr.token},
+    })
+    probe = key_probe_sql(shape.candidate_sql, shape.limit)
+    if probe is None:
+        rec["tie_probe"] = "unavailable"
+        return rec
+    try:
+        keys, _c = runner.execute_sql(db, probe)
+    except Exception as e:  # noqa: BLE001
+        rec["tie_probe"] = f"error: {type(e).__name__}"
+        return rec
+    k, nk = shape.limit, len(shape.order)
+    keys = [r[-nk:] for r in keys]
+    adj = [keys[i] == keys[i + 1] for i in range(len(keys) - 1)]
+    rec["tie_probe"] = "ok"
+    rec["tie_inside_top_k"] = any(adj[:max(0, min(k, len(keys)) - 1)])
+    rec["tie_at_boundary"] = len(keys) > k and adj[k - 1]
+    return rec
+
+
+def _quantiles(xs: list[float]) -> dict:
+    xs = sorted(xs)
+    if not xs:
+        return {}
+    return {"n": len(xs), "median_ms": round(1e3 * xs[len(xs) // 2], 3),
+            "p90_ms": round(1e3 * xs[int(0.9 * (len(xs) - 1))], 3),
+            "max_ms": round(1e3 * xs[-1], 3),
+            "total_ms": round(1e3 * sum(xs), 3)}
+
+
+def summarize_v2(recs: list[dict]) -> dict:
+    topk = [r for r in recs if r.get("is_topk")]
+    ran = [r for r in topk if "outcome" in r]
+    checked = [r for r in ran if r["boundary_status"] == "checked"]
+    probed = [r for r in ran if r.get("tie_probe") == "ok"
+              and r["boundary_status"] == "checked"]
+    out = Counter(r["outcome"] for r in ran)
+    not_cert = {k: v for k, v in out.items()
+                if not k.startswith("certified")}
+    return {
+        "n_topk_shaped": len(topk),
+        "n_topk_with_order_by": sum(1 for r in topk if r["order"]),
+        "n_exec_error": sum(1 for r in topk if "exec_error" in r),
+        "certified_total_order": out.get("certified_total_order", 0),
+        "certified_boundary_strict_set": out.get(
+            "certified_boundary_strict_set", 0),
+        "certified_any": out.get("certified_total_order", 0)
+        + out.get("certified_boundary_strict_set", 0),
+        "not_certified_by_reason": dict(not_cert),
+        "not_certified_total": sum(not_cert.values()),
+        "boundary_set_certified_by_shape_reason": dict(Counter(
+            r["shape_reason"] for r in ran
+            if r["outcome"] == "certified_boundary_strict_set")),
+        "boundary_set_certified_full_page": sum(
+            1 for r in ran if r["outcome"] == "certified_boundary_strict_set"
+            and r["n_rows"] == r["limit"]),
+        "boundary_set_certified_exhausted": sum(
+            1 for r in ran if r["outcome"] == "certified_boundary_strict_set"
+            and r["n_rows"] < r["limit"]),
+        "boundary_measured": {
+            "checked": len(checked),
+            "strict": sum(1 for r in checked if r["boundary_strict"]),
+            "tie_at_boundary": sum(1 for r in checked
+                                   if not r["boundary_strict"]),
+            "unavailable_or_error": len(ran) - len(checked)},
+        "inner_tie_diagnostic": {
+            "probed": len(probed),
+            "strict_boundary_with_tie_inside_top_k": sum(
+                1 for r in probed if r["boundary_strict"]
+                and r["tie_inside_top_k"]),
+            "strict_boundary_no_tie_in_first_k_plus_1": sum(
+                1 for r in probed if r["boundary_strict"]
+                and not r["tie_inside_top_k"]),
+            "diagnostic_agrees_with_measured_boundary": sum(
+                1 for r in probed
+                if r["tie_at_boundary"] == (not r["boundary_strict"])),
+        },
+        "seconds": {
+            "page": _quantiles([r["seconds"]["page"] for r in ran]),
+            "boundary_probe": _quantiles([r["seconds"]["boundary"]
+                                          for r in checked]),
+            "count_and_commit": _quantiles([r["seconds"]["count_and_commit"]
+                                            for r in ran])},
+    }
+
+
 def summarize(recs: list[dict]) -> dict:
     topk = [r for r in recs if r.get("is_topk")]
     ran = [r for r in topk if "verdict" in r]
@@ -241,7 +398,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db-root", type=Path, required=True)
     ap.add_argument("--json", type=Path, required=True)
+    ap.add_argument("--boundary", action="store_true",
+                    help="v2: one read transaction per page with the "
+                         "rank-boundary probe; set and sequence claims")
     args = ap.parse_args()
+    rep = replay_v2 if args.boundary else replay
+    summ = summarize_v2 if args.boundary else summarize
     if args.json.exists():
         raise SystemExit(f"{args.json} exists; receipts are records")
     runner = _load_runner()
@@ -287,11 +449,11 @@ def main() -> int:
             "claim_form": it.get("claim_form"),
             "full_question_contract_covered": it.get(
                 "full_question_contract_covered"),
-            "gold": replay(runner, db, rec["gold_sql"], ukeys),
+            "gold": rep(runner, db, rec["gold_sql"], ukeys),
         }
         if it.get("sql"):
             item["agent_ranked_outer"] = outer_ranked(it["sql"])
-            item["agent"] = replay(runner, db, it["sql"], ukeys)
+            item["agent"] = rep(runner, db, it["sql"], ukeys)
         items.append(item)
 
     agent_recs = [i["agent"] for i in items if "agent" in i]
@@ -320,13 +482,18 @@ def main() -> int:
             "adjudicated_properties": a.get("semantic_properties"),
             "mismatch_kind": a.get("mismatch_kind"),
             "agent_topk_shaped": ag.get("is_topk", False),
-            "topk_verdict": ag.get("verdict"),
+            "topk_verdict": ag.get("verdict", ag.get("verdict_sequence")),
+            "topk_set_verdict": ag.get("verdict_set"),
+            "boundary_strict": ag.get("boundary_strict"),
             "shape_reason": ag.get("shape_reason"),
             "ordering_is_the_missing_part": "ORDERED_TOP_K" in (
                 a.get("semantic_properties") or []),
+            # an ordered-output contract needs the SEQUENCE certified;
+            # the boundary-strict set route does not cover it
             "would_cover_full_contract": (
                 "ORDERED_TOP_K" in (a.get("semantic_properties") or [])
-                and ag.get("verdict") == Verdict.SUPPORTED.value),
+                and ag.get("verdict", ag.get("verdict_sequence"))
+                == Verdict.SUPPORTED.value),
         })
     gained = sum(c["would_cover_full_contract"] for c in candidates)
 
@@ -335,7 +502,9 @@ def main() -> int:
         capture_output=True, text=True).stdout.strip()
     out = {
         "experiment": "TopK certification over the BIRD Mini-Dev 500 "
-                      "(replay of recorded agent SQL; no model calls)",
+                      "(replay of recorded agent SQL; no model calls)"
+                      + (", v2: total-order and boundary-strict routes"
+                         if args.boundary else ""),
         "commit": commit,
         "host": platform.node(),
         "slurm_job": os.environ.get("SLURM_JOB_ID"),
@@ -376,15 +545,41 @@ def main() -> int:
             "tie_probe": "diagnostic only: Q' re-projected onto its ORDER "
                          "BY keys, LIMIT k+1; adjacent equal key tuples "
                          "are ties",
+            **({"execution": "per ranked page, one sqlite read "
+                             "transaction (sql_snapshot."
+                             "consistent_page_and_count): the statement, "
+                             "then the rank-boundary probe (in its "
+                             "`between` hook), then COUNT(*) of Q'; "
+                             "600 s progress-handler ceiling; cells "
+                             "normalized by run_bird_agent.norm_cell",
+                "boundary_rule": "rank-boundary strictness at k: one "
+                                 "statement over Q' adding ROW_NUMBER() "
+                                 "and RANK() OVER the recorded ORDER BY; "
+                                 "strict iff min(|Q'|, k+1) <= k or the "
+                                 "row at position k+1 has RANK k+1 (the "
+                                 "engine's own peer test, so its NULL "
+                                 "placement and collation); DISTINCT and "
+                                 "compound statements are not probed "
+                                 "(not strict)",
+                "claims": "per page, TopK as a sequence claim (route "
+                          "total_order) and as a set claim (route "
+                          "boundary_strict, also served by total_order); "
+                          "a page counts once, under the first route that "
+                          "certifies",
+                "seconds": "page = BEGIN + data_version + statement; "
+                           "boundary_probe = the extra statement; "
+                           "count_and_commit = COUNT(*) of Q' + "
+                           "data_version recheck + COMMIT"}
+               if args.boundary else {}),
         },
-        "agent": summarize(agent_recs),
+        "agent": summ(agent_recs),
         "agent_on_gold_ranked_any_depth": {
             "n_gold_ranked_any_depth": len(gold96),
             "n_gold_ranked_outer": sum(i["gold_ranked_outer"]
                                        for i in items),
             "n_agent_sql": len(g96_agent),
-            **summarize(g96_agent)},
-        "gold": summarize(gold_recs),
+            **summ(g96_agent)},
+        "gold": summ(gold_recs),
         "strict_full_contract": {
             "before": prior.get("certified_full_contract"),
             "partial_contract_reasons_before": prior.get(
