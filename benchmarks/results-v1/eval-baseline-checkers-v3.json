@@ -1,0 +1,1773 @@
+{
+ "protocol": {
+  "matrix": "EvidenceBench v2 = v1 single-step cells (faultbench.all_cases order) + faultbench.composition_cases()",
+  "checkers": [
+   "value_only",
+   "taint_all",
+   "metadata_rules",
+   "ecqr_no_propagation",
+   "ecqr"
+  ],
+  "integrity_precheck": "result digest vs descriptor result_id (A4) before every checker",
+  "composition_execution": "tgms.agent.executor.Executor over a scripted router; propagate=True for ecqr, propagate=False for the rest",
+  "false_accept": "certified on a must_not_certify cell",
+  "false_reject": "not certified on a must_certify cell",
+  "deterministic": true
+ },
+ "cells_by_scope": {
+  "single_step": {
+   "n": 27,
+   "must_certify": 9,
+   "must_not_certify": 18
+  },
+  "composition": {
+   "n": 11,
+   "must_certify": 4,
+   "must_not_certify": 7
+  }
+ },
+ "summary": {
+  "value_only": {
+   "false_accepts": 15,
+   "false_rejects": 0,
+   "by_scope": {
+    "single_step": {
+     "n": 27,
+     "false_accepts": 8,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 7,
+     "false_rejects": 0
+    }
+   },
+   "by_family": {
+    "control": {
+     "n": 9,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "page_truncation": {
+     "n": 3,
+     "false_accepts": 3,
+     "false_rejects": 0
+    },
+    "execution_incomplete": {
+     "n": 3,
+     "false_accepts": 3,
+     "false_rejects": 0
+    },
+    "value_mutation": {
+     "n": 7,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "basis": {
+     "n": 2,
+     "false_accepts": 2,
+     "false_rejects": 0
+    },
+    "citation": {
+     "n": 1,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "integrity": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 7,
+     "false_rejects": 0
+    }
+   },
+   "fa_cells": [
+    "single_step/exact_count/page_truncation/9",
+    "single_step/complete_set/page_truncation/10",
+    "single_step/nonexistence/page_truncation/11",
+    "single_step/exact_count/execution_incomplete/12",
+    "single_step/complete_set/execution_incomplete/13",
+    "single_step/nonexistence/execution_incomplete/14",
+    "single_step/historical_basis/wrong_snapshot/22",
+    "single_step/historical_basis/unpinned_snapshot/23",
+    "composition/scalar/filter_then_reduce/27",
+    "composition/exact_count/filter_then_count/28",
+    "composition/complete_set/projection_then_complete_set/29",
+    "composition/scalar/scalar_from_incomplete_input/30",
+    "composition/nonexistence/filter_over_interrupted_scan/31",
+    "composition/exact_count/two_hop_truncation/32",
+    "composition/exact_count/mixed_basis_inputs/33"
+   ],
+   "fr_cells": []
+  },
+  "taint_all": {
+   "false_accepts": 3,
+   "false_rejects": 4,
+   "by_scope": {
+    "single_step": {
+     "n": 27,
+     "false_accepts": 2,
+     "false_rejects": 2
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 1,
+     "false_rejects": 2
+    }
+   },
+   "by_family": {
+    "control": {
+     "n": 9,
+     "false_accepts": 0,
+     "false_rejects": 2
+    },
+    "page_truncation": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "execution_incomplete": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "value_mutation": {
+     "n": 7,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "basis": {
+     "n": 2,
+     "false_accepts": 2,
+     "false_rejects": 0
+    },
+    "citation": {
+     "n": 1,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "integrity": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 1,
+     "false_rejects": 2
+    }
+   },
+   "fa_cells": [
+    "single_step/historical_basis/wrong_snapshot/22",
+    "single_step/historical_basis/unpinned_snapshot/23",
+    "composition/exact_count/mixed_basis_inputs/33"
+   ],
+   "fr_cells": [
+    "single_step/membership/clean/1",
+    "single_step/exact_count/clean/4",
+    "composition/membership/clean/34",
+    "composition/existence/clean/35"
+   ]
+  },
+  "metadata_rules": {
+   "false_accepts": 7,
+   "false_rejects": 0,
+   "by_scope": {
+    "single_step": {
+     "n": 27,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 7,
+     "false_rejects": 0
+    }
+   },
+   "by_family": {
+    "control": {
+     "n": 9,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "page_truncation": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "execution_incomplete": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "value_mutation": {
+     "n": 7,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "basis": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "citation": {
+     "n": 1,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "integrity": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 7,
+     "false_rejects": 0
+    }
+   },
+   "fa_cells": [
+    "composition/scalar/filter_then_reduce/27",
+    "composition/exact_count/filter_then_count/28",
+    "composition/complete_set/projection_then_complete_set/29",
+    "composition/scalar/scalar_from_incomplete_input/30",
+    "composition/nonexistence/filter_over_interrupted_scan/31",
+    "composition/exact_count/two_hop_truncation/32",
+    "composition/exact_count/mixed_basis_inputs/33"
+   ],
+   "fr_cells": []
+  },
+  "ecqr_no_propagation": {
+   "false_accepts": 7,
+   "false_rejects": 0,
+   "by_scope": {
+    "single_step": {
+     "n": 27,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 7,
+     "false_rejects": 0
+    }
+   },
+   "by_family": {
+    "control": {
+     "n": 9,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "page_truncation": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "execution_incomplete": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "value_mutation": {
+     "n": 7,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "basis": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "citation": {
+     "n": 1,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "integrity": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 7,
+     "false_rejects": 0
+    }
+   },
+   "fa_cells": [
+    "composition/scalar/filter_then_reduce/27",
+    "composition/exact_count/filter_then_count/28",
+    "composition/complete_set/projection_then_complete_set/29",
+    "composition/scalar/scalar_from_incomplete_input/30",
+    "composition/nonexistence/filter_over_interrupted_scan/31",
+    "composition/exact_count/two_hop_truncation/32",
+    "composition/exact_count/mixed_basis_inputs/33"
+   ],
+   "fr_cells": []
+  },
+  "ecqr": {
+   "false_accepts": 0,
+   "false_rejects": 0,
+   "by_scope": {
+    "single_step": {
+     "n": 27,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 0,
+     "false_rejects": 0
+    }
+   },
+   "by_family": {
+    "control": {
+     "n": 9,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "page_truncation": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "execution_incomplete": {
+     "n": 3,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "value_mutation": {
+     "n": 7,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "basis": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "citation": {
+     "n": 1,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "integrity": {
+     "n": 2,
+     "false_accepts": 0,
+     "false_rejects": 0
+    },
+    "composition": {
+     "n": 11,
+     "false_accepts": 0,
+     "false_rejects": 0
+    }
+   },
+   "fa_cells": [],
+   "fr_cells": []
+  }
+ },
+ "cells": [
+  {
+   "id": "single_step/membership/clean/0",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "membership",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R1",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/membership/clean/1",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "membership",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "witness rule: a delivered witness survives truncation",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R1",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/scalar/clean/2",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "scalar",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R2",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/exact_count/clean/3",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "exact_count",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/exact_count/clean/4",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "exact_count",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "the flagship: a certificate survives incomplete delivery",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/complete_set/clean/5",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "complete_set",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R4",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/existence/clean/6",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "existence",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R5",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/nonexistence/clean/7",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "nonexistence",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R6",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/historical_basis/clean/8",
+   "scope": "single_step",
+   "family": "control",
+   "claim": "historical_basis",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/exact_count/page_truncation/9",
+   "scope": "single_step",
+   "family": "page_truncation",
+   "claim": "exact_count",
+   "fault": "page_truncation",
+   "expectation": "must_not_certify",
+   "note": "the page count is a wrong number",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R3_PAGE",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/complete_set/page_truncation/10",
+   "scope": "single_step",
+   "family": "page_truncation",
+   "claim": "complete_set",
+   "fault": "page_truncation",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R4",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/nonexistence/page_truncation/11",
+   "scope": "single_step",
+   "family": "page_truncation",
+   "claim": "nonexistence",
+   "fault": "page_truncation",
+   "expectation": "must_not_certify",
+   "note": "an empty page of an incomplete result",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R6",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/exact_count/execution_incomplete/12",
+   "scope": "single_step",
+   "family": "execution_incomplete",
+   "claim": "exact_count",
+   "fault": "execution_incomplete",
+   "expectation": "must_not_certify",
+   "note": "rows-so-far is not a certificate",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R3_PAGE",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/complete_set/execution_incomplete/13",
+   "scope": "single_step",
+   "family": "execution_incomplete",
+   "claim": "complete_set",
+   "fault": "execution_incomplete",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R4",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/nonexistence/execution_incomplete/14",
+   "scope": "single_step",
+   "family": "execution_incomplete",
+   "claim": "nonexistence",
+   "fault": "execution_incomplete",
+   "expectation": "must_not_certify",
+   "note": "an interrupted search that found nothing proves nothing",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R6",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/exact_count/wrong_count/15",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "exact_count",
+   "fault": "wrong_count",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/scalar/wrong_scalar/16",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "scalar",
+   "fault": "wrong_scalar",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R2",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/complete_set/omitted_member/17",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "complete_set",
+   "fault": "omitted_member",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R4",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/complete_set/fabricated_member/18",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "complete_set",
+   "fault": "fabricated_member",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R4",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/membership/false_membership/19",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "membership",
+   "fault": "false_membership",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R1",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_NO_WITNESS",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_NO_WITNESS",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/existence/false_existence/20",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "existence",
+   "fault": "false_existence",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R5",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_NO_WITNESS",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_NO_WITNESS",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/nonexistence/false_nonexistence/21",
+   "scope": "single_step",
+   "family": "value_mutation",
+   "claim": "nonexistence",
+   "fault": "false_nonexistence",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R6",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/historical_basis/wrong_snapshot/22",
+   "scope": "single_step",
+   "family": "basis",
+   "claim": "historical_basis",
+   "fault": "wrong_snapshot",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R0_BASIS",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_BASIS_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_BASIS_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/historical_basis/unpinned_snapshot/23",
+   "scope": "single_step",
+   "family": "basis",
+   "claim": "historical_basis",
+   "fault": "unpinned_snapshot",
+   "expectation": "must_not_certify",
+   "note": "current-beliefs evidence cannot ground a pinned claim",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R0_BASIS",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_BASIS_MISMATCH",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_BASIS_MISMATCH",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/scalar/uncited_value/24",
+   "scope": "single_step",
+   "family": "citation",
+   "claim": "scalar",
+   "fault": "uncited_value",
+   "expectation": "must_not_certify",
+   "note": "the cited result has no such path",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "R2",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_NO_WITNESS",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_NO_WITNESS",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/membership/digest_mismatch/25",
+   "scope": "single_step",
+   "family": "integrity",
+   "claim": "membership",
+   "fault": "digest_mismatch",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "single_step/complete_set/digest_mismatch/26",
+   "scope": "single_step",
+   "family": "integrity",
+   "claim": "complete_set",
+   "fault": "digest_mismatch",
+   "expectation": "must_not_certify",
+   "note": "",
+   "decisions": {
+    "value_only": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "REJECTED_INTEGRITY",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/scalar/filter_then_reduce/27",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "scalar",
+   "fault": "filter_then_reduce",
+   "expectation": "must_not_certify",
+   "note": "count of a filter over a 3-of-8 page; the full-input count is 4",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R2",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "BLOCKED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/exact_count/filter_then_count/28",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "exact_count",
+   "fault": "filter_then_count",
+   "expectation": "must_not_certify",
+   "note": "the filter's own rows_total counts the page; full input gives 4",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/complete_set/projection_then_complete_set/29",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "complete_set",
+   "fault": "projection_then_complete_set",
+   "expectation": "must_not_certify",
+   "note": "projection of a truncated page, offered as the complete set",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R4",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/scalar/scalar_from_incomplete_input/30",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "scalar",
+   "fault": "scalar_from_incomplete_input",
+   "expectation": "must_not_certify",
+   "note": "mean weight over the page; the full-input mean is 3.5",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R2",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "BLOCKED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/nonexistence/filter_over_interrupted_scan/31",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "nonexistence",
+   "fault": "filter_over_interrupted_scan",
+   "expectation": "must_not_certify",
+   "note": "n6 is absent from the rows-so-far, not from the input",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R6",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/exact_count/two_hop_truncation/32",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "exact_count",
+   "fault": "two_hop_truncation",
+   "expectation": "must_not_certify",
+   "note": "truncation two row-local hops upstream of the cited step",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/exact_count/mixed_basis_inputs/33",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "exact_count",
+   "fault": "mixed_basis_inputs",
+   "expectation": "must_not_certify",
+   "note": "a same-state operator over inputs read at tt=100 and tt=200; the basis-compatibility definition requires the step to fail, while its own descriptor is complete and certified",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": false
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "ecqr": {
+     "certified": false,
+     "verdict": "NO_DESCRIPTOR",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/membership/clean/34",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "membership",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "rule (b): a row-local filter preserves a delivered witness",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R1",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/existence/clean/35",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "existence",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "rule (b): one delivered witness establishes existence",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": false,
+     "verdict": "TAINTED",
+     "ok": false
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R5",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/exact_count/clean/36",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "exact_count",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "complete input: the filter's certificate is kept",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R3_ROWS_TOTAL",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  },
+  {
+   "id": "composition/scalar/clean/37",
+   "scope": "composition",
+   "family": "composition",
+   "claim": "scalar",
+   "fault": "clean",
+   "expectation": "must_certify",
+   "note": "complete input: the reducer runs and its value is certified",
+   "decisions": {
+    "value_only": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "taint_all": {
+     "certified": true,
+     "verdict": "ACCEPT",
+     "ok": true
+    },
+    "metadata_rules": {
+     "certified": true,
+     "verdict": "R2",
+     "ok": true
+    },
+    "ecqr_no_propagation": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    },
+    "ecqr": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": true
+    }
+   }
+  }
+ ],
+ "v1_receipt_untouched": "eval-baseline-checkers.json",
+ "manifest": {
+  "commit": "2475ff3695ed6669b4c3006b48d9c4db51a3210f",
+  "host": "Xiaofeis-Mac-mini.local",
+  "date": "2026-10-10T03:27:39+00:00",
+  "python": "3.12.13",
+  "fix_commit": "2475ff3695ed6669b4c3006b48d9c4db51a3210f",
+  "fix": "[A2] executor: basis compatibility across a step's input descriptors (E_BASIS_MISMATCH before the operator runs, no descriptor; compute inherits its inputs' shared basis)",
+  "generated_by": "scripts/eval_baseline_checkers_v2.py at the commit above; fix_commit, fix and change_from_v2 annotated after the run"
+ },
+ "v2_receipt_untouched": "eval-baseline-checkers-v2.json (fb9357be, the record of the defect)",
+ "change_from_v2": {
+  "decisions_changed": [
+   {
+    "cell": "composition/exact_count/mixed_basis_inputs/33",
+    "checker": "ecqr",
+    "v2": {
+     "certified": true,
+     "verdict": "SUPPORTED",
+     "ok": false
+    },
+    "v3": {
+     "certified": false,
+     "verdict": "NO_DESCRIPTOR",
+     "ok": true
+    }
+   }
+  ],
+  "n_decisions_changed": 1,
+  "n_decisions_compared": 190
+ }
+}
