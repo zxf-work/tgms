@@ -100,10 +100,12 @@ def test_taint_all_over_rejects_witness_controls(v2):
                for c in witness)
 
 
-@pytest.mark.xfail(strict=True, reason="the executor does not check basis "
-                   "compatibility across a step's inputs")
 def test_mixed_basis_inputs_are_not_certified(v2):
-    assert not _by(v2, "mixed_basis_inputs")["decisions"]["ecqr"]["certified"]
+    d = _by(v2, "mixed_basis_inputs")["decisions"]
+    assert not d["ecqr"]["certified"]
+    assert d["ecqr"]["verdict"] == "NO_DESCRIPTOR"
+    # the check belongs to propagation: with it off the step still runs
+    assert d["ecqr_no_propagation"]["certified"]
 
 
 def test_executor_propagation_switch():

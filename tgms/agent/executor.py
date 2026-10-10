@@ -89,8 +89,10 @@ class Executor:
                  propagate: bool = True) -> None:
         self.router = router
         #: False disables cross-step evidence propagation (Lemma 3.10 rules
-        #: (a) and (c)): reducers over truncated inputs run, and each step's
-        #: descriptor is built from its own envelope alone. Ablation only.
+        #: (a) and (c)) and the basis-compatibility check: reducers over
+        #: truncated inputs and steps over mixed-basis inputs run, and each
+        #: step's descriptor is built from its own envelope alone.
+        #: Ablation only.
         self.propagate = propagate
         self.results = result_store
         #: production keeps the 60 s default; the benchmark oracle lane
@@ -114,6 +116,7 @@ class Executor:
         # are mutually comparable and never comparable across runs (round-3
         # review §8 — the token travels in the descriptor itself)
         ctx_token = uuid.uuid4().hex[:16]
+        store_id = str(getattr(self.router.adapter, "path", "store"))
         outputs: dict[str, Any] = {}
         failed: set[str] = set()
         total_rows = 0
@@ -154,6 +157,27 @@ class Executor:
                 or next((s2 for s2 in trace.steps
                          if s2["step_id"] == d), {}).get("upstream_truncated")
                 for d in step.depends_on)
+
+            # basis compatibility (Def. basis compatibility): a step whose
+            # input bases violate its operator's declaration fails before it
+            # runs and emits no descriptor
+            in_ecqrs: list[Any] = []
+            basis = None
+            if self.propagate:
+                from tgms.evidence.adapter_tgms import BasisMismatch, step_basis
+                in_ecqrs = self._input_ecqrs(step.depends_on, trace)
+                try:
+                    basis = step_basis(step.op, resolved,
+                                       [e.basis for e in in_ecqrs],
+                                       store_id, ctx_token)
+                except BasisMismatch as e:
+                    rec.update(status="failed", error={
+                        "error": "E_BASIS_MISMATCH", "message": str(e),
+                        "details": {"op": e.op, "bases": [
+                            dict(vars(b)) for b in e.bases]}})
+                    trace.steps.append(rec)
+                    failed.add(sid)
+                    continue
 
             if self.propagate and upstream_truncated \
                     and step.op == "compute" \
@@ -204,18 +228,10 @@ class Executor:
                 # inputs were delivery-incomplete (M2, D-100)
                 try:
                     from tgms.evidence.adapter_tgms import build_ecqr
-                    from tgms.evidence.ecqr import ECQR as _ECQR
-                    inputs = []
-                    for d in step.depends_on:
-                        drec = next((s for s in trace.steps
-                                     if s["step_id"] == d), None)
-                        if drec and drec.get("ecqr"):
-                            inputs.append(_ECQR.from_json(drec["ecqr"]))
                     rec["ecqr"] = build_ecqr(
-                        res, store_id=str(getattr(
-                            self.router.adapter, "path", "store")),
-                        input_ecqrs=inputs if self.propagate else None,
-                        execution_context=ctx_token).to_json()
+                        res, store_id=store_id,
+                        input_ecqrs=in_ecqrs if self.propagate else None,
+                        execution_context=ctx_token, basis=basis).to_json()
                 except Exception:  # descriptor failure must never fail a step
                     rec["ecqr"] = None
                 outputs[sid] = res
@@ -232,6 +248,21 @@ class Executor:
         trace.wall_ms = (time.perf_counter() - t_start) * 1000
         self._resolve_answer(plan, outputs, trace)
         return trace
+
+    @staticmethod
+    def _input_ecqrs(depends_on: list[str], trace: Trace) -> list[Any]:
+        """The descriptors of a step's dependencies, in edge order; a
+        dependency without a readable descriptor contributes none."""
+        from tgms.evidence.ecqr import ECQR
+        out = []
+        for d in depends_on:
+            drec = next((s for s in trace.steps if s["step_id"] == d), None)
+            if drec and drec.get("ecqr"):
+                try:
+                    out.append(ECQR.from_json(drec["ecqr"]))
+                except Exception:  # an unreadable descriptor is no input
+                    continue
+        return out
 
     @staticmethod
     def _resolve_answer(plan: Plan, outputs: dict[str, Any], trace: Trace) -> None:
