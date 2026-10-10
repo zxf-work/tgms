@@ -161,20 +161,28 @@ class Executor:
             # basis compatibility (Def. basis compatibility): a step whose
             # input bases violate its operator's declaration fails before it
             # runs and emits no descriptor
-            in_ecqrs: list[Any] = []
+            in_ecqrs: list[Any] | None = []
             basis = None
             if self.propagate:
                 from tgms.evidence.adapter_tgms import BasisMismatch, step_basis
-                in_ecqrs = self._input_ecqrs(step.depends_on, trace)
                 try:
-                    basis = step_basis(step.op, resolved,
-                                       [e.basis for e in in_ecqrs],
-                                       store_id, ctx_token)
-                except BasisMismatch as e:
+                    in_ecqrs = self._input_ecqrs(step.depends_on, trace)
+                except Exception:  # unreadable input: this step gets none
+                    in_ecqrs = None
+                mismatch = None
+                if in_ecqrs is not None:
+                    try:
+                        basis = step_basis(step.op, resolved,
+                                           [e.basis for e in in_ecqrs],
+                                           store_id, ctx_token)
+                    except BasisMismatch as e:
+                        mismatch = e
+                if mismatch is not None:
                     rec.update(status="failed", error={
-                        "error": "E_BASIS_MISMATCH", "message": str(e),
-                        "details": {"op": e.op, "bases": [
-                            dict(vars(b)) for b in e.bases]}})
+                        "error": "E_BASIS_MISMATCH",
+                        "message": str(mismatch),
+                        "details": {"op": mismatch.op, "bases": [
+                            dict(vars(b)) for b in mismatch.bases]}})
                     trace.steps.append(rec)
                     failed.add(sid)
                     continue
@@ -228,6 +236,8 @@ class Executor:
                 # inputs were delivery-incomplete (M2, D-100)
                 try:
                     from tgms.evidence.adapter_tgms import build_ecqr
+                    if in_ecqrs is None:
+                        raise ValueError("an input descriptor is unreadable")
                     rec["ecqr"] = build_ecqr(
                         res, store_id=store_id,
                         input_ecqrs=in_ecqrs if self.propagate else None,
@@ -252,16 +262,13 @@ class Executor:
     @staticmethod
     def _input_ecqrs(depends_on: list[str], trace: Trace) -> list[Any]:
         """The descriptors of a step's dependencies, in edge order; a
-        dependency without a readable descriptor contributes none."""
+        dependency that emitted no descriptor contributes none."""
         from tgms.evidence.ecqr import ECQR
         out = []
         for d in depends_on:
             drec = next((s for s in trace.steps if s["step_id"] == d), None)
             if drec and drec.get("ecqr"):
-                try:
-                    out.append(ECQR.from_json(drec["ecqr"]))
-                except Exception:  # an unreadable descriptor is no input
-                    continue
+                out.append(ECQR.from_json(drec["ecqr"]))
         return out
 
     @staticmethod

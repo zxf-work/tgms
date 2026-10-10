@@ -210,3 +210,15 @@ def test_propagation_off_skips_the_check_and_keeps_the_old_basis():
     s3 = steps["s3"]
     assert s3["status"] == "ok"
     assert not s3["ecqr"]["basis"]["pinned"]     # the envelope's own read
+
+
+def test_unreadable_input_descriptor_yields_no_descriptor(monkeypatch):
+    def boom(depends_on, trace):
+        if depends_on:
+            raise ValueError("unreadable")
+        return []
+    monkeypatch.setattr(Executor, "_input_ecqrs", staticmethod(boom))
+    steps, _ = _run([_scan("s1", "r", 100), _scan("s2", "q", 200),
+                     _intersect()])
+    assert steps["s3"]["status"] == "ok"
+    assert steps["s3"]["ecqr"] is None
