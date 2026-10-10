@@ -64,11 +64,29 @@ class Ranking:
     capability: True only when the adapter established that `order` is a
     deterministic total order on the candidate rows; False means not
     established, never "known to tie".
+
+    `boundary_strict` is the second, dynamic ordering capability
+    (rank-boundary strictness): True only when the adapter checked, on
+    the basis named by `boundary_basis` (see `basis_identity`), that
+    under `order` the row at rank `limit` sorts strictly before the row
+    at rank `limit`+1, or that fewer than `limit`+1 candidates exist.
+    Then the SET of the first `limit` rows of Q' is unique whatever tie
+    order the engine chose, though their sequence need not be.
     """
     candidate_domain: dict[str, Any]
     limit: int
     order: list[list[str]]
     order_total: bool = False
+    boundary_strict: bool = False
+    boundary_basis: dict[str, Any] | None = None
+
+
+def basis_identity(b: Basis) -> dict[str, Any]:
+    """The comparable identity of a basis: two reads share a basis iff
+    their identities are equal (store, transaction time, pinnedness and,
+    for a current basis, the execution-context token)."""
+    return {"store": b.store, "as_of_tt": b.as_of_tt, "pinned": b.pinned,
+            "execution_context": b.execution_context}
 
 
 @dataclass

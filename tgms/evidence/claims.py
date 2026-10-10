@@ -107,12 +107,19 @@ class TopK(Claim):
     LIMIT). When fewer than k candidates exist, `rows` is all of them.
 
     `key`/`dir` name the WHOLE ordering, tie-break keys included; the
-    claim is about that total order, not about a coarser key prefix.
+    claim is about that order, not about a coarser key prefix.
+
+    With `as_set=True` the claim asserts only the SET of those rows
+    (duplicate-insensitive, order among them not asserted): the first k
+    rows as a set, which is well defined whenever the row at rank k
+    sorts strictly before the row at rank k+1, even if the order is not
+    total.
     """
     rows: list[Any] | None = None
     key: Any = None            # str or list[str]
     k: int = 0
     dir: Any = "asc"           # str or list[str], aligned with key
+    as_set: bool = False
 
     kind = "top_k"
 

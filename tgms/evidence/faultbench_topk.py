@@ -9,7 +9,7 @@ three checkers:
                     integrity precheck; a step blocked by Lemma 3.10
                     rule (a) emits no descriptor and is reported BLOCKED;
 - ``b1_value_only`` certifies iff the claimed rows are the cited rows,
-                    in order; ignores order totality, execution, k and
+                    in order (as a set for a set claim); ignores order totality, execution, k and
                     basis (the value-only baseline);
 - ``b2_taint_all``  rejects whenever delivery or execution is not
                     certified complete, otherwise behaves as b1 (the
@@ -28,7 +28,7 @@ from typing import Any
 
 from tgms.core.model import canonical_json, sha256_hex
 from tgms.evidence.claims import TopK
-from tgms.evidence.ecqr import ECQR, Basis, Ranking, Scope
+from tgms.evidence.ecqr import ECQR, Basis, Ranking, Scope, basis_identity
 from tgms.evidence.verify import Verdict, verify
 
 BASIS_TT = 100
@@ -60,21 +60,30 @@ def _digest(result: Any) -> str:
 def _ecqr(result: dict, *, order: list[list[str]] | None, total: bool,
           limit: int, delivery: bool, execution: bool = True,
           pinned: bool = True, as_of: int = BASIS_TT,
-          result_id: str | None = None) -> ECQR:
+          result_id: str | None = None, boundary: bool = False,
+          boundary_as_of: int | None = None) -> ECQR:
+    basis = Basis(store="bench", as_of_tt=as_of, pinned=pinned)
+    bb = None
+    if boundary:
+        bb = basis_identity(Basis(
+            store="bench", pinned=pinned,
+            as_of_tt=as_of if boundary_as_of is None else boundary_as_of))
     return ECQR(
         result_id=result_id or _digest(result),
-        basis=Basis(store="bench", as_of_tt=as_of, pinned=pinned),
+        basis=basis,
         scope=Scope(domain=dict(DOMAIN), execution_complete=execution,
                     delivery_complete=delivery,
                     rows_returned=len(result["rows"])),
         ranking=(None if order is None else Ranking(
             candidate_domain=dict(DOMAIN), limit=limit,
-            order=[list(p) for p in order], order_total=total)))
+            order=[list(p) for p in order], order_total=total,
+            boundary_strict=boundary, boundary_basis=bb)))
 
 
-def _claim(rows, order, k, basis_tt=None) -> TopK:
+def _claim(rows, order, k, basis_tt=None, as_set=False) -> TopK:
     return TopK(rows=[list(r) for r in rows], key=[p[0] for p in order],
-                dir=[p[1] for p in order], k=k, basis_tt=basis_tt)
+                dir=[p[1] for p in order], k=k, basis_tt=basis_tt,
+                as_set=as_set)
 
 
 @dataclass
@@ -95,20 +104,32 @@ class Cell:
 def truth(cell: Cell) -> bool:
     """Is the claim true of the full candidate relation it is about?
 
-    True iff the claimed order is a total order on the candidates (no
-    two candidates share every key value), the claimed basis is the
-    relation's basis, and the claimed rows are the first k candidates
-    under that order (all of them when fewer than k exist).
+    A sequence claim is true iff the claimed order is a total order on
+    the candidates (no two candidates share every key value) and the
+    claimed rows are the first k candidates under it (all of them when
+    fewer than k exist). A set claim (`as_set`) is true iff the first k
+    candidates form a unique set (fewer than k+1 candidates, or the key
+    at rank k differs from the key at rank k+1) and the claimed rows are
+    that set. Either way the claimed basis must be the relation's.
     """
     c = cell.claim
     if c.basis_tt is not None and c.basis_tt != BASIS_TT:
         return False
     order = c.order()
     col = {"uid": 0, "score": 1}
-    keys = [tuple(r[col[k]] for k, _ in order) for r in cell.candidates]
+    ranked = _sorted(cell.candidates, order)
+
+    def key(r):
+        return tuple(r[col[k]] for k, _ in order)
+    if c.as_set:
+        if len(ranked) > c.k and key(ranked[c.k - 1]) == key(ranked[c.k]):
+            return False
+        return ({tuple(r) for r in c.rows}
+                == {tuple(r) for r in ranked[:c.k]})
+    keys = [key(r) for r in cell.candidates]
     if len(set(keys)) != len(keys):
         return False
-    return [list(r) for r in c.rows] == _sorted(cell.candidates, order)[:c.k]
+    return [list(r) for r in c.rows] == ranked[:c.k]
 
 
 def cases() -> list[Cell]:
@@ -207,6 +228,52 @@ def cases() -> list[Cell]:
         _ecqr(page3, order=TOTAL, total=True, limit=3, delivery=False),
         tampered, "must_not_certify",
         ("REJECTED_INTEGRITY", "REJECTED_INTEGRITY", "REJECTED_INTEGRITY"))
+    cells += _set_route_cells()
+    return cells
+
+
+def _set_route_cells() -> list[Cell]:
+    """Cells for the boundary-strict route: the order is score DESC alone
+    (not total; n1 and n3 tie at 90), and the adapter records whether
+    rank k sorts strictly before rank k+1."""
+    S = Verdict.SUPPORTED.value
+    NT = "UNSUPPORTED_ORDER_NOT_TOTAL"
+    cells: list[Cell] = []
+
+    def add(fault, claim, e, result, expectation, expected, **kw):
+        cells.append(Cell(fault, claim, e, result, expectation,
+                          dict(zip(CHECKERS, expected)), **kw))
+
+    coarse = _sorted(CANDIDATES, COARSE)          # n1, n3, n7, n2, ...
+    top2 = {"rows": coarse[:2]}                   # tie inside, 90 > 80
+    e_strict = _ecqr(top2, order=COARSE, total=False, limit=2,
+                     delivery=False, boundary=True)
+    add("set_boundary_strict_inner_tie", _claim(coarse[:2], COARSE, 2,
+                                                as_set=True),
+        e_strict, top2, "must_certify", (S, S, "REJECT"),
+        note="{n1, n3} is the unique top-2 set; their order is a tie")
+    add("sequence_boundary_strict_inner_tie", _claim(coarse[:2], COARSE, 2),
+        e_strict, top2, "must_not_certify", (NT, S, "REJECT"),
+        note="the set is certified, the sequence n1 before n3 is not")
+    tie1 = {"rows": [["n3", 90]]}
+    add("set_boundary_tie", _claim([["n3", 90]], COARSE, 1, as_set=True),
+        _ecqr(tie1, order=COARSE, total=False, limit=1, delivery=False),
+        tie1, "must_not_certify", (NT, S, "REJECT"),
+        note="rank 1 and rank 2 tie: {n1} and {n3} are both valid top-1")
+    few = [["n1", 90], ["n3", 90], ["n7", 80]]
+    few_page = {"rows": _sorted(few, COARSE)}
+    add("set_boundary_fewer_than_k_certified",
+        _claim(few_page["rows"], COARSE, 5, as_set=True),
+        _ecqr(few_page, order=COARSE, total=False, limit=5, delivery=True,
+              boundary=True),
+        few_page, "must_certify", (S, S, S), candidates=few,
+        note="3 < k+1 candidates: the boundary is strict trivially")
+    add("set_boundary_other_basis", _claim([["n3", 90]], COARSE, 1,
+                                           as_set=True),
+        _ecqr(tie1, order=COARSE, total=False, limit=1, delivery=False,
+              boundary=True, boundary_as_of=BASIS_TT + 1),
+        tie1, "must_not_certify", ("UNSUPPORTED_BASIS_MISMATCH", S, "REJECT"),
+        note="strict on another state; on this one rank 1 and 2 tie")
     return cells
 
 
@@ -214,7 +281,10 @@ def cases() -> list[Cell]:
 
 def _b1(claim: TopK, e: ECQR, result: Any) -> bool:
     rows = [list(r) for r in (result.get("rows") or [])]
-    return [list(r) for r in (claim.rows or [])] == rows
+    mine = [list(r) for r in (claim.rows or [])]
+    if claim.as_set:
+        return {tuple(r) for r in mine} == {tuple(r) for r in rows}
+    return mine == rows
 
 
 def _b2(claim: TopK, e: ECQR, result: Any) -> bool:

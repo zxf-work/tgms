@@ -16,11 +16,12 @@ a page.
 from __future__ import annotations
 
 import sqlite3
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from tgms.core.model import OPEN_END, canonical_json, sha256_hex
-from tgms.evidence.ecqr import ECQR, Basis, Ranking, Scope
+from tgms.evidence.ecqr import ECQR, Basis, Ranking, Scope, basis_identity
 
 
 def build_sql_ecqr(*, rows: list[Any], sql: str,
@@ -251,7 +252,11 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
                         store_id: str, as_of_tt: int = OPEN_END,
                         engine: str = "sqlite", engine_version: str = "",
                         candidate_count: int | None = None,
-                        input_ecqrs: list[ECQR] | None = None) -> ECQR:
+                        input_ecqrs: list[ECQR] | None = None,
+                        execution_context: str | None = None,
+                        boundary_strict: bool = False,
+                        boundary_basis: dict[str, Any] | None = None,
+                        provenance: dict[str, Any] | None = None) -> ECQR:
     """Ranked-page descriptor for one completed `ORDER BY ... LIMIT k`
     statement. The domain is Q' (`shape.candidate_sql`): the page is the
     first min(k, |R*(Q')|) rows of Q'. Delivery over Q' is certified
@@ -259,6 +264,12 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
     (the candidates are exhausted) or when `candidate_count`, an
     unlimited count of Q' on the same basis, equals the page length;
     that count is also Q''s cardinality certificate.
+
+    `boundary_strict` records rank-boundary strictness at rank k; its
+    basis defaults to this page's basis (the check ran in the page's own
+    read transaction, as `ranked_page_in_snapshot` does) unless
+    `boundary_basis` names another. `execution_context` names the read
+    transaction of an unpinned basis.
 
     Raises TopKBlocked when an input is not delivery-certified complete.
     """
@@ -276,11 +287,16 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
                    else delivered if exhausted else None)
     q_prime = {"sql": " ".join(shape.candidate_sql.split()),
                "params": params or []}
+    basis = Basis(store=store_id, as_of_tt=as_of_tt,
+                  pinned=as_of_tt != OPEN_END,
+                  execution_context=(None if as_of_tt != OPEN_END
+                                     else execution_context))
+    if boundary_strict and boundary_basis is None:
+        boundary_basis = basis_identity(basis)
     return ECQR(
         result_id=sha256_hex(canonical_json(
             {"rows": rows, "sql": sql, "params": params or []})),
-        basis=Basis(store=store_id, as_of_tt=as_of_tt,
-                    pinned=as_of_tt != OPEN_END),
+        basis=basis,
         scope=Scope(domain=dict(q_prime),
                     execution_complete=True,  # a completed statement
                     delivery_complete=delivery_complete,
@@ -288,10 +304,157 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
                     exact_cardinality=cardinality),
         exactness="exact",
         provenance={"engine": engine, "statement": " ".join(sql.split()),
-                    "inputs": [e.result_id for e in (input_ecqrs or [])]},
+                    "inputs": [e.result_id for e in (input_ecqrs or [])],
+                    **(provenance or {})},
         semantics={"engine": engine, "version": engine_version,
                    "canonicalization": "tgms-canonical-json-1"},
         ranking=Ranking(candidate_domain=dict(q_prime), limit=shape.limit,
                         order=[list(p) for p in shape.order],
-                        order_total=shape.order_total),
+                        order_total=shape.order_total,
+                        boundary_strict=bool(boundary_strict),
+                        boundary_basis=(boundary_basis if boundary_strict
+                                        else None)),
     )
+
+
+# ------------------------------------------------- rank-boundary strictness
+
+def _resolved_order_keys(tree: Any, dialect: str) -> list[Any] | None:
+    """The ORDER BY expressions of `tree`, with result-column aliases and
+    ordinals replaced by the expressions they name (SQLite resolves an
+    ORDER BY identifier to a result alias first)."""
+    from sqlglot import expressions as exp
+    order = tree.args.get("order")
+    if order is None:
+        return None
+    sel = list(tree.expressions)
+    aliases = {e.alias.lower(): e.this for e in sel
+               if isinstance(e, exp.Alias)}
+    out = []
+    for o in order.expressions:
+        node = o.this
+        pos = _int_literal(node)
+        if pos is not None and 1 <= pos <= len(sel):
+            node = sel[pos - 1]
+            node = node.this if isinstance(node, exp.Alias) else node
+        elif (isinstance(node, exp.Column) and not node.table
+              and node.name.lower() in aliases):
+            node = aliases[node.name.lower()]
+        out.append(exp.Ordered(this=node.copy(), desc=bool(o.args.get("desc")),
+                               nulls_first=o.args.get("nulls_first")))
+    return out
+
+
+def boundary_probe_sql(candidate_sql: str, k: int,
+                       dialect: str = "sqlite") -> str | None:
+    """One statement over Q' deciding rank-boundary strictness at rank k.
+
+    Q' keeps its FROM/WHERE/GROUP BY/HAVING and projection; two window
+    columns over the recorded ORDER BY are added, ROW_NUMBER (a position)
+    and RANK (1 + the number of rows sorting strictly before). The
+    engine's own peer test decides ties, so NULL placement and collation
+    are exactly those of its ORDER BY. The statement returns
+    (n, rank_at_k_plus_1) with n = min(|Q'|, k+1); the boundary is strict
+    iff n <= k or rank_at_k_plus_1 = k+1. None when the probe cannot
+    preserve Q''s rows (DISTINCT, compound queries) or there is no ORDER
+    BY; an unavailable probe is not strict.
+    """
+    import sqlglot
+    from sqlglot import expressions as exp
+    try:
+        t = sqlglot.parse_one(candidate_sql, read=dialect)
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(t, exp.Select) or t.args.get("distinct"):
+        return None
+    keys = _resolved_order_keys(t, dialect)
+    if not keys:
+        return None
+
+    def win(fn: str) -> Any:
+        return exp.Window(this=exp.Anonymous(this=fn, expressions=[]),
+                          order=exp.Order(expressions=[o.copy()
+                                                       for o in keys]))
+    inner = t.copy()
+    inner.set("order", None)
+    inner.set("limit", None)
+    inner.set("offset", None)
+    inner.set("expressions", [e.copy() for e in t.expressions] + [
+        exp.alias_(win("ROW_NUMBER"), "_tgms_rn"),
+        exp.alias_(win("RANK"), "_tgms_rk")])
+    body = inner.sql(dialect=dialect)
+    return (f"SELECT COUNT(*), MAX(CASE WHEN _tgms_rn = {k + 1} "
+            f"THEN _tgms_rk END) FROM ({body}) AS _tgms_b "
+            f"WHERE _tgms_rn <= {k + 1}")
+
+
+def boundary_is_strict(n: Any, rank_k1: Any, k: int) -> bool:
+    """Decode the probe's (n, rank_at_k_plus_1)."""
+    if not isinstance(n, int):
+        return False
+    if n <= k:
+        return True
+    return isinstance(rank_k1, int) and rank_k1 == k + 1
+
+
+@dataclass
+class RankedRead:
+    """A ranked page, its candidate count and its boundary check, all
+    read in one transaction (one basis)."""
+    rows: list[tuple]
+    candidate_count: int
+    boundary_strict: bool
+    boundary_status: str          # "checked" | "unavailable" | "error: ..."
+    token: dict[str, Any]
+    seconds: dict[str, float]     # page / boundary / count (+ commit)
+
+
+def ranked_page_in_snapshot(conn: Any, sql: str, shape: TopKShape, *,
+                            engine: str = "sqlite",
+                            dialect: str | None = None) -> RankedRead:
+    """Run the ranked statement, the rank-boundary probe and the
+    unlimited count of Q' in ONE read transaction, through
+    `sql_snapshot.consistent_page_and_count`: the probe runs in its
+    `between` hook, after the page and before the count, on the same
+    connection inside the same transaction, so all three are facts about
+    one basis. A probe that cannot be built or fails is recorded as not
+    strict; it never aborts the page.
+    """
+    from tgms.evidence import sql_snapshot as ss
+    if not shape.is_topk or shape.candidate_sql is None:
+        raise ValueError(f"not a top-k statement ({shape.reason})")
+    dialect = dialect or {"postgres": "postgres"}.get(engine, engine)
+    probe = boundary_probe_sql(shape.candidate_sql, shape.limit, dialect)
+    state: dict[str, Any] = {"strict": False,
+                             "status": "unavailable" if probe is None
+                             else "checked"}
+    marks: dict[str, float] = {}
+
+    def between() -> None:
+        marks["page_end"] = time.perf_counter()
+        if probe is not None:
+            try:
+                (n, rk1), = ss._run(conn, ss._engine(engine), probe)
+                state["strict"] = boundary_is_strict(n, rk1, shape.limit)
+            except Exception as e:  # noqa: BLE001
+                state["status"] = f"error: {type(e).__name__}: {e}"[:300]
+        marks["boundary_end"] = time.perf_counter()
+
+    t0 = time.perf_counter()
+    rows, total, token = ss.consistent_page_and_count(
+        conn, shape.candidate_sql, sql, engine=engine, between=between)
+    t1 = time.perf_counter()
+    return RankedRead(
+        rows=rows, candidate_count=total,
+        boundary_strict=bool(state["strict"]),
+        boundary_status=state["status"], token=token,
+        seconds={"page": marks["page_end"] - t0,
+                 "boundary": marks["boundary_end"] - marks["page_end"],
+                 "count_and_commit": t1 - marks["boundary_end"]})
+
+
+def snapshot_context(token: dict[str, Any]) -> str:
+    """Execution-context token naming one read transaction."""
+    ident = ",".join(f"{k}={token[k]}" for k in sorted(token)
+                     if k not in ("consistent", "isolation"))
+    return f"txn[{ident}]"
