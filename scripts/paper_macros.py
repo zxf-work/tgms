@@ -423,7 +423,23 @@ BL_SINGLE_ORDER = ["controls", "delivery incompleteness",
                    "execution incompleteness", "value / witness", "basis",
                    "integrity"]
 SNAP_ENGINE = {"sqlite-wal": "SQLite, WAL", "sqlite-rollback":
-               "SQLite, rollback journal", "duckdb": "DuckDB"}
+               "SQLite, rollback journal", "duckdb": "DuckDB",
+               "postgres": "PostgreSQL"}
+#: the snapshot stress test's receipts, all under SNAPSHOT_FREEZE.md: the
+#: SQLite/DuckDB legs, then the PostgreSQL leg (iTiger job 272379)
+SNAP_RECEIPTS = ["eval-sql-snapshot.json", "eval-sql-snapshot-pg.json"]
+
+
+def _snapshot_receipts() -> list[dict]:
+    """The snapshot receipts, checked to share one frozen protocol."""
+    rs = [_load(n) for n in SNAP_RECEIPTS]
+    assert len({r["freeze_sha256"] for r in rs}) == 1
+    keys = set().union(*(r["protocol"] for r in rs)) - {"engines"}
+    for k in keys:
+        assert len({json.dumps(r["protocol"].get(k)) for r in rs}) == 1, k
+    engines = [e for r in rs for e in r["protocol"]["engines"]]
+    assert len(engines) == len(set(engines))
+    return rs
 
 
 def _load(name: str) -> dict:
@@ -522,25 +538,37 @@ def strengthening_macros(prior: list[tuple[str, str]]) -> list[tuple[str, str]]:
             ab["sql"][d]["descriptors_with_input_descriptors"] for d in DS))),
     ]
     # (3) eval-sql-snapshot.json
-    ss = _load("eval-sql-snapshot.json")
-    unsafe = [b for b in ss["table"] if b["variant"] == "unsafe"]
-    cons = [b for b in ss["table"] if b["variant"] == "consistent"]
-    assert ss["consistent_variant_passes"] and ss["oracle_checks_pass"]
+    # and eval-sql-snapshot-pg.json (the PostgreSQL leg, same freeze)
+    srs = _snapshot_receipts()
+    stab = [b for r in srs for b in r["table"]]
+    unsafe = [b for b in stab if b["variant"] == "unsafe"]
+    cons = [b for b in stab if b["variant"] == "consistent"]
+    assert all(r["consistent_variant_passes"] and r["oracle_checks_pass"]
+               for r in srs)
     assert all(b["certificates_wrong"] == 0 and b["inconsistent_pairs"] == 0
                for b in cons)
-    trials = {b["trials"] for b in ss["table"]}
+    trials = {b["trials"] for b in stab}
     assert len(trials) == 1
     wil = {round(b["inconsistent_fraction_wilson95_upper"], 6) for b in cons}
     assert len(wil) == 1
     wrong = [100.0 * b["certificates_wrong"] / b["trials"] for b in unsafe]
+    pgr = srs[SNAP_RECEIPTS.index("eval-sql-snapshot-pg.json")]
+    pgw = [100.0 * b["certificates_wrong"] / b["trials"] for b in unsafe
+           if b["engine"] == "postgres"]
+    assert pgw and not pgr["not_run"]
+    pgv = pgr["versions"]["postgres"].split()[0]
     out += [
-        ("pnSnapBlocks", str(len(ss["table"]))),
+        ("pnSnapBlocks", str(len(stab))),
         ("pnSnapTrials", f"{trials.pop():,}".replace(",", "{,}")),
         ("pnSnapWrongLo", f"{min(wrong):.1f}"),
         ("pnSnapWrongHi", f"{max(wrong):.1f}"),
         ("pnSnapConsWrong", str(sum(b["certificates_wrong"] for b in cons))),
         ("pnSnapWilsonPct", f"{100 * wil.pop():.2f}"),
-        ("pnSnapEngineN", str(len(ss["protocol"]["engines"]))),
+        ("pnSnapEngineN", str(sum(len(r["protocol"]["engines"])
+                                  for r in srs))),
+        ("pnSnapPgWrongLo", f"{min(pgw):.1f}"),
+        ("pnSnapPgWrongHi", f"{max(pgw):.1f}"),
+        ("pnSnapPgVersion", pgv),
     ]
     # (4) eval-bird-topk-v3.json and eval-ldbc-topk.json
     tk = _load("eval-bird-topk-v3.json")
@@ -682,10 +710,11 @@ failed basis-compatibility check.}}
 
 
 def table_snapshot() -> str:
-    ss = _load("eval-sql-snapshot.json")
+    srs = _snapshot_receipts()
+    ss = srs[0]
     body = []
     last = None
-    for b in ss["table"]:
+    for b in (b for r in srs for b in r["table"]):
         eng = SNAP_ENGINE[b["engine"]] if b["engine"] != last else ""
         if last is not None and b["engine"] != last:
             body.append(r"\addlinespace[2pt]")
@@ -700,7 +729,8 @@ def table_snapshot() -> str:
     rows = "\n".join(body)
     trials = f"{ss['table'][0]['trials']:,}".replace(",", "{,}")
     wb = "$" + "$ to $".join(ss["protocol"]["writer_size_band"]) + "$"
-    return rf"""% Source: benchmarks/results-v1/eval-sql-snapshot.json
+    return rf"""% Source: benchmarks/results-v1/eval-sql-snapshot.json and
+% benchmarks/results-v1/eval-sql-snapshot-pg.json
 \begin{{table*}}[t]
 \centering\small
 \setlength{{\tabcolsep}}{{3pt}}
