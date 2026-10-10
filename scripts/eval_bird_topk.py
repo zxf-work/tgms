@@ -23,12 +23,13 @@ an input to the verdict.
         --db-root /path/to/MINIDEV/dev_databases \
         --json benchmarks/results-v1/eval-bird-topk.json
 
-With --boundary (receipt eval-bird-topk-v2.json) the ranked statement,
+With --boundary (receipt eval-bird-topk-v3.json; v2 is reproduced at
+commit 07cf6093) the ranked statement,
 the unlimited count of Q' and the rank-boundary probe run in ONE read
 transaction (sql_snapshot.consistent_page_and_count); the descriptor
-carries rank-boundary strictness, and each page is judged first as a
-sequence claim (route total_order) and then as a set claim (route
-boundary_strict). The v1 rule is reproduced without the flag.
+carries rank-boundary and sequence strictness, and each page is judged
+first as a sequence claim (routes total_order, sequence_strict) and then
+as a set claim (route boundary_strict). The v1 rule is reproduced without the flag.
 """
 
 from __future__ import annotations
@@ -229,6 +230,7 @@ def replay_v2(runner, db: Path, sql: str, ukeys) -> dict:
                             candidate_count=rr.candidate_count,
                             execution_context=snapshot_context(rr.token),
                             boundary_strict=rr.boundary_strict,
+                            sequence_strict=rr.sequence_strict,
                             provenance={"seconds": rr.seconds})
     key = [p[0] for p in shape.order]
     dirs = [p[1] for p in shape.order]
@@ -237,7 +239,8 @@ def replay_v2(runner, db: Path, sql: str, ukeys) -> dict:
     j_set = verify(TopK(rows=rows, key=key, dir=dirs, k=shape.limit,
                         as_set=True), e, {"rows": rows})
     if j_seq.verdict is Verdict.SUPPORTED:
-        outcome = "certified_total_order"
+        outcome = ("certified_total_order" if j_seq.route == "total_order"
+                   else "certified_sequence_strict")
     elif j_set.verdict is Verdict.SUPPORTED:
         outcome = "certified_boundary_strict_set"
     elif not shape.order:
@@ -255,9 +258,11 @@ def replay_v2(runner, db: Path, sql: str, ukeys) -> dict:
         "delivery_complete": e.scope.delivery_complete,
         "boundary_status": rr.boundary_status,
         "boundary_strict": rr.boundary_strict,
+        "sequence_strict": rr.sequence_strict,
         "verdict_sequence": j_seq.verdict.value,
         "verdict_set": j_set.verdict.value,
         "route": j_seq.route or j_set.route,
+        "route_sequence": j_seq.route, "route_set": j_set.route,
         "outcome": outcome,
         "seconds": {k: round(v, 6) for k, v in rr.seconds.items()},
         "snapshot": {k: rr.token[k] for k in ("data_version",
@@ -306,10 +311,20 @@ def summarize_v2(recs: list[dict]) -> dict:
         "n_topk_with_order_by": sum(1 for r in topk if r["order"]),
         "n_exec_error": sum(1 for r in topk if "exec_error" in r),
         "certified_total_order": out.get("certified_total_order", 0),
+        "certified_sequence_strict": out.get(
+            "certified_sequence_strict", 0),
         "certified_boundary_strict_set": out.get(
             "certified_boundary_strict_set", 0),
         "certified_any": out.get("certified_total_order", 0)
+        + out.get("certified_sequence_strict", 0)
         + out.get("certified_boundary_strict_set", 0),
+        "sequence_certified_any_route": sum(
+            1 for r in ran if r["verdict_sequence"] == "SUPPORTED"),
+        "set_certified_any_route": sum(
+            1 for r in ran if r["verdict_set"] == "SUPPORTED"),
+        "sequence_strict_certified_by_shape_reason": dict(Counter(
+            r["shape_reason"] for r in ran
+            if r["outcome"] == "certified_sequence_strict")),
         "not_certified_by_reason": dict(not_cert),
         "not_certified_total": sum(not_cert.values()),
         "boundary_set_certified_by_shape_reason": dict(Counter(
@@ -324,6 +339,11 @@ def summarize_v2(recs: list[dict]) -> dict:
         "boundary_measured": {
             "checked": len(checked),
             "strict": sum(1 for r in checked if r["boundary_strict"]),
+            "sequence_strict": sum(1 for r in checked
+                                   if r["sequence_strict"]),
+            "boundary_strict_inner_tie": sum(
+                1 for r in checked if r["boundary_strict"]
+                and not r["sequence_strict"]),
             "tie_at_boundary": sum(1 for r in checked
                                    if not r["boundary_strict"]),
             "unavailable_or_error": len(ran) - len(checked)},
@@ -338,6 +358,10 @@ def summarize_v2(recs: list[dict]) -> dict:
             "diagnostic_agrees_with_measured_boundary": sum(
                 1 for r in probed
                 if r["tie_at_boundary"] == (not r["boundary_strict"])),
+            "diagnostic_agrees_with_measured_sequence": sum(
+                1 for r in probed
+                if (r["tie_at_boundary"] or r["tie_inside_top_k"])
+                == (not r["sequence_strict"])),
         },
         "seconds": {
             "page": _quantiles([r["seconds"]["page"] for r in ran]),
@@ -503,8 +527,8 @@ def main() -> int:
     out = {
         "experiment": "TopK certification over the BIRD Mini-Dev 500 "
                       "(replay of recorded agent SQL; no model calls)"
-                      + (", v2: total-order and boundary-strict routes"
-                         if args.boundary else ""),
+                      + (", v3: total-order, sequence-strict and "
+                         "boundary-strict routes" if args.boundary else ""),
         "commit": commit,
         "host": platform.node(),
         "slurm_job": os.environ.get("SLURM_JOB_ID"),
@@ -552,6 +576,12 @@ def main() -> int:
                              "`between` hook), then COUNT(*) of Q'; "
                              "600 s progress-handler ceiling; cells "
                              "normalized by run_bird_agent.norm_cell",
+                "sequence_rule": "sequence strictness: from the same "
+                                 "statement, no row among the first "
+                                 "min(|Q'|, k+1) has RANK different from "
+                                 "its ROW_NUMBER (every adjacent pair "
+                                 "strictly ordered); implies boundary "
+                                 "strictness; no extra statement",
                 "boundary_rule": "rank-boundary strictness at k: one "
                                  "statement over Q' adding ROW_NUMBER() "
                                  "and RANK() OVER the recorded ORDER BY; "
@@ -561,11 +591,12 @@ def main() -> int:
                                  "placement and collation); DISTINCT and "
                                  "compound statements are not probed "
                                  "(not strict)",
-                "claims": "per page, TopK as a sequence claim (route "
-                          "total_order) and as a set claim (route "
-                          "boundary_strict, also served by total_order); "
-                          "a page counts once, under the first route that "
-                          "certifies",
+                "claims": "per page, TopK as a sequence claim (routes "
+                          "total_order, then sequence_strict) and as a set "
+                          "claim (route boundary_strict, also served by "
+                          "total_order); a page counts once, in the order "
+                          "total_order, sequence_strict, boundary_strict "
+                          "set",
                 "seconds": "page = BEGIN + data_version + statement; "
                            "boundary_probe = the extra statement; "
                            "count_and_commit = COUNT(*) of Q' + "
