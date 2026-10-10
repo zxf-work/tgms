@@ -483,93 +483,166 @@ page-derived.}}
 
 
 def fig_rq1(bc: dict, fm: dict, mac: dict) -> str:
-    """Errors of the two simple checkers and of the ECQR verifier per
-    EvidenceBench fault family (receipts: eval-baseline-checkers.json,
-    eval-fault-matrix.json). A control cell can only be falsely rejected
-    and a fault cell only falsely accepted, so the figure has one panel
-    for each error kind."""
-    from paper_fault_families import FAMILY, ORDER
-    cells = fm["cells"]
-    assert set(c["fault"] for c in cells) <= set(FAMILY), "unmapped fault"
-
-    def errs(key):
-        d = bc[key]
-        return set(d.get("fc_cells", [])) | set(d.get("fr_cells", []))
-
-    b1, b2 = errs("b1_value_only"), errs("b2_taint_all")
-    fams = []
-    for fam in ORDER:
-        sub = [c for c in cells if FAMILY[c["fault"]] == fam]
-        if not sub:
-            continue
-        ids = {f"{c['claim']}/{c['fault']}" for c in sub}
-        kinds = {c["expectation"] for c in sub}
-        assert len(kinds) == 1, (fam, kinds)
-        fams.append((fam, len(sub), len(ids & b1), len(ids & b2),
-                     sum(1 for c in sub if not c["ok"]), kinds.pop()))
-    check_macro(mac, "pnCells", len(cells))
-    check_macro(mac, "pnValueOnlyFail", sum(f[2] for f in fams))
-    check_macro(mac, "pnTaintFail", sum(f[3] for f in fams))
+    """Errors of five deterministic checkers per EvidenceBench family,
+    over the single-step cells and the composition cells (receipt:
+    eval-baseline-checkers-v3.json; the single-step rows are checked
+    against eval-baseline-checkers.json and eval-fault-matrix.json). A
+    control row can only hold false rejects and a fault row only false
+    accepts, so each row carries one error kind. Drawn as a matrix of
+    counts: exact values matter and five bars per family would not fit
+    one column."""
+    from paper_macros import BL_CHECKERS, baseline_rows
+    v3 = json.loads((RES / "eval-baseline-checkers-v3.json").read_text())
+    rows = baseline_rows(v3)
+    single = [r for r in rows if r[0] == "single_step"]
+    comp = [r for r in rows if r[0] == "composition"]
+    vo, ta = BL_CHECKERS.index("value_only"), BL_CHECKERS.index("taint_all")
+    check_macro(mac, "pnCells", sum(r[2] for r in single))
+    check_macro(mac, "pnCells", len(fm["cells"]))
+    check_macro(mac, "pnValueOnlyFail", sum(r[4][vo] for r in single))
+    check_macro(mac, "pnTaintFail", sum(r[4][ta] for r in single))
     check_macro(mac, "pnControlCellsN",
-                sum(f[1] for f in fams if f[5] == "must_certify"))
+                sum(r[2] for r in single if r[3] == "FR"))
     check_macro(mac, "pnFaultCellsN",
-                sum(f[1] for f in fams if f[5] != "must_certify"))
-    assert sum(f[4] for f in fams) == 0, "ECQR must match every cell"
-    short = {"controls (must certify)": "controls"}
-
-    def panel(sel, name, extra, title, xlabel):
-        sub = [f for f in fams if sel(f)]
-        ys = list(range(len(sub)))[::-1]          # first family on top
-        ytl = ",".join(f"{{{short.get(f[0], f[0])} ({f[1]})}}" for f in sub)
-
-        def series(i, dy):
-            return " ".join(f"({f[i]},{y + dy:.2f}) [{f[i]}]"
-                            for f, y in zip(sub, ys))
-        xl = f"xlabel={{{xlabel}}}, " if xlabel else ""
-        return rf"""\begin{{axis}}[name={name}, {extra}xbar, bar shift=0pt,
-  {SQ}, width=0.84\linewidth, y=0.6cm, bar width=4pt, xmin=0, xmax=3.4,
-  xtick={{0,1,2,3}}, {xl}
-  ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
-  ymin=-0.5, ymax={len(sub) - 0.5}, y tick style={{draw=none}},
-  clip=false,
-  axis x line*=bottom, axis y line*=left, xmajorgrids,
-  title={{{title}}}, title style={{at={{(0,1)}}, anchor=south west,
-    xshift=-2pt, yshift=-1pt}},
-  point meta=explicit symbolic, nodes near coords,
-  every node near coord/.append style={{{DLX}}},
-  legend style={{at={{(0.5,1)}}, anchor=south, yshift=13pt,
-    legend columns=-1,
-    /tikz/every even column/.append style={{column sep=6pt}}}}]
-\addplot[fill=figDark, draw=none] coordinates {{{series(2, 0.28)}}};
-\addplot[fill=figMid, draw=none] coordinates {{{series(3, 0.0)}}};
-\addplot[only marks, mark=*, mark size=1.6pt, figAccent, {MK},
-  every node near coord/.append style={{text=figAccent, xshift=1.5pt}}]
-  coordinates {{{series(4, -0.28)}}};
-"""
-
-    top = panel(lambda f: f[5] == "must_certify", "a", "",
-                r"false rejects on control cells", None)
-    bot = panel(lambda f: f[5] != "must_certify", "b",
-                "at={(a.south west)}, anchor=north west, yshift=-0.85cm, ",
-                r"false accepts on fault cells", "cells in error")
+                sum(r[2] for r in single if r[3] == "FA"))
+    check_macro(mac, "pnBaseCompN", sum(r[2] for r in comp))
+    assert sum(f["ok"] is False for f in fm["cells"]) == 0
+    assert all(r[4][BL_CHECKERS.index("ecqr")] == 0 for r in rows)
+    short = {"delivery incompleteness": "delivery incomplete",
+             "execution incompleteness": "execution incomplete"}
+    heads = [r"value-\\only", r"incompl.\\taint", r"metadata\\rules",
+             r"ECQR, no\\propagation", r"\textbf{ECQR}"]
+    dx, dy, x0 = 1.02, 0.33, 0.62
+    out, y = [], 0.0
+    for i, h in enumerate(heads):
+        out.append(rf"\node[align=center, anchor=south, inner sep=1pt, "
+                   rf"font=\scriptsize] at ({x0 + i * dx:.2f},"
+                   rf"{y + 0.12:.2f}) {{{h}}};")
+    out.append(rf"\draw[figLight] (-2.55,{y + 0.08:.2f}) -- "
+               rf"({x0 + 4 * dx + 0.45:.2f},{y + 0.08:.2f});")
+    for title, group in (("single-step cells", single),
+                         ("composition cells", comp)):
+        y -= dy
+        out.append(rf"\node[anchor=west, inner sep=0pt, font=\footnotesize"
+                   rf"\itshape] at (-2.55,{y:.2f}) {{{title}}};")
+        for _scope, fam, n, kind, errs in group:
+            y -= dy
+            out.append(rf"\node[anchor=east, inner sep=1pt, font="
+                       rf"\scriptsize] at (0.05,{y:.2f}) "
+                       rf"{{{short.get(fam, fam)} ({n})}};")
+            for i, e in enumerate(errs):
+                x = x0 + i * dx
+                if e:
+                    out.append(rf"\node[fill=figAccentLight, minimum "
+                               rf"width=0.62cm, minimum height=0.28cm, "
+                               rf"inner sep=0pt, rounded corners=1pt, "
+                               rf"font=\scriptsize] at "
+                               rf"({x:.2f},{y:.2f}) {{\textbf{{{e}}}}};")
+                else:
+                    out.append(rf"\node[text=figMid, inner sep=0pt, "
+                               rf"font=\scriptsize] at "
+                               rf"({x:.2f},{y:.2f}) {{0}};")
+    body = "\n".join(out)
     return rf"""{GEN}
-% Source: benchmarks/results-v1/eval-baseline-checkers.json (b1_value_only,
-% b2_taint_all) and eval-fault-matrix.json (ECQR); families as in
-% scripts/paper_fault_families.py.
+% Source: benchmarks/results-v1/eval-baseline-checkers-v3.json (five
+% checkers, single-step and composition cells); single-step rows checked
+% against eval-baseline-checkers.json and eval-fault-matrix.json;
+% families as in scripts/paper_macros.py (BL_FAMILY).
 \begin{{figure}}[t]
 \centering
 \begin{{tikzpicture}}
-{top}\legend{{value-only, incompleteness taint, ECQR}}
-\end{{axis}}
-{bot}\end{{axis}}
+{body}
 \end{{tikzpicture}}
 \caption{{EvidenceBench decisions that disagree with the expected
-verdict, per fault family and checker, over the \pnCells\ cells (cells
-per family in parentheses). Value-only checking accepts every
-incompleteness and basis fault, the incompleteness taint rejects valid
-controls yet still accepts both basis faults, and ECQR makes no error
-in any family.}}
+verdict, per family and checker, over the \pnCells\ single-step and
+\pnBaseCompN\ composition cells (cells per family in parentheses; a
+control row counts false rejects, every other row false accepts). The
+metadata-rules checker and ECQR without propagation match ECQR on every
+single-step cell but accept every composition fault; only ECQR with
+propagation makes no error.}}
 \label{{fig:rq1}}
+\end{{figure}}
+"""
+
+
+def fig_topk(mac: dict) -> str:
+    """TopK routes on the ranked BIRD pages, agent and gold SQL: each page
+    under its first certifying route (total order, sequence-strict,
+    boundary-strict set) or the reason none certifies (receipt:
+    eval-bird-topk-v3.json). No-ORDER-BY and unavailable-probe pages share
+    one segment; the appendix table separates them."""
+    tk = json.loads((RES / "eval-bird-topk-v3.json").read_text())
+    sides = [("agent SQL", tk["agent"]), ("gold SQL", tk["gold"])]
+    a, g = tk["agent"], tk["gold"]
+    for name, val in (("pnTopkAgentN", a["n_topk_shaped"]),
+                      ("pnTopkAgentTotal", a["certified_total_order"]),
+                      ("pnTopkAgentSeq", a["certified_sequence_strict"]),
+                      ("pnTopkAgentSet", a["certified_boundary_strict_set"]),
+                      ("pnTopkAgentTie",
+                       a["not_certified_by_reason"]["boundary_tie"]),
+                      ("pnTopkGoldN", g["n_topk_shaped"]),
+                      ("pnTopkGoldSeq", g["certified_sequence_strict"]),
+                      ("pnTopkGoldTie",
+                       g["not_certified_by_reason"]["boundary_tie"])):
+        check_macro(mac, name, val)
+    assert a["certified_total_order"] == g["certified_total_order"] == 0, \
+        "a nonzero total-order route needs its own segment"
+
+    def other(s):
+        return sum(v for k, v in s["not_certified_by_reason"].items()
+                   if k != "boundary_tie")
+    segs = [(lambda s: s["certified_sequence_strict"], "sequence-strict",
+             "figDark", "white"),
+            (lambda s: s["certified_boundary_strict_set"],
+             "boundary-strict (set only)", "figMid", "white"),
+            (lambda s: s["not_certified_by_reason"]["boundary_tie"],
+             r"tie at rank $k$/$k{+}1$", "figAccent", "white"),
+            (other, "no ORDER BY or no probe", "figLight", "black")]
+    ys = [1, 0]
+    plots, notes = [], []
+    cum = {lbl: 0 for lbl, _ in sides}
+    for fn, _lab, fill, txt in segs:
+        pts = []
+        for (lbl, s), y in zip(sides, ys):
+            v = fn(s)
+            pts.append(f"({v},{y})")
+            if v >= 8:
+                notes.append((cum[lbl] + v / 2, y, f"text={txt}", str(v)))
+            cum[lbl] += v
+        plots.append(rf"\addplot[fill={fill}, draw=white, line width=0.4pt] "
+                     rf"coordinates {{{' '.join(pts)}}};")
+    for lbl, s in sides:
+        assert cum[lbl] == s["n_topk_shaped"], (lbl, cum[lbl])
+    lin, lout = labels(notes, "tk")
+    ytl = ",".join(f"{{{lbl} ({s['n_topk_shaped']})}}" for lbl, s in sides)
+    leg = ", ".join(c[1] for c in segs)
+    xmax = max(s["n_topk_shaped"] for _l, s in sides)
+    return rf"""{GEN}
+% Source: benchmarks/results-v1/eval-bird-topk-v3.json (agent, gold;
+% each ranked page once, under its first certifying route).
+\begin{{figure}}[t]
+\centering
+\begin{{tikzpicture}}
+\begin{{axis}}[xbar stacked, {SQ}, width=0.80\linewidth, y=0.42cm,
+  bar width=7pt, xmin=0, xmax={xmax}, xtick={{0,20,40,60,80}},
+  xlabel={{ranked BIRD pages}},
+  ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
+  ymin=-0.55, ymax=1.55, y tick style={{draw=none}},
+  axis x line*=bottom, axis y line*=left,
+  legend style={{at={{(0.5,1.0)}}, anchor=south, legend columns=2,
+    yshift=0pt, row sep=-2pt, /tikz/every even column/.append style={{column sep=6pt}}}},
+  legend cell align=left]
+{chr(10).join(plots)}
+\legend{{{leg}}}
+{lin}
+\end{{axis}}
+{lout}
+\end{{tikzpicture}}
+\caption{{Ranked BIRD pages by the TopK route that certifies them, or
+the reason none does. No page has a static total order, and ties at
+rank $k$/$k{{+}}1$ leave \pnTopkAgentTie\ of the \pnTopkAgentN\ agent
+pages without a unique top-$k$ answer.}}
+\label{{fig:topk}}
 \end{{figure}}
 """
 
@@ -918,7 +991,7 @@ certifies.}}
 
 
 ALL_FIGS = ["main", "frontier", "conformance", "reasons", "efficiency",
-            "probe", "rq1", "bird-census", "ldbc", "cost"]
+            "probe", "rq1", "bird-census", "ldbc", "cost", "topk"]
 
 
 def main() -> int:
@@ -960,6 +1033,7 @@ def main() -> int:
         "rq1": lambda: fig_rq1(bc, fm, mac),
         "bird-census": fig_bird_census_stub,
         "ldbc": lambda: fig_ldbc(ann, lr, mac),
+        "topk": lambda: fig_topk(mac),
     }
     names = args.only or ALL_FIGS
     for name in names:
