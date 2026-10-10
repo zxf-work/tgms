@@ -640,8 +640,8 @@ descriptor construction (per envelope) &
 descriptor production (per 2-step plan) & $\sim$$\pnPlanUs\,\mu$s \\
 verification (per claim) & $<1$\,ms \\
 \midrule
-page query & $14.4$\,ms \\
-SQL cardinality certificate & $13.7$\,ms \\
+page query & $\pnSqlPageMs$\,ms \\
+SQL cardinality certificate & $\pnSqlCertMs$\,ms \\
 \quad ratio (certificate / page) & $\pnSqlCertRatio\times$ \\
 \quad$\Rightarrow$ certified answer vs uncertified & $\approx 2\times$ \\
 \bottomrule

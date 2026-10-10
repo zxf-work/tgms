@@ -14,6 +14,10 @@ D-169 figures: fig-probe (eval-trunc-probe.json), fig-rq1
 (eval-baseline-checkers.json + eval-fault-matrix.json), fig-bird-census
 (eval-bird-agent.json), fig-ldbc (eval-ldbc-coverage.json +
 external_workloads/ldbc/coverage_annotation.jsonl); fig-main restyled.
+fig-cost (evidence-overhead-itiger.json + eval-verifier-scaling.json +
+eval-unsupported-composition.json) absorbs the former fig-efficiency,
+now an empty-safe stub; fig-conformance restyled to the shared palette
+and type sizes.
 """
 
 from __future__ import annotations
@@ -219,172 +223,120 @@ FAULT_AB = {"clean": "clean", "page_truncation": "trunc",
             "uncited_value": "uncit", "digest_mismatch": "digest"}
 
 
-def fig_conformance(bc: dict, fm: dict) -> str:
-    """Horizontal decision strip: 27 cells x 3 checkers, grouped."""
+def fig_conformance(bc: dict, fm: dict, mac: dict, palette: dict) -> str:
+    """Per-cell decision strip for the companion appendix: the 27
+    EvidenceBench cells (columns) x three checkers (rows), columns grouped
+    by the fault families of fig-rq1 (scripts/paper_fault_families.py).
+    Each cell is coloured by whether the checker's decision matches the
+    expected verdict. The appendix does not load preamble-shared.tex, so
+    the palette is re-stated with \\providecolor (values read from that
+    preamble) and every node names its preamble size explicitly."""
+    from paper_fault_families import FAMILY, ORDER
+    gshort = {"controls (must certify)": "controls (must certify)",
+              "delivery incompleteness": "delivery\\\\incompleteness",
+              "execution incompleteness": "execution\\\\incompleteness",
+              "value / witness": "value / witness",
+              "basis": "basis", "integrity": "integrity"}
+    assert set(gshort) == set(ORDER), "family names changed"
+
     def classify(c):
         if c["ok"]:
-            return "okc"
+            return "figLight"     # decision matches the expected verdict
         if c["expectation"] == "must_not_certify":
-            return "fac"          # certified an injected fault
-        return "frc"              # rejected a clean control
+            return "figAccent"    # certified an injected fault
+        return "figMid"           # rejected a clean control
 
-    GROUP = {"clean": "controls", "page_truncation": "completeness",
-             "execution_incomplete": "execution",
-             "wrong_count": "value/witness", "wrong_scalar":
-             "value/witness", "omitted_member": "value/witness",
-             "fabricated_member": "value/witness", "false_membership":
-             "value/witness", "false_existence": "value/witness",
-             "false_nonexistence": "value/witness",
-             "wrong_snapshot": "basis", "unpinned_snapshot": "basis",
-             "uncited_value": "citation",
-             "digest_mismatch": "integrity"}
-
-    ecqr = [dict(c, ok=c["ok"]) for c in fm["cells"]]
     b1 = bc["b1_value_only"]["cells"]
     b2 = bc["b2_taint_all"]["cells"]
+    ecqr = fm["cells"]
     n = len(ecqr)
     assert len(b1) == n and len(b2) == n
+    for cb1, cb2, ce in zip(b1, b2, ecqr):
+        assert (cb1["claim"], cb1["fault"]) == (ce["claim"], ce["fault"])
+        assert (cb2["claim"], cb2["fault"]) == (ce["claim"], ce["fault"])
+    check_macro(mac, "pnCells", n)
+    assert all(c["ok"] for c in ecqr), "ECQR must match every cell"
 
-    labels, seen = [], {}
+    labs, seen = [], {}
     for c in ecqr:
         key = (c["claim"], c["fault"])
         seen[key] = seen.get(key, 0) + 1
-        lab = CLAIM_AB[c["claim"]]
-        if c["fault"] == "clean" and seen[key] == 2:
-            lab = f"{CLAIM_AB[c['claim']]}*"
-        labels.append(lab)
-
-    rows = [("value-only", b1), ("incompl.\\ taint", b2),
+        labs.append(CLAIM_AB[c["claim"]] + ("*" if c["fault"] == "clean"
+                                            and seen[key] == 2 else ""))
+    # column order: by family (fig-rq1 order), cell order within a family
+    order = sorted(range(n), key=lambda i: ORDER.index(FAMILY[ecqr[i]["fault"]]))
+    rows = [("value-only", b1), ("incompleteness taint", b2),
             ("ECQR", ecqr)]
-    cw, ch = 0.29, 0.32
-    cells_tex = []
-    for ri, (_, cells) in enumerate(rows):
-        for xi, c in enumerate(cells):
-            cells_tex.append(
-                rf"\fill[{classify(c)}] ({xi*cw:.2f},{-ri*ch:.2f}) "
-                rf"rectangle ({(xi+1)*cw-0.04:.2f},"
-                rf"{-ri*ch+ch-0.05:.2f});")
-    body = "\n".join(cells_tex)
-    labs = "\n".join(
-        rf"\node[anchor=north, font=\fontsize{{5.2}}{{5.6}}"
-        rf"\selectfont] at ({xi*cw+0.12:.2f},-0.70) {{{lab}}};"
-        for xi, lab in enumerate(labels))
-    # group brackets above the strip
-    groups, start = [], 0
-    for i in range(1, n + 1):
-        if i == n or GROUP[ecqr[i]["fault"]] != GROUP[ecqr[start]["fault"]]:
-            groups.append((GROUP[ecqr[start]["fault"]], start, i - 1))
-            start = i
-    gtex = []
-    for gname, a, b in groups:
-        x0, x1 = a * cw, (b + 1) * cw - 0.04
-        xm = (x0 + x1) / 2
-        gtex.append(
-            rf"\draw[black!60] ({x0:.2f},0.42) -- ({x0:.2f},0.50) -- "
-            rf"({x1:.2f},0.50) -- ({x1:.2f},0.42);")
-        if (x1 - x0) < 0.85:
-            gtex.append(
-                rf"\node[anchor=south west, rotate=35, "
-                rf"font=\fontsize{{5.2}}{{5.6}}\selectfont] at "
-                rf"({xm - 0.06:.2f},0.52) {{{gname}}};")
-        else:
-            gtex.append(
-                rf"\node[anchor=south, font=\fontsize{{5.6}}{{6}}"
-                rf"\selectfont] at ({xm:.2f},0.52) {{{gname}}};")
-    gbody = "\n".join(gtex)
-    rownames = "\n".join(
-        rf"\node[anchor=east, font=\scriptsize] at "
-        rf"(-0.08,{-ri*ch+0.13:.2f}) {{{rname}}};"
-        for ri, (rname, _) in enumerate(rows))
-    return rf"""% F-conformance — generated from eval-baseline-checkers.json +
-% eval-fault-matrix.json; do not edit
+    cw, ch, gap = 0.52, 0.40, 0.16        # cm: column, row, family gap
+    xs, x, prev = [], 0.0, None
+    for i in order:
+        fam = FAMILY[ecqr[i]["fault"]]
+        if prev is not None and fam != prev:
+            x += gap
+        xs.append((i, fam, x))
+        x += cw
+        prev = fam
+
+    cells = []
+    for ri, (_, cl) in enumerate(rows):
+        y = -ri * ch
+        for i, _f, x0 in xs:
+            cells.append(rf"\fill[{classify(cl[i])}] ({x0:.2f},{y:.2f}) "
+                         rf"rectangle ({x0 + cw - 0.06:.2f},"
+                         rf"{y + ch - 0.06:.2f});")
+    ybot = -(len(rows) - 1) * ch
+    cols = [rf"\node[anchor=north, font=\scriptsize, inner sep=1pt, "
+            rf"text height=1.6ex, text depth=0.3ex] at "
+            rf"({x0 + (cw - 0.06) / 2:.2f},{ybot - 0.06:.2f}) "
+            rf"{{{labs[i]}}};" for i, _f, x0 in xs]
+    names = [rf"\node[anchor=east, font=\scriptsize, inner sep=1pt] at "
+             rf"(-0.12,{-ri * ch + (ch - 0.06) / 2:.2f}) {{{rname}}};"
+             for ri, (rname, _) in enumerate(rows)]
+    groups, ytop = [], ch - 0.06
+    for fam in ORDER:
+        span = [x0 for _i, f, x0 in xs if f == fam]
+        if not span:
+            continue
+        x0, x1 = span[0], span[-1] + cw - 0.06
+        groups.append(
+            rf"\draw[black!60] ({x0:.2f},{ytop + 0.10:.2f}) -- "
+            rf"({x0:.2f},{ytop + 0.17:.2f}) -- ({x1:.2f},{ytop + 0.17:.2f})"
+            rf" -- ({x1:.2f},{ytop + 0.10:.2f});")
+        groups.append(
+            rf"\node[anchor=south, font=\scriptsize, align=center, "
+            rf"inner sep=1pt, text depth=0.3ex] at "
+            rf"({(x0 + x1) / 2:.2f},{ytop + 0.20:.2f}) "
+            rf"{{{gshort[fam]}}};")
+
+    def swatch(col):
+        return rf"\tikz\fill[{col}] (0,0) rectangle (0.2,0.2);"
+    legend = (rf"\node[anchor=north west, font=\scriptsize] at "
+              rf"(0,{ybot - 0.55:.2f}) {{{swatch('figLight')}~matches the "
+              rf"expected verdict\quad {swatch('figAccent')}~false accept "
+              rf"(certifies a fault)\quad {swatch('figMid')}~false reject "
+              rf"(rejects a valid control)}};")
+    provide = "\n".join(
+        rf"\providecolor{{{k}}}{{RGB}}{{{v}}}"
+        for k, v in sorted(palette.items()))
+    body = "\n".join(groups + cells + names + cols + [legend])
+    return rf"""{GEN}
+% Sources: benchmarks/results-v1/eval-baseline-checkers.json (b1_value_only,
+% b2_taint_all) and eval-fault-matrix.json (ECQR); families as in
+% scripts/paper_fault_families.py. Palette from preamble-shared.tex.
+{provide}
 \begin{{figure*}}[t]
 \centering
 \begin{{tikzpicture}}
-\definecolor{{okcol}}{{RGB}}{{223,232,223}}
-\definecolor{{facol}}{{RGB}}{{176,49,44}}
-\definecolor{{frcol}}{{RGB}}{{230,159,0}}
-\tikzset{{okc/.style={{fill=okcol}}, fac/.style={{fill=facol}},
-  frc/.style={{fill=frcol}}}}
-{gbody}
 {body}
-{rownames}
-{labs}
-\node[anchor=west, font=\scriptsize] at (0.2,-1.15)
-  {{\tikz{{\fill[okc] (0,0) rectangle (0.18,0.18);}} correct\quad
-   \tikz{{\fill[fac] (0,0) rectangle (0.18,0.18);}} false accept\quad
-   \tikz{{\fill[frc] (0,0) rectangle (0.18,0.18);}} false reject}};
 \end{{tikzpicture}}
-\caption{{Conformance decisions over the \pnCells\ EvidenceBench
-cells, grouped by fault family; column labels give the claim form
-(mem, scl, cnt, set, ext, nex, bas), and * marks the two controls
-whose evidence is truncated yet sufficient. The simple checkers fail
-in opposite directions; the verifier matches every expected
-verdict.}}
+\caption{{Conformance decision for each of the \pnCells\ EvidenceBench
+cells and each checker, with cells grouped by fault family; column
+labels give the claim form (mem, scl, cnt, set, ext, nex, bas), and *
+marks the two controls whose evidence is truncated yet sufficient. The
+simple checkers fail in opposite directions, and the verifier matches
+every expected verdict.}}
 \label{{fig:conformance}}
 \end{{figure*}}
-"""
-
-
-def fig_efficiency(sc: dict, ov: dict) -> str:
-    t = sc["timing"]
-    canon = " ".join(
-        f"({r['rows']},{r['canonicalize_ms']+r['digest_ms']:.5f})"
-        for r in t)
-    mem = " ".join(f"({r['rows']},{r['verify_membership_ms']})" for r in t)
-    cset = " ".join(f"({r['rows']},{r['verify_completeset_ms']})"
-                    for r in t)
-    cert = " ".join(f"({r['rows']},{r['verify_count_cert_ms']})"
-                    for r in t)
-    page_ms = ov["sql_certificate"]["page_query_ms"]
-    cert_ms = ov["sql_certificate"]["count_certificate_ms"]
-    plan_ms = ov["plan_overhead"]["overhead_ms"]
-    return rf"""% F-efficiency — generated from eval-verifier-scaling.json +
-% evidence-overhead-itiger.json
-\begin{{figure}}[t]
-\centering
-\begin{{tikzpicture}}
-\begin{{loglogaxis}}[name=a, width=0.58\linewidth, height=4.4cm,
-  xlabel={{delivered rows}},
-  ylabel={{ms}},
-  x tick label style={{font=\scriptsize}},
-  y tick label style={{font=\scriptsize}},
-  label style={{font=\small}},
-  legend style={{font=\scriptsize, at={{(0.02,0.98)}},
-    anchor=north west, draw=none, fill=none}},
-  legend cell align=left,
-  every axis plot/.append style={{mark size=1.5pt}}]
-\addplot+[mark=*] coordinates {{{canon}}};
-\addplot+[mark=square*] coordinates {{{mem}}};
-\addplot+[mark=triangle*] coordinates {{{cset}}};
-\addplot+[mark=o, dashed, thick] coordinates {{{cert}}};
-\legend{{canon.+digest, membership, complete set}}
-\node[font=\scriptsize, anchor=west]
-  at (axis cs:20,0.0004) {{count certificate (flat)}};
-\end{{loglogaxis}}
-\begin{{axis}}[at={{(a.outer east)}}, anchor=outer west, xshift=1mm,
-  width=0.40\linewidth, height=4.4cm, ybar, ymode=log,
-  symbolic x coords={{page query,certificate,descriptors}},
-  xtick=data, x tick label style={{font=\scriptsize, rotate=25,
-  anchor=east}}, y tick label style={{font=\scriptsize}},
-  ylabel={{ms (log)}}, label style={{font=\small}},
-  bar width=10pt, log origin=infty, enlarge x limits=0.3,
-  nodes near coords, every node near coord/.append style={{
-    font=\scriptsize, anchor=south}},
-  point meta=rawy]
-\addplot coordinates {{(page query,{page_ms}) (certificate,{cert_ms})
-  (descriptors,{plan_ms})}};
-\end{{axis}}
-\end{{tikzpicture}}
-\caption{{Cost of checking versus producing evidence.
-\emph{{Left}}: result-local verification scales with delivered
-output size, while certificate-path checks stay flat at
-\pnCertVerifyUsFlat\,$\mu$s after binding. \emph{{Right}}: in the
-measured SQL path, producing an exact-cardinality certificate
-costs approximately one additional query, while whole-plan
-descriptor production costs {plan_ms}\,ms.}}
-\label{{fig:efficiency}}
-\end{{figure}}
 """
 
 
@@ -429,6 +381,21 @@ def load_macros(path: Path) -> dict:
     for m in re.finditer(r"\\newcommand\{\\(pn[A-Za-z]+)\}\{([^{}]*)\}",
                          path.read_text()):
         out[m.group(1)] = m.group(2)
+    return out
+
+
+def load_palette(path: Path) -> dict:
+    """\\definecolor{figX}{RGB}{r,g,b} lines of preamble-shared.tex ->
+    {"figX": "r,g,b"}. A figure that is also input by a document which
+    does not load the shared preamble (the companion appendix) re-states
+    these with \\providecolor, a no-op wherever the preamble ran."""
+    out = {}
+    for m in re.finditer(r"\\definecolor\{(fig[A-Za-z]+)\}\{RGB\}"
+                         r"\{([0-9, ]+)\}", path.read_text()):
+        out[m.group(1)] = m.group(2).replace(" ", "")
+    need = {"figDark", "figMid", "figLight", "figAccent", "figAccentLight"}
+    if not need <= set(out):
+        raise SystemExit(f"palette incomplete in {path}: {sorted(out)}")
     return out
 
 
@@ -777,8 +744,161 @@ alike.}}
 """
 
 
+def fig_efficiency_stub() -> str:
+    """fig-efficiency.tex is folded into fig-cost.tex (panel b, label
+    fig:cost); this file is now an empty-safe stub so a stale
+    \\input{fig-efficiency} is harmless."""
+    return ("% fig-efficiency folded into fig-cost.tex (see fig:cost).\n"
+            "% This file is intentionally empty -- a stale "
+            "\\input{fig-efficiency} is a no-op.\n")
+
+
+def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
+    """RQ4 evidence cost, three stacked panels in one column:
+    (a) the SQL path, an uncertified answer (page query) against a
+        certified one (page query plus the COUNT-wrapped certificate);
+    (b) verifier time against delivered result size (former
+        fig-efficiency, left panel), with descriptor construction and
+        certificate-path exact-count verification flat;
+    (c) the serialized descriptor against the model input a run already
+        consumes.
+    Receipts: evidence-overhead-itiger.json (sql_certificate),
+    eval-verifier-scaling.json (timing), eval-unsupported-composition.json
+    (run_input_tokens, descriptor_tokens_sql_frozen)."""
+    sq = ov["sql_certificate"]
+    page, cert = sq["page_query_ms"], sq["count_certificate_ms"]
+    check_macro(mac, "pnSqlPageMs", f"{page:.1f}")
+    check_macro(mac, "pnSqlCertMs", f"{cert:.1f}")
+    assert sc["host"] == ov["host"], "panels a and b must share a host"
+
+    # (a) two stacked rows: y=1 uncertified, y=0 certified
+    a_items = [(page / 2, 1, "text=black", r"page query \pnSqlPageMs"),
+               (page / 2, 0, "text=black", r"page query \pnSqlPageMs"),
+               (page + cert / 2, 0, "text=white",
+                r"certificate \pnSqlCertMs")]
+    a_in, a_out = labels(a_items, "ca")
+
+    # (b) verifier scaling, log-log
+    t = sc["timing"]
+    rows = [r["rows"] for r in t]
+    assert rows == sc["sizes"]
+
+    def pts(f):
+        return " ".join(f"({r['rows']},{f(r):.5f})" for r in t)
+    canon = pts(lambda r: r["canonicalize_ms"] + r["digest_ms"])
+    cset = pts(lambda r: r["verify_completeset_ms"])
+    mem = pts(lambda r: r["verify_membership_ms"])
+    build = pts(lambda r: r["build_ecqr_ms"])
+    cnt = pts(lambda r: r["verify_count_cert_ms"])
+    check_macro(mac, "pnBuildUsFlat",
+                f"{min(r['build_ecqr_ms'] for r in t)*1000:.1f}--"
+                f"{max(r['build_ecqr_ms'] for r in t)*1000:.1f}")
+    check_macro(mac, "pnCertVerifyUsFlat",
+                f"{min(r['verify_count_cert_ms'] for r in t)*1000:.1f}--"
+                f"{max(r['verify_count_cert_ms'] for r in t)*1000:.1f}")
+
+    # (c) model input per run (median per dataset) and the descriptor
+    rit = uc["run_input_tokens"]
+    ops = [rit[f"{d}|operators"]["median"] / 1000 for d in DS]
+    sql = [rit[f"{d}|sql"]["median"] / 1000 for d in DS]
+    desc = uc["descriptor_tokens_sql_frozen"]["median"]
+    check_macro(mac, "pnCtxTokMedOpsLo", f"{min(ops):.1f}")
+    check_macro(mac, "pnCtxTokMedOpsHi", f"{max(ops):.1f}")
+    check_macro(mac, "pnCtxTokMedSqlLo", f"{min(sql):.1f}")
+    check_macro(mac, "pnCtxTokMedSqlHi", f"{max(sql):.1f}")
+    check_macro(mac, "pnDescTokMed", desc)
+    c_ops = " ".join(f"({v:.4f},2)" for v in ops)
+    c_sql = " ".join(f"({v:.4f},1)" for v in sql)
+    c_items = [(min(ops), 2, "anchor=east, xshift=-3pt",
+                r"\pnCtxTokMedOpsLo--\pnCtxTokMedOpsHi\,k"),
+               (max(sql), 1, "anchor=west, xshift=2pt",
+                r"\pnCtxTokMedSqlLo--\pnCtxTokMedSqlHi\,k"),
+               (desc / 1000, 0, "anchor=west, xshift=2pt, text=figAccent",
+                r"\pnDescTokMed")]
+    c_in, c_out = labels(c_items, "cc")
+    xmax_c = 15
+    assert max(ops) < xmax_c and max(sql) < min(ops) - 6, "re-place labels"
+
+    title = (r"title style={at={(0,1)}, anchor=south west, xshift=-2pt, "
+             r"yshift=-1pt}")
+    return rf"""{GEN}
+% Sources: benchmarks/results-v1/evidence-overhead-itiger.json
+% (sql_certificate), eval-verifier-scaling.json (timing), and
+% eval-unsupported-composition.json (run_input_tokens,
+% descriptor_tokens_sql_frozen).
+\begin{{figure}}[t]
+\centering
+\begin{{tikzpicture}}
+\begin{{axis}}[name=a, xbar stacked, {SQ}, width=0.86\linewidth,
+  y=0.5cm, bar width=8pt, xmin=0, xmax=30, xtick={{0,10,20,30}},
+  ytick={{1,0}}, yticklabels={{uncertified,certified}},
+  ymin=-0.6, ymax=1.6, y tick style={{draw=none}},
+  axis x line*=bottom, axis y line*=left, xlabel={{time (ms)}},
+  title={{SQL path: answer with and without a count certificate}},
+  {title}]
+\addplot[fill=figLight, draw=white, line width=0.4pt]
+  coordinates {{({page},1) ({page},0)}};
+\addplot[fill=figAccent, draw=white, line width=0.4pt]
+  coordinates {{(0,1) ({cert},0)}};
+{a_in}
+\end{{axis}}
+{a_out}
+\begin{{loglogaxis}}[name=b, at={{(a.south west)}}, anchor=north west,
+  yshift=-1.75cm, width=0.86\linewidth, height=4.8cm,
+  xmin=6, xmax=1.6e5, ymin=1e-4, ymax=3e2,
+  axis x line*=bottom, axis y line*=left, ymajorgrids,
+  xlabel={{delivered rows}}, ylabel={{time (ms)}},
+  title={{verifier work per delivered result}}, {title},
+  legend style={{at={{(0.02,0.98)}}, anchor=north west}},
+  legend cell align=left,
+  every axis plot/.append style={{line width=0.8pt, mark size=1.5pt}}]
+\addplot[figDark, mark=*] coordinates {{{canon}}};
+\addplot[figMid, mark=square*] coordinates {{{cset}}};
+\addplot[figMid, mark=triangle*, densely dashed] coordinates {{{mem}}};
+\addplot[figDark, mark=diamond*, densely dotted, forget plot]
+  coordinates {{{build}}};
+\addplot[figAccent, mark=*, forget plot] coordinates {{{cnt}}};
+\legend{{canonicalize + digest, complete set, membership}}
+\coordinate (bbuild) at (axis cs:1e5,{t[-1]['build_ecqr_ms']:.5f});
+\coordinate (bcnt) at (axis cs:1e5,{t[-1]['verify_count_cert_ms']:.5f});
+\end{{loglogaxis}}
+\node[{DL}, anchor=south east, yshift=2pt] at (bbuild)
+  {{descriptor construction}};
+\node[{DL}, anchor=north east, yshift=-2pt, text=figAccent] at (bcnt)
+  {{exact count via certificate}};
+\begin{{axis}}[name=c, at={{(b.south west)}}, anchor=north west,
+  yshift=-1.75cm, width=0.86\linewidth, y=0.5cm, xmin=0, xmax={xmax_c},
+  xtick={{0,5,10,15}}, ytick={{2,1,0}},
+  yticklabels={{Operators run input,SQL run input,ECQR descriptor}},
+  ymin=-0.6, ymax=2.6, y tick style={{draw=none}},
+  axis x line*=bottom, axis y line*=left, xmajorgrids,
+  xlabel={{tokens (thousands)}},
+  title={{model input per run against one descriptor (medians)}},
+  {title}]
+\addplot[only marks, mark=*, mark size=1.8pt, figDark]
+  coordinates {{{c_ops}}};
+\addplot[only marks, mark=*, mark size=1.8pt, figDark]
+  coordinates {{{c_sql}}};
+\addplot[only marks, mark=*, mark size=1.8pt, figAccent]
+  coordinates {{({desc / 1000:.3f},0)}};
+{c_in}
+\end{{axis}}
+{c_out}
+\end{{tikzpicture}}
+\caption{{Evidence cost: an SQL answer without and with the
+count-wrapped query that certifies its exact cardinality (top), verifier
+time against delivered result size (middle), and the median serialized
+descriptor of the SQL runs against the median model input per task-run,
+one dot per dataset (bottom). Checking and carrying evidence are cheap;
+producing a strong certificate can cost as much as the query it
+certifies.}}
+\label{{fig:cost}}
+\end{{figure}}
+"""
+
+
 ALL_FIGS = ["main", "frontier", "conformance", "reasons", "efficiency",
-            "probe", "rq1", "bird-census", "ldbc"]
+            "probe", "rq1", "bird-census", "ldbc", "cost"]
 
 
 def main() -> int:
@@ -809,12 +929,14 @@ def main() -> int:
     else:
         outdir = args.out if args.out.is_dir() else args.out.parent
     mac = load_macros(outdir / "pn-macros.tex")
+    palette = load_palette(outdir / "preamble-shared.tex")
     makers = {
         "main": lambda: fig5(pn, uc),
         "frontier": lambda: fig6(pn),
-        "conformance": lambda: fig_conformance(bc, fm),
+        "conformance": lambda: fig_conformance(bc, fm, mac, palette),
         "reasons": fig_reasons_stub,
-        "efficiency": lambda: fig_efficiency(sc, ov),
+        "efficiency": fig_efficiency_stub,
+        "cost": lambda: fig_cost(sc, ov, uc, mac),
         "probe": lambda: fig_probe(tp, mac),
         "rq1": lambda: fig_rq1(bc, fm, mac),
         "bird-census": lambda: fig_bird_census(ba, mac),
