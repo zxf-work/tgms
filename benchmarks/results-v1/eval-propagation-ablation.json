@@ -1,0 +1,206 @@
+{
+ "protocol": {
+  "question": "claims ECQR marks UNSUPPORTED that become SUPPORTED with Lemma 3.10 propagation off",
+  "runs": "m8 14B frozen task-runs, 3 datasets x {operators: ours, ours-noverify; sql: b6, b6e}",
+  "propagation_off": "tgms.agent.executor.Executor(propagate=False): no reducer blocking, descriptors built without input descriptors",
+  "rule_a_mark": "would reduce a truncated result to one number",
+  "deterministic": true
+ },
+ "provenance": {
+  "manifest": "logs/frozen_runs.sha256",
+  "files_verified": 2430,
+  "files_failed": 0,
+  "manifest_sha256": "56211a270c21fc1702d5ea41f3900ff5fe7a5de71b0c423fcbe39a70a810faa5"
+ },
+ "operators": {
+  "sx-mathoverflow": {
+   "ours": {
+    "n_runs": 216,
+    "n_claims_recorded": 141,
+    "replay_artifacts_present_in_n_runs": {
+     "plan_with_args": 0,
+     "per_step_trace": 0,
+     "per_step_descriptors": 0,
+     "per_claim_ecqr_verdicts": 0
+    },
+    "rule_a_blocked_runs_lower_bound": 6,
+    "rule_a_blocked_task_ids": [
+     "sx-mathoverflow-t1-busiest_bucket-044",
+     "sx-mathoverflow-t1-busiest_bucket-044",
+     "sx-mathoverflow-t1-busiest_bucket-044",
+     "sx-mathoverflow-t1-new_nodes-019",
+     "sx-mathoverflow-t1-new_nodes-019",
+     "sx-mathoverflow-t1-new_nodes-019"
+    ],
+    "flips_unsupported_to_supported_by_kind": null
+   },
+   "ours-noverify": {
+    "n_runs": 216,
+    "n_claims_recorded": 192,
+    "replay_artifacts_present_in_n_runs": {
+     "plan_with_args": 0,
+     "per_step_trace": 0,
+     "per_step_descriptors": 0,
+     "per_claim_ecqr_verdicts": 0
+    },
+    "rule_a_blocked_runs_lower_bound": 6,
+    "rule_a_blocked_task_ids": [
+     "sx-mathoverflow-t1-busiest_bucket-044",
+     "sx-mathoverflow-t1-busiest_bucket-044",
+     "sx-mathoverflow-t1-busiest_bucket-044",
+     "sx-mathoverflow-t1-new_nodes-019",
+     "sx-mathoverflow-t1-new_nodes-019",
+     "sx-mathoverflow-t1-new_nodes-019"
+    ],
+    "flips_unsupported_to_supported_by_kind": null
+   }
+  },
+  "sx-superuser": {
+   "ours": {
+    "n_runs": 204,
+    "n_claims_recorded": 153,
+    "replay_artifacts_present_in_n_runs": {
+     "plan_with_args": 0,
+     "per_step_trace": 0,
+     "per_step_descriptors": 0,
+     "per_claim_ecqr_verdicts": 0
+    },
+    "rule_a_blocked_runs_lower_bound": 6,
+    "rule_a_blocked_task_ids": [
+     "sx-superuser-t1-busiest_bucket-044",
+     "sx-superuser-t1-busiest_bucket-044",
+     "sx-superuser-t1-busiest_bucket-044",
+     "sx-superuser-t4-reach_motifs-008",
+     "sx-superuser-t4-reach_motifs-008",
+     "sx-superuser-t4-reach_motifs-008"
+    ],
+    "flips_unsupported_to_supported_by_kind": null
+   },
+   "ours-noverify": {
+    "n_runs": 204,
+    "n_claims_recorded": 189,
+    "replay_artifacts_present_in_n_runs": {
+     "plan_with_args": 0,
+     "per_step_trace": 0,
+     "per_step_descriptors": 0,
+     "per_claim_ecqr_verdicts": 0
+    },
+    "rule_a_blocked_runs_lower_bound": 6,
+    "rule_a_blocked_task_ids": [
+     "sx-superuser-t1-busiest_bucket-044",
+     "sx-superuser-t1-busiest_bucket-044",
+     "sx-superuser-t1-busiest_bucket-044",
+     "sx-superuser-t4-reach_motifs-008",
+     "sx-superuser-t4-reach_motifs-008",
+     "sx-superuser-t4-reach_motifs-008"
+    ],
+    "flips_unsupported_to_supported_by_kind": null
+   }
+  },
+  "wiki-talk": {
+   "ours": {
+    "n_runs": 186,
+    "n_claims_recorded": 144,
+    "replay_artifacts_present_in_n_runs": {
+     "plan_with_args": 0,
+     "per_step_trace": 0,
+     "per_step_descriptors": 0,
+     "per_claim_ecqr_verdicts": 0
+    },
+    "rule_a_blocked_runs_lower_bound": 3,
+    "rule_a_blocked_task_ids": [
+     "wiki-talk-t1-busiest_bucket-031",
+     "wiki-talk-t1-busiest_bucket-031",
+     "wiki-talk-t1-busiest_bucket-031"
+    ],
+    "flips_unsupported_to_supported_by_kind": null
+   },
+   "ours-noverify": {
+    "n_runs": 186,
+    "n_claims_recorded": 177,
+    "replay_artifacts_present_in_n_runs": {
+     "plan_with_args": 0,
+     "per_step_trace": 0,
+     "per_step_descriptors": 0,
+     "per_claim_ecqr_verdicts": 0
+    },
+    "rule_a_blocked_runs_lower_bound": 3,
+    "rule_a_blocked_task_ids": [
+     "wiki-talk-t1-busiest_bucket-031",
+     "wiki-talk-t1-busiest_bucket-031",
+     "wiki-talk-t1-busiest_bucket-031"
+    ],
+    "flips_unsupported_to_supported_by_kind": null
+   }
+  }
+ },
+ "sql": {
+  "sx-mathoverflow": {
+   "n_runs": 216,
+   "n_descriptors": 153,
+   "descriptors_with_input_descriptors": 0,
+   "claim_verdicts": {
+    "SUPPORTED": 129,
+    "UNSUPPORTED_NO_WITNESS": 18
+   },
+   "unsupported_claims_by_kind": {
+    "count": 15,
+    "value": 3
+   },
+   "flips_unsupported_to_supported_by_kind": {
+    "count": 0,
+    "value": 0
+   },
+   "flips_total": 0
+  },
+  "sx-superuser": {
+   "n_runs": 204,
+   "n_descriptors": 144,
+   "descriptors_with_input_descriptors": 0,
+   "claim_verdicts": {
+    "UNSUPPORTED_NO_WITNESS": 18,
+    "SUPPORTED": 117
+   },
+   "unsupported_claims_by_kind": {
+    "count": 18
+   },
+   "flips_unsupported_to_supported_by_kind": {
+    "count": 0
+   },
+   "flips_total": 0
+  },
+  "wiki-talk": {
+   "n_runs": 186,
+   "n_descriptors": 124,
+   "descriptors_with_input_descriptors": 0,
+   "claim_verdicts": {
+    "SUPPORTED": 102,
+    "UNSUPPORTED_NO_WITNESS": 16
+   },
+   "unsupported_claims_by_kind": {
+    "count": 14,
+    "value": 2
+   },
+   "flips_unsupported_to_supported_by_kind": {
+    "count": 0,
+    "value": 0
+   },
+   "flips_total": 0
+  }
+ },
+ "n_task_runs": 2424,
+ "operators_missing_for_replay": [
+  "plan arguments (records keep plan_ops, the op names only)",
+  "per-step execution trace (status, truncated, upstream_truncated)",
+  "per-step ECQR descriptors",
+  "cited result payloads (the content-addressed result store lived under the regenerable stores/ tree, which was deleted)",
+  "per-claim ECQR verdicts (operator rows keep run-level legacy UCR only; the observational ecqr column was not persisted)"
+ ],
+ "manifest": {
+  "commit": "bd11067b0635cf2e65c55cb0570654f10abcec5c",
+  "host": "itiger03",
+  "slurm_job": "272163",
+  "date": "2026-10-10T03:17:20+00:00",
+  "python": "3.12.13"
+ }
+}
