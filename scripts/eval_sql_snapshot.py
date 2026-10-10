@@ -60,6 +60,7 @@ RECORD_FIELDS = ["trial", "page_len", "count", "size_p", "gen_p",
                  "consistent_pair",
                  "page_prefix_ok", "stmt_count_ok", "certificate_wrong",
                  "latency_ms"]
+FROZEN_ENGINE_ORDER = ["sqlite-wal", "sqlite-rollback", "duckdb", "postgres"]
 VARIANTS = {"unsafe": unsafe_page_and_count,
             "consistent": consistent_page_and_count}
 
@@ -460,6 +461,25 @@ def _git(*a: str) -> str:
         return ""
 
 
+def _junit_summary(path: Path) -> dict:
+    import xml.etree.ElementTree as ET
+    root = ET.parse(path).getroot()
+    suite = root if root.tag == "testsuite" else root.find("testsuite")
+    cases = {}
+    for tc in suite.iter("testcase"):
+        outcome = "passed"
+        for tag in ("failure", "error", "skipped"):
+            if tc.find(tag) is not None:
+                outcome = tag
+        cases[tc.get("name")] = outcome
+    return {"file": "tests/test_sql_snapshot.py",
+            "tests": int(suite.get("tests", 0)),
+            "failures": int(suite.get("failures", 0)),
+            "errors": int(suite.get("errors", 0)),
+            "skipped": int(suite.get("skipped", 0)),
+            "cases": cases}
+
+
 def _head_sha() -> str:
     """HEAD without the git binary (absent on iTiger compute nodes)."""
     sha = _git("rev-parse", "HEAD")
@@ -497,6 +517,12 @@ def main() -> int:
     ap.add_argument("--not-run", action="append", default=[],
                     metavar="ENGINE=REASON",
                     help="record an engine that was not run, with why")
+    ap.add_argument("--junit", type=Path,
+                    help="pytest junit XML of tests/test_sql_snapshot.py "
+                         "from the same job, summarised in the receipt")
+    ap.add_argument("--install-manifest", type=Path,
+                    help="JSON describing packages installed for the run "
+                         "(name, version, wheel sha256), copied verbatim")
     args = ap.parse_args()
     if args.receipt.exists():
         raise SystemExit(f"receipt {args.receipt} exists; receipts are "
@@ -506,12 +532,13 @@ def main() -> int:
     engines = [e for e in args.engines.split(",") if e]
     ns = [int(x) for x in args.ns.split(",") if x]
     blocks = []
-    idx = 0
     for engine in engines:
-        for n in ns:
-            for variant in ("unsafe", "consistent"):
-                seed = args.seed + idx
-                idx += 1
+        for ni, n in enumerate(ns):
+            for vi, variant in enumerate(("unsafe", "consistent")):
+                # block index in the frozen order engine x N x variant,
+                # so a subset run draws the seeds the full run would
+                seed = args.seed + (FROZEN_ENGINE_ORDER.index(engine)
+                                    * len(ns) + ni) * 2 + vi
                 t0 = time.monotonic()
                 b = run_block(engine, n, variant, args, seed)
                 blocks.append(b)
@@ -570,6 +597,9 @@ def main() -> int:
                           "pairs and 0 wrong certificates",
         "consistent_variant_passes": consistent_ok,
         "oracle_checks_pass": oracle_ok,
+        "unit_tests": _junit_summary(args.junit) if args.junit else None,
+        "install_manifest": (json.loads(args.install_manifest.read_text())
+                             if args.install_manifest else None),
         "record_fields": RECORD_FIELDS,
         "table": table,
         "blocks": blocks,
