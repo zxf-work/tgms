@@ -85,8 +85,13 @@ class ResultStore:
 class Executor:
     def __init__(self, router: ToolRouter, result_store: ResultStore | None = None,
                  max_wall_s: float = MAX_WALL_S,
-                 max_total_rows: int = MAX_TOTAL_ROWS) -> None:
+                 max_total_rows: int = MAX_TOTAL_ROWS,
+                 propagate: bool = True) -> None:
         self.router = router
+        #: False disables cross-step evidence propagation (Lemma 3.10 rules
+        #: (a) and (c)): reducers over truncated inputs run, and each step's
+        #: descriptor is built from its own envelope alone. Ablation only.
+        self.propagate = propagate
         self.results = result_store
         #: production keeps the 60 s default; the benchmark oracle lane
         #: passes its own declared budget (plan §2c) — the wall is part of
@@ -150,7 +155,8 @@ class Executor:
                          if s2["step_id"] == d), {}).get("upstream_truncated")
                 for d in step.depends_on)
 
-            if upstream_truncated and step.op == "compute" \
+            if self.propagate and upstream_truncated \
+                    and step.op == "compute" \
                     and resolved.get("fn") in REDUCING_FNS:
                 # The old message advised paging with `cursor`, which a
                 # single-shot plan DAG cannot express — Session 4 measured
@@ -208,7 +214,7 @@ class Executor:
                     rec["ecqr"] = build_ecqr(
                         res, store_id=str(getattr(
                             self.router.adapter, "path", "store")),
-                        input_ecqrs=inputs,
+                        input_ecqrs=inputs if self.propagate else None,
                         execution_context=ctx_token).to_json()
                 except Exception:  # descriptor failure must never fail a step
                     rec["ecqr"] = None
