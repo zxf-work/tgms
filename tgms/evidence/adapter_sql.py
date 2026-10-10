@@ -15,10 +15,12 @@ a page.
 
 from __future__ import annotations
 
+import sqlite3
+from dataclasses import dataclass, field
 from typing import Any
 
 from tgms.core.model import OPEN_END, canonical_json, sha256_hex
-from tgms.evidence.ecqr import ECQR, Basis, Scope
+from tgms.evidence.ecqr import ECQR, Basis, Ranking, Scope
 
 
 def build_sql_ecqr(*, rows: list[Any], sql: str,
@@ -52,4 +54,244 @@ def build_sql_ecqr(*, rows: list[Any], sql: str,
                     "inputs": [e.result_id for e in (input_ecqrs or [])]},
         semantics={"engine": engine, "version": engine_version,
                    "canonicalization": "tgms-canonical-json-1"},
+    )
+
+
+# ------------------------------------------------------------------ top-k
+#
+# A ranked page: the statement's outer `LIMIT k` (zero OFFSET) is read as
+# pagination of the candidate domain Q' (the statement without it), the
+# reading the claim TopK needs, and distinct from the default reading
+# above, where an agent LIMIT is part of the domain. The adapter records
+# the ordering and establishes `order_total` statically from the schema:
+# true iff the ORDER BY key list contains every column of a unique,
+# non-null key of the single base table in FROM. Anything it cannot
+# establish stays false (understatement is sound).
+
+#: SQLite rowid aliases; usable as a unique key on rowid tables only
+ROWID_NAMES = ("rowid", "_rowid_", "oid")
+
+
+class TopKBlocked(Exception):
+    """A ranking over an input that is not delivery-certified complete:
+    top-k is non-row-local, so the step is blocked (Lemma 3.10 rule (a))
+    and no descriptor is emitted."""
+
+
+@dataclass
+class TopKShape:
+    """What the adapter establishes about one statement's outer ranking.
+
+    `is_topk` holds when the outer statement carries an integer-literal
+    LIMIT k >= 1 with zero OFFSET; `reason` then names why `order_total`
+    holds or not, else why the statement is not a top-k page.
+    """
+    is_topk: bool
+    reason: str
+    limit: int | None = None
+    order: list[list[str]] = field(default_factory=list)
+    order_total: bool = False
+    candidate_sql: str | None = None
+    unique_key: list[str] | None = None
+
+
+def sqlite_unique_keys(con: sqlite3.Connection) -> dict[str, list[frozenset[str]]]:
+    """Unique, non-null column sets per table (names lowercased).
+
+    Counted: the rowid and its aliases on rowid tables, and the PRIMARY
+    KEY when it cannot hold NULL (an INTEGER PRIMARY KEY rowid alias, a
+    WITHOUT ROWID table, or every key column declared NOT NULL). SQLite
+    admits NULLs in other primary keys, and NULLs tie, so such a key is
+    not counted. UNIQUE constraints are not consulted.
+    """
+    out: dict[str, list[frozenset[str]]] = {}
+    tables = con.execute(
+        "SELECT name, sql FROM sqlite_master WHERE type='table' "
+        "AND name NOT LIKE 'sqlite_%'").fetchall()
+    for name, ddl in tables:
+        without_rowid = bool(ddl) and "WITHOUT ROWID" in " ".join(
+            ddl.upper().split())
+        info = con.execute(
+            f"PRAGMA table_info({_quote_ident(name)})").fetchall()
+        # (cid, name, type, notnull, dflt, pk)
+        pk = sorted((r for r in info if r[5]), key=lambda r: r[5])
+        keys: list[frozenset[str]] = []
+        if not without_rowid:
+            cols = {r[1].lower() for r in info}
+            for alias in ROWID_NAMES:
+                if alias not in cols:   # a real column shadows the alias
+                    keys.append(frozenset([alias]))
+        if pk:
+            rowid_alias = (len(pk) == 1 and not without_rowid
+                           and str(pk[0][2]).strip().upper() == "INTEGER")
+            if rowid_alias or without_rowid or all(r[3] for r in pk):
+                keys.append(frozenset(r[1].lower() for r in pk))
+        out[name.lower()] = keys
+    return out
+
+
+def _quote_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _int_literal(node: Any) -> int | None:
+    from sqlglot import expressions as exp
+    if isinstance(node, exp.Literal) and not node.is_string:
+        try:
+            return int(node.this)
+        except ValueError:
+            return None
+    return None
+
+
+def parse_topk(sql: str, unique_keys: dict[str, list[frozenset[str]]],
+               dialect: str = "sqlite") -> TopKShape:
+    """Parse the outer ORDER BY / LIMIT of `sql` and decide `order_total`.
+
+    Q' (`candidate_sql`) is the statement with its outer LIMIT removed,
+    ORDER BY kept. The ORDER BY list is recorded as written (canonical
+    key text, direction). Inner LIMITs are part of Q' and untouched.
+    sqlglot is imported here, not at module level: it is an evaluation
+    dependency, not a runtime one.
+    """
+    import sqlglot
+    from sqlglot import expressions as exp
+    try:
+        tree = sqlglot.parse_one(sql, read=dialect)
+    except Exception:  # noqa: BLE001 - any parse failure is "not established"
+        return TopKShape(False, "parse_error")
+    lim = tree.args.get("limit")
+    if lim is None:
+        return TopKShape(False, "no_outer_limit")
+    off = tree.args.get("offset") or lim.args.get("offset")
+    if off is not None:
+        off_n = _int_literal(off.args.get("expression") if isinstance(
+            off, exp.Offset) else off)
+        if off_n != 0:
+            return TopKShape(False, "outer_offset")
+    k = _int_literal(lim.args.get("expression"))
+    if k is None or k < 1:
+        return TopKShape(False, "non_literal_or_zero_limit")
+
+    cand = tree.copy()
+    cand.set("limit", None)
+    cand.set("offset", None)
+    order_node = tree.args.get("order")
+    ordered = list(order_node.expressions) if order_node is not None else []
+    order = [[o.this.sql(dialect=dialect),
+              "desc" if o.args.get("desc") else "asc"] for o in ordered]
+    shape = TopKShape(True, "", limit=k, order=order,
+                      candidate_sql=cand.sql(dialect=dialect))
+    reason, key = _order_total(tree, ordered, unique_keys)
+    shape.reason, shape.unique_key = reason, key
+    shape.order_total = key is not None
+    return shape
+
+
+def _order_total(tree: Any, ordered: list[Any],
+                 unique_keys: dict[str, list[frozenset[str]]]
+                 ) -> tuple[str, list[str] | None]:
+    from sqlglot import expressions as exp
+    if not ordered:
+        return "no_order_by", None
+    if not isinstance(tree, exp.Select):
+        return "compound_query", None
+    src = tree.args.get("from_") or tree.args.get("from")
+    if src is None or tree.args.get("joins"):
+        return "not_single_table", None
+    table = src.this
+    if not isinstance(table, exp.Table) or table.args.get("db"):
+        return "derived_or_qualified_source", None
+    tname = table.name.lower()
+    with_ = tree.args.get("with_") or tree.args.get("with")
+    if with_ is not None and any(
+            c.alias_or_name.lower() == tname for c in with_.expressions):
+        return "derived_or_qualified_source", None
+    if tname not in unique_keys:
+        return "unknown_table", None
+    if tree.args.get("group"):
+        return "grouped", None
+    names = {tname, (table.alias or tname).lower()}
+    aliases = {}
+    for e in tree.expressions:
+        if isinstance(e, exp.Alias):
+            aliases[e.alias.lower()] = e.this
+    projected = set()
+    for e in tree.expressions:
+        c = e.this if isinstance(e, exp.Alias) else e
+        if isinstance(c, exp.Column) and (
+                not c.table or c.table.lower() in names):
+            projected.add(c.name.lower())
+    ordered_cols = set()
+    for o in ordered:
+        node = o.this
+        pos = _int_literal(node)
+        if pos is not None and 1 <= pos <= len(tree.expressions):
+            node = tree.expressions[pos - 1]
+            node = node.this if isinstance(node, exp.Alias) else node
+        elif (isinstance(node, exp.Column) and not node.table
+              and node.name.lower() in aliases):
+            node = aliases[node.name.lower()]   # SQLite: alias first
+        if isinstance(node, exp.Column) and (
+                not node.table or node.table.lower() in names):
+            ordered_cols.add(node.name.lower())
+    for key in unique_keys[tname]:
+        if key <= ordered_cols:
+            if tree.args.get("distinct") and not key <= projected:
+                continue
+            return "unique_key_in_order", sorted(key)
+    if tree.args.get("distinct") and any(
+            k <= ordered_cols for k in unique_keys[tname]):
+        return "distinct_key_not_projected", None
+    return "no_unique_key_in_order", None
+
+
+def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
+                        params: list[Any] | None = None,
+                        store_id: str, as_of_tt: int = OPEN_END,
+                        engine: str = "sqlite", engine_version: str = "",
+                        candidate_count: int | None = None,
+                        input_ecqrs: list[ECQR] | None = None) -> ECQR:
+    """Ranked-page descriptor for one completed `ORDER BY ... LIMIT k`
+    statement. The domain is Q' (`shape.candidate_sql`): the page is the
+    first min(k, |R*(Q')|) rows of Q'. Delivery over Q' is certified
+    complete when the completed statement returned fewer than k rows
+    (the candidates are exhausted) or when `candidate_count`, an
+    unlimited count of Q' on the same basis, equals the page length;
+    that count is also Q''s cardinality certificate.
+
+    Raises TopKBlocked when an input is not delivery-certified complete.
+    """
+    if not shape.is_topk or shape.candidate_sql is None or shape.limit is None:
+        raise ValueError(f"not a top-k statement ({shape.reason})")
+    if not all(e.scope.delivery_complete for e in (input_ecqrs or [])):
+        raise TopKBlocked("ranking over a delivery-uncertified input")
+    delivered = len(rows)
+    if delivered > shape.limit:
+        raise ValueError("page longer than its LIMIT")
+    exhausted = delivered < shape.limit
+    delivery_complete = exhausted or (
+        candidate_count is not None and candidate_count == delivered)
+    cardinality = (candidate_count if isinstance(candidate_count, int)
+                   else delivered if exhausted else None)
+    q_prime = {"sql": " ".join(shape.candidate_sql.split()),
+               "params": params or []}
+    return ECQR(
+        result_id=sha256_hex(canonical_json(
+            {"rows": rows, "sql": sql, "params": params or []})),
+        basis=Basis(store=store_id, as_of_tt=as_of_tt,
+                    pinned=as_of_tt != OPEN_END),
+        scope=Scope(domain=dict(q_prime),
+                    execution_complete=True,  # a completed statement
+                    delivery_complete=delivery_complete,
+                    rows_returned=delivered,
+                    exact_cardinality=cardinality),
+        exactness="exact",
+        provenance={"engine": engine, "statement": " ".join(sql.split()),
+                    "inputs": [e.result_id for e in (input_ecqrs or [])]},
+        semantics={"engine": engine, "version": engine_version,
+                   "canonicalization": "tgms-canonical-json-1"},
+        ranking=Ranking(candidate_domain=dict(q_prime), limit=shape.limit,
+                        order=[list(p) for p in shape.order],
+                        order_total=shape.order_total),
     )

@@ -29,6 +29,7 @@ from tgms.evidence.claims import (
     Membership,
     Nonexistence,
     Scalar,
+    TopK,
 )
 from tgms.evidence.ecqr import ECQR
 
@@ -41,6 +42,11 @@ class Verdict(Enum):
     UNSUPPORTED_VALUE_MISMATCH = "UNSUPPORTED_VALUE_MISMATCH"
     UNSUPPORTED_NO_WITNESS = "UNSUPPORTED_NO_WITNESS"
     OUTSIDE_VERIFIED_FRAGMENT = "OUTSIDE_VERIFIED_FRAGMENT"
+    # top-k obligations (the ordered claim form)
+    UNSUPPORTED_ORDER_NOT_TOTAL = "UNSUPPORTED_ORDER_NOT_TOTAL"
+    UNSUPPORTED_ORDER_MISMATCH = "UNSUPPORTED_ORDER_MISMATCH"
+    UNSUPPORTED_EXECUTION_NOT_CERTIFIED = "UNSUPPORTED_EXECUTION_NOT_CERTIFIED"
+    UNSUPPORTED_K_MISMATCH = "UNSUPPORTED_K_MISMATCH"
 
 
 @dataclass
@@ -184,6 +190,76 @@ def verify(claim: Claim, evidence: ECQR, result: Any = None) -> Judgment:
         return Judgment(Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED,
                         "incomplete delivery cannot prove absence")
 
+    if isinstance(claim, TopK):
+        return _verify_topk(claim, evidence, result)
+
     return Judgment(Verdict.OUTSIDE_VERIFIED_FRAGMENT,
                     f"claim kind {getattr(claim, 'kind', '?')!r} is outside "
                     f"the verified fragment")
+
+
+def _seq(rows: Any) -> list[Any]:
+    """Positional rows as lists, so a tuple-valued claim row equals the
+    list-valued delivered row it names."""
+    out = []
+    for r in rows or []:
+        out.append(list(r) if isinstance(r, tuple) else r)
+    return out
+
+
+def _verify_topk(claim: TopK, e: ECQR, result: Any) -> Judgment:
+    """TopK(S, key, k, dir): S is the length-k prefix of R*(Q', B) under
+    the total order (key, dir), or all of it when |R*(Q', B)| < k.
+
+    Checked in this order, first failure wins: a recorded total order
+    (ORDER_NOT_TOTAL), the claim names that order (ORDER_MISMATCH), a
+    certified execution over Q' (EXECUTION_NOT_CERTIFIED), k equals the
+    recorded limit and the page holds at most k rows (K_MISMATCH), S is
+    the delivered sequence (VALUE_MISMATCH), and a page shorter than k
+    is certified complete (COMPLETENESS_NOT_CERTIFIED). A full page of k
+    rows needs no delivery certificate: under a total order the
+    delivered prefix of length k IS the first k rows (S0 over Q').
+    """
+    s, rk = e.scope, e.ranking
+    if rk is None or not rk.order or not rk.order_total:
+        why = ("descriptor records no ranking" if rk is None
+               else "no ORDER BY: the page is an arbitrary prefix"
+               if not rk.order
+               else "recorded order is not established as a total order "
+                    "(no unique key in the sort list)")
+        return Judgment(Verdict.UNSUPPORTED_ORDER_NOT_TOTAL, why)
+    try:
+        want = claim.order()
+    except ValueError as err:
+        return Judgment(Verdict.UNSUPPORTED_ORDER_MISMATCH,
+                        f"claim order malformed: {err}")
+    if want != rk.order:
+        return Judgment(Verdict.UNSUPPORTED_ORDER_MISMATCH,
+                        f"claim orders by {want}, evidence ranked by "
+                        f"{rk.order}")
+    if not s.execution_complete:
+        return Judgment(Verdict.UNSUPPORTED_EXECUTION_NOT_CERTIFIED,
+                        "top-k needs a certified execution over the whole "
+                        "candidate domain")
+    rows = _seq(_rows(result))
+    if (not isinstance(claim.k, int) or isinstance(claim.k, bool)
+            or claim.k < 1 or claim.k != rk.limit):
+        return Judgment(Verdict.UNSUPPORTED_K_MISMATCH,
+                        f"claim k={claim.k!r}, evidence limit is {rk.limit}")
+    if len(rows) > rk.limit:
+        return Judgment(Verdict.UNSUPPORTED_K_MISMATCH,
+                        f"page holds {len(rows)} rows, more than its limit "
+                        f"{rk.limit}")
+    if _seq(claim.rows) != rows:
+        return Judgment(Verdict.UNSUPPORTED_VALUE_MISMATCH,
+                        "claimed rows differ from the delivered sequence")
+    if len(rows) == claim.k:
+        return Judgment(Verdict.SUPPORTED,
+                        "delivered prefix of length k under a total order")
+    if s.delivery_complete:
+        return Judgment(Verdict.SUPPORTED,
+                        f"fewer than k candidates ({len(rows)}) and "
+                        f"delivery certified complete")
+    return Judgment(Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED,
+                    f"page of {len(rows)} < k rows without certified "
+                    f"delivery: omitted candidates may rank in the top k")

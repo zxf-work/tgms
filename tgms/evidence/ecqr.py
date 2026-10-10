@@ -50,6 +50,28 @@ class Scope:
 
 
 @dataclass
+class Ranking:
+    """The ordering part of the evidence scope, present only on a ranked
+    page: the delivered rows are a prefix, of length at most `limit`, of
+    the complete result of `candidate_domain` sequenced by `order`.
+
+    `candidate_domain` is the domain Q' the ranking ranges over (for SQL,
+    the statement with its outer LIMIT removed; the SQL adapter records
+    the same Q' as `Scope.domain`, so delivery and cardinality statuses
+    are statements about Q'). `order` is the recorded sort key list, each
+    entry a ``[key, "asc"|"desc"]`` pair in canonical key text; an empty
+    list records a LIMIT without ORDER BY. `order_total` is a positive
+    capability: True only when the adapter established that `order` is a
+    deterministic total order on the candidate rows; False means not
+    established, never "known to tie".
+    """
+    candidate_domain: dict[str, Any]
+    limit: int
+    order: list[list[str]]
+    order_total: bool = False
+
+
+@dataclass
 class ECQR:
     result_id: str                   # content digest over canonical result bytes
     basis: Basis
@@ -57,16 +79,24 @@ class ECQR:
     exactness: str = "exact"         # v1 backends are exact or refused
     provenance: dict[str, Any] = field(default_factory=dict)
     semantics: dict[str, Any] = field(default_factory=dict)
+    #: ordering evidence for top-k claims. None on every unranked
+    #: descriptor, and then absent from the serialized form, so a
+    #: descriptor that carries no ranking serializes exactly as before
+    ranking: Ranking | None = None
 
     def to_json(self) -> dict[str, Any]:
         d = asdict(self)
+        if d.get("ranking") is None:
+            d.pop("ranking", None)
         d["schema"], d["version"] = SCHEMA, VERSION
         return d
 
     @classmethod
     def from_json(cls, d: dict[str, Any]) -> ECQR:
+        rk = d.get("ranking")
         return cls(result_id=d["result_id"],
                    basis=Basis(**d["basis"]), scope=Scope(**d["scope"]),
                    exactness=d.get("exactness", "exact"),
                    provenance=d.get("provenance", {}),
-                   semantics=d.get("semantics", {}))
+                   semantics=d.get("semantics", {}),
+                   ranking=Ranking(**rk) if rk is not None else None)
