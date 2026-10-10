@@ -218,28 +218,32 @@ def _row_key(r: Any) -> str:
 def _verify_topk(claim: TopK, e: ECQR, result: Any) -> Judgment:
     """TopK(S, key, k, dir[, as_set]) over the candidate domain Q'.
 
-    Two support routes. (i) total_order: the recorded order is a total
+    Three support routes. (i) total_order: the recorded order is a total
     order, so the delivered prefix of length k IS the first k rows, as a
-    sequence (and hence as a set). (ii) boundary_strict: the order is not
-    total, but the adapter established on the descriptor's own basis that
-    rank k sorts strictly before rank k+1 (or fewer than k+1 candidates
-    exist), so the first k rows are unique as a SET; only a set claim
-    (`as_set`) can use it.
+    sequence (and hence as a set). (iii) sequence_strict: the order is
+    not total, but the adapter established on the descriptor's own basis
+    that every adjacent pair among the first min(|Q'|, k+1) rows is
+    strictly ordered, so the first k rows are unique as a SEQUENCE; it
+    serves sequence claims. (ii) boundary_strict: rank k sorts strictly
+    before rank k+1 (or fewer than k+1 candidates exist), so the first k
+    rows are unique as a SET; it serves set claims (`as_set`) only.
 
     Checked in this order, first failure wins: an order with at least one
     route (ORDER_NOT_TOTAL), the claim names that order (ORDER_MISMATCH),
-    the route serves the claim (ORDER_NOT_TOTAL for a sequence claim on
-    route (ii); BASIS_MISMATCH when the boundary check ran on another
-    basis), certified execution over Q' (EXECUTION_NOT_CERTIFIED), k
-    equals the recorded limit and the page holds at most k rows
-    (K_MISMATCH), S is the delivered sequence, or set under `as_set`
-    (VALUE_MISMATCH), and a page shorter than k is certified complete
-    (COMPLETENESS_NOT_CERTIFIED). A full page of k rows needs no
-    delivery certificate.
+    the route serves the claim (ORDER_NOT_TOTAL: a sequence claim without
+    a total order or sequence strictness, a set claim without a total
+    order or boundary strictness; BASIS_MISMATCH when the dynamic check
+    ran on another basis), certified execution over Q'
+    (EXECUTION_NOT_CERTIFIED), k equals the recorded limit and the page
+    holds at most k rows (K_MISMATCH), S is the delivered sequence, or
+    set under `as_set` (VALUE_MISMATCH), and a page shorter than k is
+    certified complete (COMPLETENESS_NOT_CERTIFIED). A full page of k
+    rows needs no delivery certificate.
     """
     s, rk = e.scope, e.ranking
     if (rk is None or not rk.order
-            or not (rk.order_total or rk.boundary_strict)):
+            or not (rk.order_total or rk.boundary_strict
+                    or rk.sequence_strict)):
         why = ("descriptor records no ranking" if rk is None
                else "no ORDER BY: the page is an arbitrary prefix"
                if not rk.order
@@ -260,14 +264,22 @@ def _verify_topk(claim: TopK, e: ECQR, result: Any) -> Judgment:
         route = "total_order"
     else:
         if not claim.as_set:
-            return Judgment(Verdict.UNSUPPORTED_ORDER_NOT_TOTAL,
-                            "order is not total: a strict rank boundary "
-                            "certifies the top-k set, not its sequence")
+            if not rk.sequence_strict:
+                return Judgment(Verdict.UNSUPPORTED_ORDER_NOT_TOTAL,
+                                "order is not total and the first k+1 "
+                                "rows are not established pairwise strict: "
+                                "the sequence is not unique")
+            route = "sequence_strict"
+        else:
+            if not (rk.boundary_strict or rk.sequence_strict):
+                return Judgment(Verdict.UNSUPPORTED_ORDER_NOT_TOTAL,
+                                "order is not total and rank k is not "
+                                "established strictly before rank k+1")
+            route = "boundary_strict"
         if rk.boundary_basis != basis_identity(e.basis):
             return Judgment(Verdict.UNSUPPORTED_BASIS_MISMATCH,
-                            "rank-boundary check ran on a different basis "
-                            "than the ranked page")
-        route = "boundary_strict"
+                            "rank strictness was checked on a different "
+                            "basis than the ranked page")
     if not s.execution_complete:
         return Judgment(Verdict.UNSUPPORTED_EXECUTION_NOT_CERTIFIED,
                         "top-k needs a certified execution over the whole "

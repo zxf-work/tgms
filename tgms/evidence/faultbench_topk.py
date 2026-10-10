@@ -61,9 +61,11 @@ def _ecqr(result: dict, *, order: list[list[str]] | None, total: bool,
           limit: int, delivery: bool, execution: bool = True,
           pinned: bool = True, as_of: int = BASIS_TT,
           result_id: str | None = None, boundary: bool = False,
-          boundary_as_of: int | None = None) -> ECQR:
+          boundary_as_of: int | None = None,
+          sequence: bool = False) -> ECQR:
     basis = Basis(store="bench", as_of_tt=as_of, pinned=pinned)
     bb = None
+    boundary = boundary or sequence
     if boundary:
         bb = basis_identity(Basis(
             store="bench", pinned=pinned,
@@ -77,7 +79,8 @@ def _ecqr(result: dict, *, order: list[list[str]] | None, total: bool,
         ranking=(None if order is None else Ranking(
             candidate_domain=dict(DOMAIN), limit=limit,
             order=[list(p) for p in order], order_total=total,
-            boundary_strict=boundary, boundary_basis=bb)))
+            boundary_strict=boundary, boundary_basis=bb,
+            sequence_strict=sequence)))
 
 
 def _claim(rows, order, k, basis_tt=None, as_set=False) -> TopK:
@@ -104,10 +107,11 @@ class Cell:
 def truth(cell: Cell) -> bool:
     """Is the claim true of the full candidate relation it is about?
 
-    A sequence claim is true iff the claimed order is a total order on
-    the candidates (no two candidates share every key value) and the
-    claimed rows are the first k candidates under it (all of them when
-    fewer than k exist). A set claim (`as_set`) is true iff the first k
+    A sequence claim is true iff the first k candidates form a unique
+    sequence under the claimed order (no two adjacent candidates among
+    the first min(n, k+1) share every key value; a total order is the
+    special case with no ties anywhere) and the claimed rows are that
+    sequence (all candidates when fewer than k exist). A set claim (`as_set`) is true iff the first k
     candidates form a unique set (fewer than k+1 candidates, or the key
     at rank k differs from the key at rank k+1) and the claimed rows are
     that set. Either way the claimed basis must be the relation's.
@@ -126,8 +130,8 @@ def truth(cell: Cell) -> bool:
             return False
         return ({tuple(r) for r in c.rows}
                 == {tuple(r) for r in ranked[:c.k]})
-    keys = [key(r) for r in cell.candidates]
-    if len(set(keys)) != len(keys):
+    head = [key(r) for r in ranked[:c.k + 1]]
+    if any(head[i] == head[i + 1] for i in range(len(head) - 1)):
         return False
     return [list(r) for r in c.rows] == ranked[:c.k]
 
@@ -233,9 +237,11 @@ def cases() -> list[Cell]:
 
 
 def _set_route_cells() -> list[Cell]:
-    """Cells for the boundary-strict route: the order is score DESC alone
-    (not total; n1 and n3 tie at 90), and the adapter records whether
-    rank k sorts strictly before rank k+1."""
+    """Cells for the dynamic routes: the order is score alone (not total;
+    n1 and n3 tie at 90), and the adapter records whether rank k sorts
+    strictly before rank k+1 (boundary_strict, route ii, set claims) and
+    whether the first k+1 rows are pairwise strict (sequence_strict,
+    route iii, sequence claims)."""
     S = Verdict.SUPPORTED.value
     NT = "UNSUPPORTED_ORDER_NOT_TOTAL"
     cells: list[Cell] = []
@@ -274,6 +280,22 @@ def _set_route_cells() -> list[Cell]:
               boundary=True, boundary_as_of=BASIS_TT + 1),
         tie1, "must_not_certify", ("UNSUPPORTED_BASIS_MISMATCH", S, "REJECT"),
         note="strict on another state; on this one rank 1 and 2 tie")
+    # sequence strictness (route iii): score ASC alone is not total (n1
+    # and n3 tie at 90), but its first k+1 = 4 rows 10 < 30 < 50 < 60 are
+    # pairwise strict, so the top-3 SEQUENCE is unique
+    asc = [["score", "asc"]]
+    low = _sorted(CANDIDATES, asc)
+    low3 = {"rows": low[:3]}
+    add("sequence_strict", _claim(low[:3], asc, 3),
+        _ecqr(low3, order=asc, total=False, limit=3, delivery=False,
+              sequence=True),
+        low3, "must_certify", (S, S, "REJECT"),
+        note="n4, n6, n0: no tie among the first 4 rows")
+    add("sequence_strict_other_basis", _claim([["n3", 90]], COARSE, 1),
+        _ecqr(tie1, order=COARSE, total=False, limit=1, delivery=False,
+              sequence=True, boundary_as_of=BASIS_TT + 1),
+        tie1, "must_not_certify", ("UNSUPPORTED_BASIS_MISMATCH", S, "REJECT"),
+        note="pairwise strict on another state; on this one n1 ties n3")
     return cells
 
 

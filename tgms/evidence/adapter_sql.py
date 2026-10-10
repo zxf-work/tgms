@@ -255,6 +255,7 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
                         input_ecqrs: list[ECQR] | None = None,
                         execution_context: str | None = None,
                         boundary_strict: bool = False,
+                        sequence_strict: bool = False,
                         boundary_basis: dict[str, Any] | None = None,
                         provenance: dict[str, Any] | None = None) -> ECQR:
     """Ranked-page descriptor for one completed `ORDER BY ... LIMIT k`
@@ -265,7 +266,8 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
     unlimited count of Q' on the same basis, equals the page length;
     that count is also Q''s cardinality certificate.
 
-    `boundary_strict` records rank-boundary strictness at rank k; its
+    `boundary_strict` records rank-boundary strictness at rank k and
+    `sequence_strict` pairwise strictness of the first k+1 rows; their
     basis defaults to this page's basis (the check ran in the page's own
     read transaction, as `ranked_page_in_snapshot` does) unless
     `boundary_basis` names another. `execution_context` names the read
@@ -291,6 +293,7 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
                   pinned=as_of_tt != OPEN_END,
                   execution_context=(None if as_of_tt != OPEN_END
                                      else execution_context))
+    boundary_strict = bool(boundary_strict or sequence_strict)
     if boundary_strict and boundary_basis is None:
         boundary_basis = basis_identity(basis)
     return ECQR(
@@ -311,9 +314,10 @@ def build_sql_topk_ecqr(*, rows: list[Any], sql: str, shape: TopKShape,
         ranking=Ranking(candidate_domain=dict(q_prime), limit=shape.limit,
                         order=[list(p) for p in shape.order],
                         order_total=shape.order_total,
-                        boundary_strict=bool(boundary_strict),
+                        boundary_strict=boundary_strict,
                         boundary_basis=(boundary_basis if boundary_strict
-                                        else None)),
+                                        else None),
+                        sequence_strict=bool(sequence_strict)),
     )
 
 
@@ -354,8 +358,10 @@ def boundary_probe_sql(candidate_sql: str, k: int,
     and RANK (1 + the number of rows sorting strictly before). The
     engine's own peer test decides ties, so NULL placement and collation
     are exactly those of its ORDER BY. The statement returns
-    (n, rank_at_k_plus_1) with n = min(|Q'|, k+1); the boundary is strict
-    iff n <= k or rank_at_k_plus_1 = k+1. None when the probe cannot
+    (n, rank_at_k_plus_1, n_peer) over the first n = min(|Q'|, k+1) rows,
+    n_peer counting rows whose RANK differs from their ROW_NUMBER (a row
+    tied with its predecessor). The boundary is strict iff n <= k or
+    rank_at_k_plus_1 = k+1; the sequence is strict iff n_peer = 0. None when the probe cannot
     preserve Q''s rows (DISTINCT, compound queries) or there is no ORDER
     BY; an unavailable probe is not strict.
     """
@@ -384,7 +390,8 @@ def boundary_probe_sql(candidate_sql: str, k: int,
         exp.alias_(win("RANK"), "_tgms_rk")])
     body = inner.sql(dialect=dialect)
     return (f"SELECT COUNT(*), MAX(CASE WHEN _tgms_rn = {k + 1} "
-            f"THEN _tgms_rk END) FROM ({body}) AS _tgms_b "
+            f"THEN _tgms_rk END), SUM(CASE WHEN _tgms_rk <> _tgms_rn "
+            f"THEN 1 ELSE 0 END) FROM ({body}) AS _tgms_b "
             f"WHERE _tgms_rn <= {k + 1}")
 
 
@@ -397,6 +404,16 @@ def boundary_is_strict(n: Any, rank_k1: Any, k: int) -> bool:
     return isinstance(rank_k1, int) and rank_k1 == k + 1
 
 
+def sequence_is_strict(n: Any, n_peer: Any) -> bool:
+    """Decode the probe's peer count: every adjacent pair among the first
+    min(|Q'|, k+1) rows strictly ordered. An empty Q' is strict."""
+    if not isinstance(n, int):
+        return False
+    if n == 0:
+        return True
+    return isinstance(n_peer, int) and n_peer == 0
+
+
 @dataclass
 class RankedRead:
     """A ranked page, its candidate count and its boundary check, all
@@ -404,6 +421,7 @@ class RankedRead:
     rows: list[tuple]
     candidate_count: int
     boundary_strict: bool
+    sequence_strict: bool
     boundary_status: str          # "checked" | "unavailable" | "error: ..."
     token: dict[str, Any]
     seconds: dict[str, float]     # page / boundary / count (+ commit)
@@ -425,7 +443,7 @@ def ranked_page_in_snapshot(conn: Any, sql: str, shape: TopKShape, *,
         raise ValueError(f"not a top-k statement ({shape.reason})")
     dialect = dialect or {"postgres": "postgres"}.get(engine, engine)
     probe = boundary_probe_sql(shape.candidate_sql, shape.limit, dialect)
-    state: dict[str, Any] = {"strict": False,
+    state: dict[str, Any] = {"strict": False, "seq": False,
                              "status": "unavailable" if probe is None
                              else "checked"}
     marks: dict[str, float] = {}
@@ -434,8 +452,10 @@ def ranked_page_in_snapshot(conn: Any, sql: str, shape: TopKShape, *,
         marks["page_end"] = time.perf_counter()
         if probe is not None:
             try:
-                (n, rk1), = ss._run(conn, ss._engine(engine), probe)
+                (n, rk1, npeer), = ss._run(conn, ss._engine(engine), probe)
                 state["strict"] = boundary_is_strict(n, rk1, shape.limit)
+                state["seq"] = state["strict"] and sequence_is_strict(
+                    n, npeer)
             except Exception as e:  # noqa: BLE001
                 state["status"] = f"error: {type(e).__name__}: {e}"[:300]
         marks["boundary_end"] = time.perf_counter()
@@ -447,6 +467,7 @@ def ranked_page_in_snapshot(conn: Any, sql: str, shape: TopKShape, *,
     return RankedRead(
         rows=rows, candidate_count=total,
         boundary_strict=bool(state["strict"]),
+        sequence_strict=bool(state["seq"]),
         boundary_status=state["status"], token=token,
         seconds={"page": marks["page_end"] - t0,
                  "boundary": marks["boundary_end"] - marks["page_end"],

@@ -72,6 +72,12 @@ class Ranking:
     at rank `limit`+1, or that fewer than `limit`+1 candidates exist.
     Then the SET of the first `limit` rows of Q' is unique whatever tie
     order the engine chose, though their sequence need not be.
+
+    `sequence_strict` is the stronger dynamic capability, checked on the
+    same `boundary_basis`: every adjacent pair among the first
+    min(|Q'|, `limit`+1) rows is strictly ordered under `order`. It
+    implies `boundary_strict`, and the SEQUENCE of the first `limit`
+    rows is then unique.
     """
     candidate_domain: dict[str, Any]
     limit: int
@@ -79,6 +85,7 @@ class Ranking:
     order_total: bool = False
     boundary_strict: bool = False
     boundary_basis: dict[str, Any] | None = None
+    sequence_strict: bool = False
 
 
 def basis_identity(b: Basis) -> dict[str, Any]:

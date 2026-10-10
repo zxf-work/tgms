@@ -10,6 +10,7 @@ from tgms.evidence.adapter_sql import (
     TopKBlocked,
     boundary_is_strict,
     boundary_probe_sql,
+    sequence_is_strict,
     build_sql_ecqr,
     build_sql_topk_ecqr,
     parse_topk,
@@ -306,10 +307,10 @@ def test_cell_expectations_follow_the_oracle():
 def test_ecqr_has_no_false_outcomes_and_baselines_do():
     r = run_cells()["checkers"]
     assert r["ecqr"] == {"false_certifications": [], "false_rejections": []}
-    assert len(r["b1_value_only"]["false_certifications"]) == 11
+    assert len(r["b1_value_only"]["false_certifications"]) == 12
     assert r["b2_taint_all"]["false_certifications"] == ["wrong_snapshot"]
     assert r["b2_taint_all"]["false_rejections"] == [
-        "clean", "set_boundary_strict_inner_tie"]
+        "clean", "set_boundary_strict_inner_tie", "sequence_strict"]
 
 
 def test_blocking_is_what_stops_the_over_page_cell():
@@ -327,11 +328,14 @@ COARSE = [["score", "desc"]]
 TIE_IN = [["a", 9], ["b", 9]]          # tie inside the top 2, 9 > 7 below
 
 
-def _eb(rows, *, boundary=True, bb_as_of=10, limit=2, delivery=False):
+def _eb(rows, *, boundary=True, bb_as_of=10, limit=2, delivery=False,
+        sequence=False):
     e = _e(rows, limit=limit, order=COARSE, total=False, delivery=delivery)
-    e.ranking.boundary_strict = boundary
+    e.ranking.boundary_strict = boundary or sequence
+    e.ranking.sequence_strict = sequence
     e.ranking.boundary_basis = basis_identity(Basis(
-        store="s", as_of_tt=bb_as_of, pinned=True)) if boundary else None
+        store="s", as_of_tt=bb_as_of, pinned=True)) \
+        if (boundary or sequence) else None
     return e
 
 
@@ -383,6 +387,28 @@ def test_total_order_route_serves_set_claims_too():
     assert j.verdict is Verdict.SUPPORTED and j.route == "total_order"
 
 
+def test_sequence_claim_certifies_on_sequence_strictness():
+    rows = [["a", 9], ["b", 7]]
+    j = verify(_cs(rows, as_set=False), _eb(rows, sequence=True),
+               {"rows": rows})
+    assert j.verdict is Verdict.SUPPORTED and j.route == "sequence_strict"
+    j = verify(_cs(rows), _eb(rows, sequence=True), {"rows": rows})
+    assert j.verdict is Verdict.SUPPORTED and j.route == "boundary_strict"
+    assert _v(_cs(rows, as_set=False), _eb(rows, sequence=True,
+                                           bb_as_of=11), rows) is \
+        Verdict.UNSUPPORTED_BASIS_MISMATCH
+    assert _v(_cs(list(reversed(rows)), as_set=False),
+              _eb(rows, sequence=True), rows) is \
+        Verdict.UNSUPPORTED_VALUE_MISMATCH
+
+
+def test_sequence_decoding():
+    assert sequence_is_strict(0, None)
+    assert sequence_is_strict(3, 0)
+    assert not sequence_is_strict(3, 1)
+    assert not sequence_is_strict(None, 0)
+
+
 def test_boundary_decoding():
     assert boundary_is_strict(2, None, 2)      # fewer than k+1 rows
     assert boundary_is_strict(3, 3, 2)
@@ -397,24 +423,28 @@ def test_boundary_probe_unavailable_shapes():
                               "ORDER BY 1", 1) is None
 
 
-@pytest.mark.parametrize("sql,strict", [
-    ("SELECT name FROM p ORDER BY score DESC LIMIT 1", True),     # 9 > 7
-    ("SELECT name FROM p ORDER BY score DESC LIMIT 2", False),    # 7 = 7
-    ("SELECT name FROM p ORDER BY score DESC LIMIT 3", True),     # 7 > 1
-    ("SELECT name FROM p ORDER BY score DESC LIMIT 9", True),     # n <= k
-    ("SELECT name, score AS s FROM p ORDER BY s, 1 LIMIT 2", True),
+@pytest.mark.parametrize("sql,strict,seq", [
+    # scores 9, 7, 7, 1
+    ("SELECT name FROM p ORDER BY score DESC LIMIT 1", True, True),
+    ("SELECT name FROM p ORDER BY score DESC LIMIT 2", False, False),
+    ("SELECT name FROM p ORDER BY score DESC LIMIT 3", True, False),
+    ("SELECT name FROM p ORDER BY score DESC LIMIT 9", True, False),
+    ("SELECT name FROM p ORDER BY score LIMIT 1", True, True),
+    ("SELECT name, score AS s FROM p ORDER BY s, 1 LIMIT 2", True, True),
 ])
-def test_ranked_page_in_snapshot(con, sql, strict):
+def test_ranked_page_in_snapshot(con, sql, strict, seq):
     shape = parse_topk(sql, sqlite_unique_keys(con))
     r = ranked_page_in_snapshot(con, sql, shape)
     assert r.boundary_status == "checked" and r.boundary_strict is strict
+    assert r.sequence_strict is seq
     assert r.candidate_count == 4 and r.token["consistent"]
     assert set(r.seconds) == {"page", "boundary", "count_and_commit"}
     rows = [list(x) for x in r.rows]
     e = build_sql_topk_ecqr(rows=rows, sql=sql, shape=shape, store_id="t",
                             candidate_count=r.candidate_count,
                             execution_context=snapshot_context(r.token),
-                            boundary_strict=r.boundary_strict)
+                            boundary_strict=r.boundary_strict,
+                            sequence_strict=r.sequence_strict)
     assert e.ranking.boundary_basis == (basis_identity(e.basis)
                                         if strict else None)
     claim = TopK(rows=rows, key=[p[0] for p in shape.order],
@@ -422,6 +452,9 @@ def test_ranked_page_in_snapshot(con, sql, strict):
                  as_set=True)
     j = verify(claim, e, {"rows": rows})
     assert (j.verdict is Verdict.SUPPORTED) is (strict or shape.order_total)
+    claim.as_set = False
+    j = verify(claim, e, {"rows": rows})
+    assert (j.verdict is Verdict.SUPPORTED) is (seq or shape.order_total)
 
 
 def test_nulls_follow_the_engine_order(con):
