@@ -990,8 +990,129 @@ certifies.}}
 """
 
 
+def fig_probe_ecqr(tp: dict, mac: dict) -> str:
+    """Truncation probe with the ECQR gate (lane D, D-170): what the user
+    is shown per question family under the three baseline endpoints
+    (committed eval-trunc-probe.json) and the two gated conditions
+    (eval-trunc-probe-ecqr.json). Each bar splits the family's questions
+    into correct shown, wrong shown, withheld (proposed, not certified)
+    and no answer; without the gate every committed answer is shown."""
+    pe = json.loads((RES / "eval-trunc-probe-ecqr.json").read_text())
+    conds = [("C0", "bare page"), ("C1", "+ truncation flag"),
+             ("C2", "+ exact total"), ("E", "ECQR gate (E)"),
+             ("E-aware", "aware gate (E-aware)")]
+    fams = [("COUNT", "count"), ("SET", "set")]
+
+    def row(cond: str, fam: str) -> dict:
+        if cond in ("E", "E-aware"):
+            b = pe["conditions"][cond]["by_family"][fam]
+            o = b["outcome"]
+            assert o["error"] == 0
+            return {"n": b["n"], "correct": b["certified_correct"],
+                    "wrong": b["user_visible_wrong"],
+                    "withheld": o["withheld"], "none": o["abstained"]}
+        b = tp["conditions"][cond]["by_family"][fam]
+        return {"n": b["n"], "correct": b["correct"],
+                "wrong": b["page_derived"] + b["other_wrong"],
+                "withheld": 0, "none": b["no_commitment"] + b["error"]}
+
+    def pct(a, n):
+        return 100.0 * a / n
+    check_macro(mac, "pnProbeCountN", pe["conditions"]["E"]["by_family"]
+                ["COUNT"]["n"])
+    check_macro(mac, "pnProbeSetN", pe["conditions"]["E"]["by_family"]
+                ["SET"]["n"])
+    check_macro(mac, "pnPeEWrongN", pe["conditions"]["E"]["all"]
+                ["user_visible_wrong"])
+    bw = []
+    for c in ("C0", "C1", "C2"):
+        a = tp["conditions"][c]["all"]
+        bw.append(pct(a["page_derived"] + a["other_wrong"], a["n"]))
+    check_macro(mac, "pnPeBaseWrongLo", f"{min(bw):.1f}")
+    check_macro(mac, "pnPeBaseWrongHi", f"{max(bw):.1f}")
+    segs = [("correct", "correct shown", "figDark", "white"),
+            ("wrong", "wrong shown", "figAccent", "white"),
+            ("withheld", "withheld", "figMid", "white"),
+            ("none", "no answer", "figLight", "black")]
+    # y positions: count group on top, a gap, then the set group
+    ys, ticks = {}, []
+    y = 0.0
+    for fam, flab in reversed(fams):
+        for cond, clab in reversed(conds):
+            ys[(fam, cond)] = round(y, 2)
+            ticks.append((round(y, 2), clab))
+            y += 1.0
+        y += 0.9
+    plots, notes = [], []
+    cum = {k: 0.0 for k in ys}
+    for key, _lab, fill, txt in segs:
+        pts = []
+        for fam, _f in fams:
+            for cond, _c in conds:
+                r = row(cond, fam)
+                v = pct(r[key], r["n"])
+                yy = ys[(fam, cond)]
+                pts.append(f"({v:.1f},{yy})")
+                if v >= 9:
+                    notes.append((round(cum[(fam, cond)] + v / 2, 2), yy,
+                                  f"text={txt}", f"{v:.0f}"))
+                cum[(fam, cond)] += v
+        plots.append(rf"\addplot[fill={fill}, draw=white, line width=0.4pt] "
+                     rf"coordinates {{{' '.join(pts)}}};")
+    for k, v in cum.items():
+        assert abs(v - 100.0) < 1e-6, (k, v)
+    lin, lout = labels(notes, "pe")
+    ticks.sort()
+    yt = ",".join(str(t) for t, _ in ticks)
+    ytl = ",".join(f"{{{lab}}}" for _t, lab in ticks)
+    # family headers above each group
+    top_set = max(ys[("SET", c)] for c, _ in conds)
+    top_cnt = max(ys[("COUNT", c)] for c, _ in conds)
+    heads = [(top_cnt + 0.75, rf"count questions (\pnProbeCountN)"),
+             (top_set + 0.75, rf"set questions (\pnProbeSetN)")]
+    hin = "\n".join(rf"\coordinate (peh{i}) at (axis cs:0,{yy:.2f});"
+                    for i, (yy, _t) in enumerate(heads))
+    hout = "\n".join(rf"\node[anchor=west, inner sep=0pt, xshift=3pt] at (peh{i}) "
+                     rf"{{{t}}};" for i, (_y, t) in enumerate(heads))
+    ymax = top_cnt + 1.1
+    leg = ", ".join(s[1] for s in segs)
+    return rf"""{GEN}
+% Source: benchmarks/results-v1/eval-trunc-probe.json (C0, C1, C2 by
+% family) and eval-trunc-probe-ecqr.json (E, E-aware by family).
+\begin{{figure}}[t]
+\centering
+\begin{{tikzpicture}}
+\begin{{axis}}[xbar stacked, {SQ}, width=0.70\linewidth, y=0.29cm,
+  bar width=5.8pt, xmin=0, xmax=100, xtick={{0,20,40,60,80,100}},
+  xlabel={{questions of the family (\%)}},
+  ytick={{{yt}}}, yticklabels={{{ytl}}},
+  ymin=-0.6, ymax={ymax:.2f}, y tick style={{draw=none}},
+  axis x line*=bottom, axis y line*=left,
+  legend style={{at={{(0.5,1.0)}}, anchor=south, legend columns=4,
+    /tikz/every even column/.append style={{column sep=4pt}}}},
+  legend cell align=left]
+{chr(10).join(plots)}
+\legend{{{leg}}}
+{lin}
+{hin}
+\end{{axis}}
+{lout}
+{hout}
+\end{{tikzpicture}}
+\caption{{Truncation probe with the ECQR gate: for each count and set
+question, whether the user is shown a correct answer, a wrong one, a
+withheld one, or none, under the three endpoints of
+Fig.~\ref{{fig:probe}} and the two gated conditions. Without the gate
+most shown answers are wrong; the gate shows \pnPeEWrongN\ wrong
+answers and pays for it in withheld and unanswered questions.}}
+\label{{fig:probeecqr}}
+\end{{figure}}
+"""
+
+
 ALL_FIGS = ["main", "frontier", "conformance", "reasons", "efficiency",
-            "probe", "rq1", "bird-census", "ldbc", "cost", "topk"]
+            "probe", "rq1", "bird-census", "ldbc", "cost", "topk",
+            "probe-ecqr"]
 
 
 def main() -> int:
@@ -1034,6 +1155,7 @@ def main() -> int:
         "bird-census": fig_bird_census_stub,
         "ldbc": lambda: fig_ldbc(ann, lr, mac),
         "topk": lambda: fig_topk(mac),
+        "probe-ecqr": lambda: fig_probe_ecqr(tp, mac),
     }
     names = args.only or ALL_FIGS
     for name in names:
