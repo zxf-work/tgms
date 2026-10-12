@@ -106,7 +106,7 @@ def main() -> int:
         r"\begin{tikzpicture}",
         rf"\begin{{axis}}[name=fun, xbar, {SQ}, scale only axis,",
         r"  width=0.32\textwidth,",
-        r"  y=0.42cm, bar width=7pt, xmin=0, xmax=820, clip=false,",
+        r"  y=0.36cm, bar width=7pt, xmin=0, xmax=820, clip=false,",
         rf"  ytick={{{','.join(map(str, ys))}}}, yticklabels={{{ytl}}},",
         rf"  ymin=-0.6, ymax={len(stages) - 0.4}, y tick style={{draw=none}},",
         r"  axis x line=none, axis y line*=left]",
@@ -132,14 +132,11 @@ def main() -> int:
         r"over the \pnBirdN\ questions, with the reason for each drop. "
         r"\emph{Bottom left}: any-claim certification against "
         r"published-gold agreement. \emph{Right}: questions by intent "
-        r"contract, split by certification outcome; numbers at the bar "
-        r"ends give the questions that meet the strict full contract over "
-        r"all questions of that contract. Certification does not imply "
-        r"gold agreement: \pnBirdCertCorrect\ of the \pnBirdCert\ "
-        r"certified runs match gold, and \pnBirdGoldFull\ of those also "
-        r"meet the strict full contract. The \pnBirdCertPartial\ runs "
-        r"between any-claim and strict-full certification all lie in the "
-        r"complete-collection row.}",
+        r"contract and certification outcome; bar-end numbers give the "
+        r"strict full-contract certifications over the contract's "
+        r"questions. Certification does not imply gold agreement: "
+        r"\pnBirdCertCorrect\ of the \pnBirdCert\ certified runs match "
+        r"gold, \pnBirdGoldFull\ of them under the strict full contract.}",
         r"\label{fig:birdfunnel}",
         r"\label{fig:birdcensus}",
         r"\end{figure*}",

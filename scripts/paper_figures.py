@@ -24,6 +24,12 @@ panels; fig-ldbc is a side-by-side pair in one column; fig-rq1, fig-probe
 and fig-main are tightened. The BIRD census is now the right half of the
 figure* that scripts/paper_bird_funnel.py emits (bird_census_panel
 below); fig-bird-census.tex is an empty-safe stub.
+
+Compaction round (PVLDB 13-page target): fig-ldbc is now one figure*
+row of three panels, LDBC execution and claim coverage plus the BIRD
+top-k routes (topk_panel; fig-topk.tex is an empty-safe stub, label
+fig:topk kept); fig-main, fig-cost, fig-rq1 and fig-probe-ecqr are
+shorter; captions are trimmed to what is plotted plus the takeaway.
 """
 
 from __future__ import annotations
@@ -75,7 +81,7 @@ def fig5(pn: dict, uc: dict) -> str:
     ax = ("symbolic x coords={MathOverflow,SuperUser,wiki-talk}, "
           "xtick=data, x tick label style={inner sep=1pt}, "
           "ybar, bar width=5pt, width=0.355\\linewidth, "
-          "height=3.2cm, ymin=0, enlarge x limits=0.22, "
+          "height=2.9cm, ymin=0, enlarge x limits=0.22, "
           "axis x line*=bottom, axis y line*=left, ymajorgrids, "
           "y tick label style={/pgf/number format/fixed}, " + SQ)
 
@@ -147,11 +153,12 @@ def fig5(pn: dict, uc: dict) -> str:
 \end{{axis}}
 \begin{{axis}}[name=d, at={{(a.outer south west)}}, anchor=outer north west,
   yshift=-2.5mm, xbar stacked, {SQ}, width=0.975\linewidth,
-  height=3.3cm, symbolic y coords={{{sym}}}, ytick=data, xmin=0,
+  height=3.0cm, symbolic y coords={{{sym}}}, ytick=data, xmin=0,
   enlarge y limits=0.1, axis x line*=bottom, axis y line*=left,
   xmajorgrids, xlabel={{unsupported proposed claims (count)}},
   bar width=6pt,
-  legend style={{at={{(0.99,0.04)}}, anchor=south east}},
+  legend style={{at={{(0.99,0.04)}}, anchor=south east, legend columns=2,
+    /tikz/every even column/.append style={{column sep=4pt}}}},
   legend cell align=left]
 {plots}
 \legend{{{legend}}}
@@ -160,10 +167,8 @@ def fig5(pn: dict, uc: dict) -> str:
 \caption{{Evidence need and enforcement effect per dataset and
 interface. Top: pre-gate UCR, certified-output coverage, and
 correct-certified coverage. Bottom: unsupported proposed claims by the
-obligation they fail (exact count, witness, cited value, or
-undetermined). Unsupported claims occur under both interfaces, and
-operator failures span three distinct obligations, so certified output
-trades answer availability for support.}}
+obligation they fail. Unsupported claims occur under both interfaces,
+and certified output trades answer availability for support.}}
 \label{{fig:frozen}}
 \label{{fig:reasons}}
 \end{{figure*}}
@@ -391,14 +396,20 @@ def load_macros(path: Path) -> dict:
 
 
 def load_palette(path: Path) -> dict:
-    """\\definecolor{figX}{RGB}{r,g,b} lines of preamble-shared.tex ->
-    {"figX": "r,g,b"}. A figure that is also input by a document which
-    does not load the shared preamble (the companion appendix) re-states
-    these with \\providecolor, a no-op wherever the preamble ran."""
+    """\\definecolor or \\providecolor{figX}{RGB}{r,g,b} lines ->
+    {"figX": "r,g,b"}. The palette moved from preamble-shared.tex to
+    preamble-figures.tex (\\providecolor, input by all four wrappers);
+    `path` names either file and both are read when present. A figure
+    that is also input by a document which does not load the shared
+    preamble (the companion appendix) re-states these with
+    \\providecolor, a no-op wherever the preamble ran."""
     out = {}
-    for m in re.finditer(r"\\definecolor\{(fig[A-Za-z]+)\}\{RGB\}"
-                         r"\{([0-9, ]+)\}", path.read_text()):
-        out[m.group(1)] = m.group(2).replace(" ", "")
+    for src in (path, path.with_name("preamble-figures.tex")):
+        if not src.exists():
+            continue
+        for m in re.finditer(r"\\(?:define|provide)color\{(fig[A-Za-z]+)\}"
+                             r"\{RGB\}\{([0-9, ]+)\}", src.read_text()):
+            out.setdefault(m.group(1), m.group(2).replace(" ", ""))
     need = {"figDark", "figMid", "figLight", "figAccent", "figAccentLight"}
     if not need <= set(out):
         raise SystemExit(f"palette incomplete in {path}: {sorted(out)}")
@@ -512,7 +523,7 @@ def fig_rq1(bc: dict, fm: dict, mac: dict) -> str:
              "execution incompleteness": "execution incomplete"}
     heads = [r"value-\\only", r"incompl.\\taint", r"metadata\\rules",
              r"ECQR, no\\propagation", r"\textbf{ECQR}"]
-    dx, dy, x0 = 1.02, 0.33, 0.62
+    dx, dy, x0 = 1.02, 0.30, 0.62
     out, y = [], 0.0
     for i, h in enumerate(heads):
         out.append(rf"\node[align=center, anchor=south, inner sep=1pt, "
@@ -554,23 +565,24 @@ def fig_rq1(bc: dict, fm: dict, mac: dict) -> str:
 {body}
 \end{{tikzpicture}}
 \caption{{EvidenceBench decisions that disagree with the expected
-verdict, per family and checker, over the \pnCells\ single-step and
-\pnBaseCompN\ composition cells (cells per family in parentheses; a
-control row counts false rejects, every other row false accepts). The
-metadata-rules checker and ECQR without propagation match ECQR on every
-single-step cell but accept every composition fault; only ECQR with
-propagation makes no error.}}
+verdict over the \pnCells\ single-step and \pnBaseCompN\ composition
+cells (cells per family in parentheses; control rows count false
+rejects, other rows false accepts). Only ECQR with propagation makes no
+error.}}
 \label{{fig:rq1}}
 \end{{figure}}
 """
 
 
-def fig_topk(mac: dict) -> str:
+def topk_panel(mac: dict, place: str) -> tuple:
     """TopK routes on the ranked BIRD pages, agent and gold SQL: each page
     under its first certifying route (total order, sequence-strict,
     boundary-strict set) or the reason none certifies (receipt:
     eval-bird-topk-v3.json). No-ORDER-BY and unavailable-probe pages share
-    one segment; the appendix table separates them."""
+    one segment; the appendix table separates them. Returned as one axis
+    (and its after-axis labels) for the right panel of the combined
+    LDBC/top-k figure* that fig_ldbc emits; place: extra axis keys that
+    position it."""
     tk = json.loads((RES / "eval-bird-topk-v3.json").read_text())
     sides = [("agent SQL", tk["agent"]), ("gold SQL", tk["gold"])]
     a, g = tk["agent"], tk["gold"]
@@ -617,34 +629,32 @@ def fig_topk(mac: dict) -> str:
     ytl = ",".join(f"{{{lbl} ({s['n_topk_shaped']})}}" for lbl, s in sides)
     leg = ", ".join(c[1] for c in segs)
     xmax = max(s["n_topk_shaped"] for _l, s in sides)
-    return rf"""{GEN}
-% Source: benchmarks/results-v1/eval-bird-topk-v3.json (agent, gold;
-% each ranked page once, under its first certifying route).
-\begin{{figure}}[t]
-\centering
-\begin{{tikzpicture}}
-\begin{{axis}}[xbar stacked, {SQ}, width=0.80\linewidth, y=0.42cm,
+    return rf"""\begin{{axis}}[name=c, {place}xbar stacked, {SQ},
+  scale only axis, width=0.24\textwidth, y=0.45cm,
   bar width=7pt, xmin=0, xmax={xmax}, xtick={{0,20,40,60,80}},
   xlabel={{ranked BIRD pages}},
   ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
-  ymin=-0.55, ymax=1.55, y tick style={{draw=none}},
+  ymin=-0.6, ymax=1.6, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left,
-  legend style={{at={{(0.5,1.0)}}, anchor=south, legend columns=2,
-    yshift=0pt, row sep=-2pt, /tikz/every even column/.append style={{column sep=6pt}}}},
+  title={{top-$k$ route (BIRD)}}, title style={{at={{(0,1)}}, anchor=south west,
+    xshift=-2pt, yshift=16pt, align=left}},
+  legend style={{at={{(0,1.0)}}, anchor=south west, legend columns=2,
+    yshift=1pt, row sep=-1.5pt, /tikz/every even column/.append style={{column sep=4pt}}}},
   legend cell align=left]
 {chr(10).join(plots)}
 \legend{{{leg}}}
 {lin}
 \end{{axis}}
-{lout}
-\end{{tikzpicture}}
-\caption{{Ranked BIRD pages by the TopK route that certifies them, or
-the reason none does. No page has a static total order, and ties at
-rank $k$/$k{{+}}1$ leave \pnTopkAgentTie\ of the \pnTopkAgentN\ agent
-pages without a unique top-$k$ answer.}}
-\label{{fig:topk}}
-\end{{figure}}
-"""
+""", lout
+
+
+def fig_topk_stub() -> str:
+    """fig-topk.tex is merged into fig-ldbc.tex (one figure*, the top-k
+    routes as its right panel, label fig:topk kept); this file is now an
+    empty-safe stub so a stale \\input{fig-topk} is harmless."""
+    return ("% fig-topk merged into fig-ldbc.tex (see fig:topk).\n"
+            "% This file is intentionally empty -- a stale "
+            "\\input{fig-topk} is a no-op.\n")
 
 
 def bird_census_panel(ba: dict, mac: dict, place: str) -> tuple:
@@ -682,7 +692,7 @@ def bird_census_panel(ba: dict, mac: dict, place: str) -> tuple:
             items.append((r[2] + r[3] / 2, y, "text=white", str(r[3])))
     lin, lout = labels(items, "bc")
     axis = rf"""\begin{{axis}}[name=cen, {place}xbar stacked, {SQ},
-  y=0.42cm, bar width=7pt, xmin=0, xmax={xmax}, xtick={{0,100,200,300}},
+  y=0.36cm, bar width=7pt, xmin=0, xmax={xmax}, xtick={{0,100,200,300}},
   ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ytl}}},
   ymin=-0.6, ymax={len(rows) - 0.4}, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left, xmajorgrids,
@@ -783,18 +793,20 @@ def fig_ldbc(ann: list, rec: dict, mac: dict) -> str:
         assert cum == sizes, (cum, sizes)
         leg = ", ".join(c[1] for c in classes)
         lin, lout = labels(notes, f"l{name}")
-        # the legend is one entry per row above the plot box (the panel
-        # is half a column wide); the title sits above the legend
+        # the legend is two entries per row above the plot box (each panel
+        # is a fifth of the text width); the title sits above the legend
         return rf"""\begin{{axis}}[name={name}, {extra}xbar stacked, {SQ},
-  scale only axis, width=0.4\linewidth, y=0.45cm, bar width=7pt,
+  scale only axis, width=0.2\textwidth, y=0.45cm, bar width=7pt,
   xmin=0, xmax={xmax}, xtick={{0,5,10,15,20}}, xlabel={{templates}},
   ytick={{{",".join(map(str, ys))}}}, yticklabels={{{ticklabels}}},
   ymin=-0.6, ymax={len(groups) - 0.4}, y tick style={{draw=none}},
   axis x line*=bottom, axis y line*=left,
   title={{{title}}}, title style={{at={{(0,1)}}, anchor=south west,
-    xshift=-2pt, yshift=27pt, align=left}},
-  legend style={{at={{(0,1.0)}}, anchor=south west, legend columns=1,
-    yshift=1pt, row sep=-1.5pt}}, legend cell align=left]
+    xshift=-2pt, yshift=16pt, align=left}},
+  legend style={{at={{(0,1.0)}}, anchor=south west, legend columns=2,
+    yshift=1pt, row sep=-1.5pt,
+    /tikz/every even column/.append style={{column sep=4pt}}}},
+  legend cell align=left]
 {chr(10).join(plots)}
 \legend{{{leg}}}
 {lin}
@@ -802,25 +814,34 @@ def fig_ldbc(ann: list, rec: dict, mac: dict) -> str:
 {lout}
 """
     left = panel("a", "exec_coverage", [(c[0],) + c[1:] for c in exec_cls],
-                 "", r"execution coverage\\\mbox{}", ytl)
-    right = panel("b", "claim_full_contract", claim_cls,
-                  "at={(a.south east)}, anchor=south west, xshift=0.45cm, ",
-                  r"claim coverage\\(full result contract)", "")
+                 "", r"LDBC execution coverage", ytl)
+    mid = panel("b", "claim_full_contract", claim_cls,
+                "at={(a.north east)}, anchor=north west, xshift=0.6cm, ",
+                r"LDBC claim coverage (full contract)", "")
+    right, rout = topk_panel(
+        mac, "at={(b.north east)}, anchor=north west, xshift=3.0cm, ")
     return rf"""{GEN}
-% Sources: external_workloads/ldbc/coverage_annotation.jsonl and
-% benchmarks/results-v1/eval-ldbc-coverage.json.
-\begin{{figure}}[t]
+% Sources: external_workloads/ldbc/coverage_annotation.jsonl,
+% benchmarks/results-v1/eval-ldbc-coverage.json and (right panel)
+% eval-bird-topk-v3.json (agent, gold; each ranked page once, under its
+% first certifying route).
+\begin{{figure*}}[t]
 \centering
 \begin{{tikzpicture}}
-{left}{right}\end{{tikzpicture}}
-\caption{{LDBC SNB read templates per group (template count in
-parentheses): how each is executed, and the first full-contract feature
-the claim grammar lacks, taking path, groupwise extremum, top-$k$, and
-ordered result in that order. Most templates need the SQL path, and
-top-$k$ is the dominant claim gap in the interactive and BI groups
-alike.}}
+{left}{mid}{right}{rout}
+\end{{tikzpicture}}
+\caption{{External workloads. \emph{{Left, middle}}: LDBC SNB read
+templates per group (count in parentheses) by execution route and by the
+first full-contract feature the grammar lacks (path, groupwise extremum,
+top-$k$, ordered, in that order). \emph{{Right}}: ranked BIRD pages by
+certifying TopK route, or the reason none applies. Most LDBC templates
+need the SQL path, and top-$k$ is the dominant claim gap; no BIRD page
+has a static total order, and ties at rank $k$/$k{{+}}1$ leave
+\pnTopkAgentTie\ of the \pnTopkAgentN\ agent pages without a unique
+top-$k$ answer.}}
 \label{{fig:ldbc}}
-\end{{figure}}
+\label{{fig:topk}}
+\end{{figure*}}
 """
 
 
@@ -908,7 +929,7 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
     # three panels in one row of a figure*: every plot box has the same
     # height and the same top edge; widths are fixed per panel so the
     # tick labels and the plot boxes together fill the text width
-    H = r"height=2.6cm"
+    H = r"height=2.3cm"
     title = (r"title style={at={(0,1)}, anchor=south west, xshift=-2pt, "
              r"yshift=-1pt, align=left}")
     return rf"""{GEN}
@@ -978,13 +999,11 @@ def fig_cost(sc: dict, ov: dict, uc: dict, mac: dict) -> str:
 \end{{axis}}
 {c_out}
 \end{{tikzpicture}}
-\caption{{Evidence cost: an SQL answer without and with the
-count-wrapped query that certifies its exact cardinality (left), verifier
-time against delivered result size (middle), and the median serialized
-descriptor of the SQL runs against the median model input per task-run,
-one dot per dataset (right). Checking and carrying evidence are cheap;
-producing a strong certificate can cost as much as the query it
-certifies.}}
+\caption{{Evidence cost: an SQL answer without and with its count
+certificate (left), verifier time against delivered rows (middle), and
+the median SQL descriptor against the median model input per task-run
+(right). Checking and carrying evidence are cheap; a strong certificate
+can cost as much as the query it certifies.}}
 \label{{fig:cost}}
 \end{{figure*}}
 """
@@ -1082,7 +1101,7 @@ def fig_probe_ecqr(tp: dict, mac: dict) -> str:
 \begin{{figure}}[t]
 \centering
 \begin{{tikzpicture}}
-\begin{{axis}}[xbar stacked, {SQ}, width=0.70\linewidth, y=0.29cm,
+\begin{{axis}}[xbar stacked, {SQ}, width=0.70\linewidth, y=0.26cm,
   bar width=5.8pt, xmin=0, xmax=100, xtick={{0,20,40,60,80,100}},
   xlabel={{questions of the family (\%)}},
   ytick={{{yt}}}, yticklabels={{{ytl}}},
@@ -1099,12 +1118,11 @@ def fig_probe_ecqr(tp: dict, mac: dict) -> str:
 {lout}
 {hout}
 \end{{tikzpicture}}
-\caption{{Truncation probe with the ECQR gate: for each count and set
-question, whether the user is shown a correct answer, a wrong one, a
-withheld one, or none, under the three endpoints of
-Fig.~\ref{{fig:probe}} and the two gated conditions. Without the gate
-most shown answers are wrong; the gate shows \pnPeEWrongN\ wrong
-answers and pays for it in withheld and unanswered questions.}}
+\caption{{Truncation probe with the ECQR gate: what the user is shown
+per count and set question under the three endpoint conditions and the
+two gated conditions. Without the gate most shown answers are wrong;
+the gate shows \pnPeEWrongN\ wrong answers and pays in withheld and
+unanswered questions.}}
 \label{{fig:probeecqr}}
 \end{{figure}}
 """
@@ -1154,7 +1172,7 @@ def main() -> int:
         "rq1": lambda: fig_rq1(bc, fm, mac),
         "bird-census": fig_bird_census_stub,
         "ldbc": lambda: fig_ldbc(ann, lr, mac),
-        "topk": lambda: fig_topk(mac),
+        "topk": fig_topk_stub,
         "probe-ecqr": lambda: fig_probe_ecqr(tp, mac),
     }
     names = args.only or ALL_FIGS
