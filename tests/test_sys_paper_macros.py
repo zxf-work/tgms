@@ -204,7 +204,7 @@ FROZEN_LANDED_VALUES = {
     "recRowTouchRate": "47.4",
     "recNewIdentityFF": "89",
     "recAvoidedPct": "99.0",
-    "recFaultTrials": "3102",
+    "recFaultTrials": "3{,}102",
     "recSilentPre": "303",
     "recSilentPost": "0",
     "recFOneNineBefore": "271",
@@ -4853,7 +4853,7 @@ def test_f1_8_rerun_macros_recompute_without_failure():
     assert values["recFOneEightSilent"] == "0"
     assert values["recFOneEightRefused"] == "272"
     assert values["recFOneEightFailed"] == "28"
-    assert values["recFaultTrialsCorrected"] == "3402"
+    assert values["recFaultTrialsCorrected"] == "3{,}402"
 
 
 def test_f1_8_rerun_changes_no_existing_c8_macro():
@@ -4869,7 +4869,7 @@ def test_f1_8_rerun_changes_no_existing_c8_macro():
     after = {name: value for name, value, _ in m.items}
     for name, value in before.items():
         assert after[name] == value
-    assert before["recFaultTrials"] == "3102"
+    assert before["recFaultTrials"] == "3{,}102"
     assert before["recSilentPre"] == "303"
     assert before["recFOneNineBefore"] == "271"
     assert before["recFTwoThree"] == "32"

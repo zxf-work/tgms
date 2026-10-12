@@ -46,7 +46,8 @@ skeleton --
       plus the F1-8 re-run addendum (2026-10-12,
       faults-f1-8-rerun-2026-10-12.json), compute_c8_f18: the cell both
       records above carry at 0 of 300 trials (a driver defect), now 300;
-      recFOneEight* and recFaultTrialsCorrected, existing C8 macros unchanged
+      recFOneEight* and recFaultTrialsCorrected; existing C8 macros unchanged
+      except that recFaultTrials now prints its thousands separator (3{,}102)
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
       benchmarks/d160-collegemsg-v1/{manifest,rows}-2026-09-14.json, the
@@ -1119,10 +1120,15 @@ def sci_3sf(x: float) -> str:
     return f"{mantissa_q}\\times 10^{{{exp}}}"
 
 
-def tex_num(n: int) -> str:
-    """LaTeX thousands separator that survives both text and math mode."""
+def tex_num(n: int, group_from_digits: int = 5) -> str:
+    """LaTeX thousands separator that survives both text and math mode.
+
+    Numbers of fewer than ``group_from_digits`` digits print plain (the
+    default, 5, leaves every four-digit count ungrouped as the committed
+    macros always have). Pass ``group_from_digits=4`` where the prose beside
+    the macro groups a four-digit count ("3,900")."""
     s = str(n)
-    if len(s) <= 4:
+    if len(s) < group_from_digits:
         return s
     out = []
     for i, ch in enumerate(reversed(s)):
@@ -2437,7 +2443,7 @@ def compute_c8(m: Macros) -> None:
     eq(pre_primary_tot["silent-violation"] - post_tot["silent-violation"], f19_pre_count,
        "C8: the silent-violation decrease equals exactly F1-9's former count")
 
-    m.add("recFaultTrials", tex_num(post["total_trials"]),
+    m.add("recFaultTrials", tex_num(post["total_trials"], group_from_digits=4),
           f"{relpath(FAULTS_POST)}: total_trials, the deployed (post-D-160) gate")
     m.add("recSilentPre", silent_pre,
           f"{relpath(FAULTS_PRE)}: primary-gate silent-violation total "
@@ -2530,7 +2536,7 @@ def compute_c8_f18(m: Macros) -> None:
     m.add("recFOneEightFailed", counts["explicit-failure"],
           f"{relpath(FAULTS_F18_ROWS)}: trials with outcome explicit-failure (E_ANSWER: "
           "the producing step returned no rows)")
-    m.add("recFaultTrialsCorrected", tex_num(corrected_total),
+    m.add("recFaultTrialsCorrected", tex_num(corrected_total, group_from_digits=4),
           f"{relpath(FAULTS_POST)}: total_trials 3,102 + {relpath(FAULTS_F18)}: total_trials "
           "300, the deployed (post-D-160) gate's primary-arm trials with F1-8 included, of "
           "3,900 requested; recFaultTrials keeps the recorded 3,102")
