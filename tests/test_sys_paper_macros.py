@@ -4837,6 +4837,105 @@ def test_tampered_external_withheld_hold_count_fails_even_with_a_patched_digest(
 
 
 # --------------------------------------------------------------------------
+# F1-8 re-run addendum (2026-10-12) -- compute_c8_f18, outside
+# _run_all_landed/FROZEN_LANDED_VALUES, same convention as the sections
+# above. The cell both fault-matrix records carry at 0 of 300 (a driver
+# defect) now has 300 trials; no existing C8 macro moves.
+# --------------------------------------------------------------------------
+
+def test_f1_8_rerun_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c8_f18(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert values["recFOneEightTrials"] == "300"
+    assert values["recFOneEightSilent"] == "0"
+    assert values["recFOneEightRefused"] == "272"
+    assert values["recFOneEightFailed"] == "28"
+    assert values["recFaultTrialsCorrected"] == "3402"
+
+
+def test_f1_8_rerun_changes_no_existing_c8_macro():
+    """The addendum adds the cell; the recorded totals and the frozen
+    303 / 271 / 32 stay exactly as they were, and the new macros do not
+    collide with any of them."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c8(m)
+    before = {name: value for name, value, _ in m.items}
+    mod.compute_c8_f18(m)
+    assert mod.FAILURES == []
+    after = {name: value for name, value, _ in m.items}
+    for name, value in before.items():
+        assert after[name] == value
+    assert before["recFaultTrials"] == "3102"
+    assert before["recSilentPre"] == "303"
+    assert before["recFOneNineBefore"] == "271"
+    assert before["recFTwoThree"] == "32"
+    assert before["recSilentPost"] == "0"
+    assert {"recFOneEightTrials", "recFOneEightSilent", "recFOneEightRefused",
+            "recFOneEightFailed", "recFaultTrialsCorrected"} == set(after) - set(before)
+
+
+def test_tampered_f1_8_rerun_rows_fail_the_sha256_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+    lines = mod.FAULTS_F18_ROWS.read_text(encoding="utf-8").splitlines()
+    assert json.loads(lines[0])["outcome"] == "safe-refusal"
+    edited = json.loads(lines[0])
+    edited["outcome"], edited["reason"] = "silent-violation", "tampered"
+    lines[0] = json.dumps(edited, sort_keys=True, separators=(",", ":"))
+    tampered = tmp_path / mod.FAULTS_F18_ROWS.name
+    tampered.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    mod.FAULTS_F18_ROWS = tampered
+    mod.compute_c8_f18(mod.Macros())
+    assert mod.FAILURES, "an edited rows file must fail the checksum gate"
+    assert any("sha256" in f for f in mod.FAILURES)
+
+
+def test_tampered_f1_8_rerun_rows_fail_even_with_a_patched_checksum(tmp_path):
+    """Patching the checksum file to match a tampered rows file must still
+    fail: the rows are cross-checked against the raw record they came from
+    and against the frozen counts."""
+    mod = _load("sys_paper_macros")
+    lines = mod.FAULTS_F18_ROWS.read_text(encoding="utf-8").splitlines()
+    edited = json.loads(lines[0])
+    edited["outcome"], edited["reason"] = "silent-violation", "tampered"
+    lines[0] = json.dumps(edited, sort_keys=True, separators=(",", ":"))
+    tampered = tmp_path / mod.FAULTS_F18_ROWS.name
+    tampered_bytes = ("\n".join(lines) + "\n").encode()
+    tampered.write_bytes(tampered_bytes)
+
+    sums_text = mod.FAULTS_F18_SHA256SUMS.read_text(encoding="utf-8")
+    patched = re.sub(r"^[0-9a-f]{64}(  faults-f1-8-rerun-2026-10-12-rows\.jsonl)$",
+                     hashlib.sha256(tampered_bytes).hexdigest() + r"\1", sums_text,
+                     flags=re.MULTILINE)
+    assert patched != sums_text, "fixture did not find the row to patch"
+    patched_path = tmp_path / "SHA256SUMS.txt"
+    patched_path.write_text(patched, encoding="utf-8")
+
+    mod.FAULTS_F18_ROWS = tampered
+    mod.FAULTS_F18_SHA256SUMS = patched_path
+    mod.compute_c8_f18(mod.Macros())
+    assert mod.FAILURES, "a silent-violation row must fail even with a patched checksum"
+    assert not any("sha256" in f for f in mod.FAILURES)
+
+
+def test_tampered_f1_8_rerun_manifest_fails_the_sha256_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.FAULTS_F18.read_text(encoding="utf-8"))
+    data["total_trials"] = 301
+    tampered = tmp_path / mod.FAULTS_F18.name
+    tampered.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
+
+    mod.FAULTS_F18 = tampered
+    mod.compute_c8_f18(mod.Macros())
+    assert mod.FAILURES
+    assert any("sha256" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
 # ruff
 # --------------------------------------------------------------------------
 

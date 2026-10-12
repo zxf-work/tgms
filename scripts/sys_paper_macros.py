@@ -43,6 +43,10 @@ skeleton --
       this file's comments; every number below is recomputed from the
       m5-v1 JSON files' own rows)
   C8  benchmarks/faults-v1/fault-matrix-campaign-2026-09-{13,15-d160}.json
+      plus the F1-8 re-run addendum (2026-10-12,
+      faults-f1-8-rerun-2026-10-12.json), compute_c8_f18: the cell both
+      records above carry at 0 of 300 trials (a driver defect), now 300;
+      recFOneEight* and recFaultTrialsCorrected, existing C8 macros unchanged
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
       benchmarks/d160-collegemsg-v1/{manifest,rows}-2026-09-14.json, the
@@ -437,6 +441,18 @@ M5_PROP_TWO = [
 
 FAULTS_PRE = ROOT / "benchmarks" / "faults-v1" / "fault-matrix-campaign-2026-09-13.json"
 FAULTS_POST = ROOT / "benchmarks" / "faults-v1" / "fault-matrix-campaign-2026-09-15-d160.json"
+
+# The F1-8 re-run addendum (2026-10-12): the cell both campaigns above
+# recorded at 0 of 300 trials because of a lazily populated operator
+# registry in the driver (ledger entry gate-driver-lazy-registry-f1-8-zero-
+# trials). Three files are sha256-gated against the addendum's own checksum
+# file; none of the two records above is edited.
+FAULTS_F18 = ROOT / "benchmarks" / "faults-v1" / "faults-f1-8-rerun-2026-10-12.json"
+FAULTS_F18_ROWS = ROOT / "benchmarks" / "faults-v1" / "faults-f1-8-rerun-2026-10-12-rows.jsonl"
+FAULTS_F18_RAW = (ROOT / "benchmarks" / "faults-v1" / "f1-8-rerun-2026-10-12"
+                  / "F1-8-collegemsg.json")
+FAULTS_F18_SHA256SUMS = (ROOT / "benchmarks" / "faults-v1"
+                         / "SHA256SUMS-f1-8-rerun-2026-10-12.txt")
 
 STORM_V1 = ROOT / "benchmarks" / "storm-v1"
 DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
@@ -2435,6 +2451,89 @@ def compute_c8(m: Macros) -> None:
     m.add("recFTwoThree", f23_post_count,
           f"{relpath(FAULTS_POST)}: F2-3 silent-violation count, the pre-registered "
           "assumption-A2 blind spot, unchanged by D-160")
+
+
+def compute_c8_f18(m: Macros) -> None:
+    """F1-8, re-run after the driver's lazy-registry defect was fixed.
+
+    Both fault-matrix records above carry F1-8 at 0 of 300 trials; the
+    addendum record has the real 300. The cell has no answer and no claim
+    gate, so its 300 trials belong to every configuration that lists the
+    cell and change no silent-violation count. Existing macros (recFaultTrials
+    and the rest) keep their recorded values; the corrected trial total is
+    its own macro."""
+    sums = _sha256sums_by_name(FAULTS_F18_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (FAULTS_F18, FAULTS_F18_ROWS, FAULTS_F18_RAW):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(FAULTS_F18_SHA256SUMS)}'s entry")
+
+    manifest = json.loads(FAULTS_F18.read_text(encoding="utf-8"))
+    raw = json.loads(FAULTS_F18_RAW.read_text(encoding="utf-8"))
+    rows = load_jsonl(FAULTS_F18_ROWS)
+
+    eq(rows, raw["per_case"], f"{relpath(FAULTS_F18_ROWS)}: rows are the raw record's per_case")
+    eq(hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":"),
+                                 ensure_ascii=False).encode("utf-8")).hexdigest(),
+       raw["result_digest"], f"{relpath(FAULTS_F18_RAW)}: result_digest recomputed from the rows")
+    eq(manifest["result_digest"], raw["result_digest"],
+       f"{relpath(FAULTS_F18)}: result_digest is the raw record's")
+
+    eq(raw["cell"], "F1-8", f"{relpath(FAULTS_F18_RAW)}: cell")
+    eq(raw["strict_gate"], False, f"{relpath(FAULTS_F18_RAW)}: primary arm")
+    eq(raw["seed"], 0, f"{relpath(FAULTS_F18_RAW)}: seed")
+    eq(raw["n_requested"], 300, f"{relpath(FAULTS_F18_RAW)}: n_requested")
+
+    counts = {k: 0 for k in ("correct", "safe-refusal", "explicit-failure", "silent-violation")}
+    for r in rows:
+        counts[r["outcome"]] += 1
+    eq(counts, raw["outcomes"]["counts"], f"{relpath(FAULTS_F18_RAW)}: counts recomputed from the rows")
+    (cell_row,) = manifest["per_cell_gate_table"]
+    eq(counts, cell_row["counts"], f"{relpath(FAULTS_F18)}: per_cell_gate_table counts")
+    eq(len(rows), manifest["total_trials"], f"{relpath(FAULTS_F18)}: total_trials")
+    eq(manifest["total_trials_requested"], 300, f"{relpath(FAULTS_F18)}: total_trials_requested")
+    eq(manifest["headline_silent_violation_count"], 0,
+       f"{relpath(FAULTS_F18)}: headline_silent_violation_count")
+
+    # Frozen at landing (2026-10-12): 300 trials, none correct, none silent.
+    eq(len(rows), 300, "C8 F1-8 frozen: trials run")
+    eq(counts["silent-violation"], 0, "C8 F1-8 frozen: silent violations")
+    eq(counts["correct"], 0, "C8 F1-8 frozen: correct (a delivered answer)")
+    eq(counts["safe-refusal"], 272, "C8 F1-8 frozen: safe-refusals (executor truncation guard)")
+    eq(counts["explicit-failure"], 28, "C8 F1-8 frozen: explicit failures (E_ANSWER)")
+
+    # The defect this record corrects: both earlier records say 0 trials for
+    # the cell, and each of their primary-arm totals is the 3,102 that the
+    # addendum's 300 trials are added to.
+    pre = json.loads(FAULTS_PRE.read_text(encoding="utf-8"))
+    post = json.loads(FAULTS_POST.read_text(encoding="utf-8"))
+    for what, rec in (("2026-09-13", pre), ("D-160", post)):
+        f18 = [c for c in rec["per_cell_gate_table"]
+               if c["cell"] == "F1-8" and not c["strict_gate"]]
+        eq(len(f18), 1, f"C8 F1-8: exactly one primary-arm F1-8 row in the {what} record")
+        eq(f18[0]["n_cases"], 0, f"C8 F1-8: the {what} record's F1-8 row is the defect's 0 trials")
+        eq(f18[0]["n_requested"], 300, f"C8 F1-8: the {what} record requested 300")
+        primary_total = sum(c["n_cases"] for c in rec["per_cell_gate_table"]
+                            if not c["strict_gate"])
+        eq(primary_total, post["total_trials"],
+           f"C8 F1-8: the {what} record's primary-arm total is the post-fix 3,102")
+    corrected_total = post["total_trials"] + len(rows)
+    eq(corrected_total, 3402, "C8 F1-8 frozen: primary-arm trials with the cell's 300")
+
+    m.add("recFOneEightTrials", len(rows),
+          f"{relpath(FAULTS_F18)}: total_trials, F1-8 re-run after the lazy-registry driver "
+          "fix (the 2026-09-13 and D-160 records say 0 of 300)")
+    m.add("recFOneEightSilent", counts["silent-violation"],
+          f"{relpath(FAULTS_F18_ROWS)}: trials with outcome silent-violation")
+    m.add("recFOneEightRefused", counts["safe-refusal"],
+          f"{relpath(FAULTS_F18_ROWS)}: trials with outcome safe-refusal (the executor's "
+          "truncation guard refused with E_LIMIT, certificate class incompleteness)")
+    m.add("recFOneEightFailed", counts["explicit-failure"],
+          f"{relpath(FAULTS_F18_ROWS)}: trials with outcome explicit-failure (E_ANSWER: "
+          "the producing step returned no rows)")
+    m.add("recFaultTrialsCorrected", tex_num(corrected_total),
+          f"{relpath(FAULTS_POST)}: total_trials 3,102 + {relpath(FAULTS_F18)}: total_trials "
+          "300, the deployed (post-D-160) gate's primary-arm trials with F1-8 included, of "
+          "3,900 requested; recFaultTrials keeps the recorded 3,102")
 
 
 # --------------------------------------------------------------------------
@@ -10704,6 +10803,7 @@ def main() -> int:
     compute_external_arc5(m)
     compute_external_rerun_n1b(m)
     compute_external_withheld_hold(m)
+    compute_c8_f18(m)
     add_pending_stubs(m)
 
     if FAILURES:
