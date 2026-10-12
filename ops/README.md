@@ -13,6 +13,10 @@ This is a record, not a gate: nothing in CI reads this file yet, and adding
 an entry does not by itself require or forbid anything. `scripts/check_failure_ledger.py`
 only validates that the file stays well-formed.
 
+The evaluation's instrument, harness and forecasting errors, numbered as the paper
+numbers them and cross-referenced to the entries here, are in
+[`INSTRUMENT_ERRORS.md`](INSTRUMENT_ERRORS.md).
+
 ## Format
 
 One JSON object per line (JSONL), no header line — a comment line is not
