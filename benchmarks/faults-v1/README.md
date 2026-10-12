@@ -692,3 +692,172 @@ python scripts/check_result_manifest.py \
 At the same base seed, corpus, and commit this reproduces bit-for-bit:
 F1-9's 0 silent-violations (271 explicit-failure instead), F2-3's 32
 (same 32 `per_case` indices), and the same three structural shortfalls.
+
+---
+
+## Addendum 2026-10-12 — the F1-8 re-run (corrects the F1-8 row above)
+
+**Correction.** The F1-8 row of both earlier records above — "0/300 — no
+eligible base plan in the corpus" in the 2026-09-13 campaign, and the same
+0/300 carried unchanged into the D-160 re-run — is a driver defect, not a
+property of the corpus. The statements above that the cell's candidate
+filter "matched zero of 116 `oracle_plan` tasks — confirmed by direct
+enumeration", that no such plan shape exists in the corpus, and that the
+cell is "unmeasured against CollegeMsg, not zero-refusal-rate" are
+withdrawn, together with the D-160 re-run's shortfall note that F1-8 has
+"no paginated-count-over-`limit`-ed-input plan shape in the corpus"; the
+sentences stay in place as the record of what was believed then. This addendum replaces them with a measurement. The two earlier
+records and their raw files are untouched, and neither is superseded: this
+addendum adds the missing cell to both.
+
+**What F1-8 tests.** "Unsupported aggregation": take a plan that has a
+rows-producing step under a `limit` argument feeding a reducing `compute`
+step, shrink that `limit` to 1, and require the *executor itself* to refuse
+before any answer exists — the guard that stops a reducing operator
+(`count`, `topk`, …) from collapsing a truncated rows set into a single
+number that looks complete. A trial is the cell's answer-free analogue of
+the lattice incompleteness refusal: a refusal or an explicit failure is
+the pass; delivering an answer would be a silent violation. The cell has no
+answer and no claim gate, so its trials are identical under the pre-D-160
+gate and the D-160 gate.
+
+**Why it recorded 0/300.** The driver's candidate filter looks each step's
+operator up in the operator registry to see whether it declares `rows`
+among its output fields. That registry is filled lazily, by importing the
+operator modules, and the filter was the one registry reader in the driver
+with no tool router, static validator or mutator ahead of it to have filled
+it. In a process that ran only `--cells F1-8` — as the campaign did, one
+cell per process — the registry was empty, every step looked ineligible,
+and the cell drew no trials without any error. The same cell run after
+`F1-6b` in one process did produce trials, because that mutator had filled
+the registry. The campaign's raw record is therefore a driver artifact
+whose `result_digest` is the digest of an empty trial list.
+
+**The fix.** Commit `e0527ea5b2a7b596e7c6d96d6b0fe51faa061b97`
+(`fault-matrix driver: F1-8 candidate filter must populate the operator
+registry itself`) factors the filter into `f1_8_rows_steps()`, which calls
+`ensure_all_registered()` first, and adds a fresh-interpreter regression
+test. With the registry filled, 79 of the 116 `oracle_plan` tasks
+(`suite-collegemsg.json`, dev 22 + test 94) are eligible base plans. The
+failure-ledger entry is `gate-driver-lazy-registry-f1-8-zero-trials` in
+`ops/failure_ledger.jsonl`.
+
+**The defect, reproduced.** The driver file exactly as committed at the
+campaign's commit `4af2181` (it contains no registry-population call), run
+as `--cells F1-8 --n 1 --seed 0` in a fresh interpreter on the current
+tree: 0 trials, and a `result_digest`
+(`4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`)
+byte-for-byte equal to the 2026-09-13 campaign's F1-8 record. Raw output:
+`f1-8-rerun-2026-10-12/defect-repro-F1-8-collegemsg-old-driver.json`.
+
+### The re-run
+
+- **cell**: `F1-8`, surface A, suite `collegemsg`, primary configuration,
+  `--n 300 --seed 0` (the campaign's own flags: `scripts/fault_matrix_campaign.slurm`
+  and the earlier raw record's `seed` and `n_requested`). Dataset digest
+  `8b047e233dc813e71cf7ae3f980e65ef911f0843d63a714f945ec3405656332e`,
+  identical to the earlier records'.
+- **commit**: `6cdbdcacb11dd2b21215df4900746c8dab1cedfc` (tracked files
+  unmodified), which contains the fix. **Host**: `xzgpu` (40 CPUs, Xeon
+  Silver 4210, 93 GiB), run under `nice -n 19` with no other TGMS process
+  running; load average 0.22 at the start and 0.34 at the end.
+  **Started** 2026-10-12 20:57:45 UTC. This is a correctness run (counts,
+  not timings): **wall 9.29 s** for the 300 trials including interpreter
+  start-up, 96.7 MB peak resident set.
+- **engine**: the shared object was reused from an earlier build
+  (`MANIFEST_FORMAT_VERSION` 3; the 2026-09-13 campaign ran an engine at
+  version 2). F1-8 executes plans through the executor against the store;
+  no trial depends on the manifest format.
+- **determinism**: a second identical run wrote an identical `per_case`
+  array and `result_digest`.
+
+**Result: 300/300 trials ran, 0 silent violations.**
+
+| cell | surface | suite | gate | n | correct | safe-refusal | explicit-failure | silent-violation | gold_mismatch | misattributed | weak_support |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| F1-8 | A | collegemsg | primary | 300/300 | 0 | **272** | **28** | **0** | 0 | 0 | 0 |
+
+Verdict classes, with the executor error behind each (from an in-process
+capture of the same 300 trials, `f1-8-rerun-2026-10-12/run-log.txt`
+section 4):
+
+- **272 `safe-refusal` (reason `incompleteness`)** — the executor's
+  truncation guard refused with `E_LIMIT`: 215 `compute count` and 57
+  `compute topk` steps would have reduced a truncated result to one number.
+  This is the refusal the design's §8 predicts for this cell; the error
+  code is `E_LIMIT` rather than `E_INCOMPLETE`.
+- **28 `explicit-failure` (reason `E_ANSWER`)** — the producing step
+  returned no rows, and answer assembly failed on a `$ref` to `rows[0]` of
+  an empty result. A detected failure, not a
+  delivered answer, but not the guard's refusal either.
+- **0 `correct`, 0 `silent-violation`.** Every trial ended in a refusal or
+  an explicit failure; none delivered an answer. The 300 trials draw on 32
+  distinct tasks (of the 79 eligible); the per-trial rows are in
+  `faults-f1-8-rerun-2026-10-12-rows.jsonl`.
+
+The row replaces the §8 verdict "**unmeasured**, not confirmed or refuted"
+for F1-8 above: the prediction (refusal by the executor guard) holds for
+272 of 300 trials, and the other 28 are explicit failures; the cell has no
+silent violation.
+
+### What this changes and what it does not
+
+F1-8 is gate-independent, so its 300 trials belong to every configuration
+that lists the cell. The totals below are stated per configuration; **no
+earlier record file is edited, and every count in the earlier tables stays
+as recorded.**
+
+| configuration | total recorded | with F1-8's 300 trials | what moves |
+|---|---|---|---|
+| 2026-09-13 record, primary arm (gates `unsupported` only) | 3,102 / 3,900 | 3,402 / 3,900 | trials +300; shortfall 798 → 498 |
+| 2026-09-13 record, strict arm | 2,602 / 3,100 | unchanged | F1-8 has no strict counterpart |
+| 2026-09-13 record, both arms | 5,704 / 7,000 | 6,004 / 7,000 | trials +300; shortfall 1,296 → 996 |
+| D-160 re-run (production gate drops `unverifiable`) | 3,102 / 3,900 | 3,402 / 3,900 | trials +300; shortfall 798 → 498 |
+
+The remaining 498-trial shortfall per primary-arm configuration is
+`F1-6` 100, `F1-6b` 100 and `F1-11` 298 — the structural corpus-size limits
+the earlier "Shortfalls" sections describe, which this addendum does not
+touch.
+
+**Silent-violation counts are unchanged:** the 2026-09-13 primary arm's
+303 (F1-9 271 + F2-3 32), the D-160 record's 0 headline plus F2-3's 32
+non-headline, and the strict arm's 32 all stand, because F1-8 adds 0 in
+every configuration. The frozen 303 and 271 figures are not recomputed or
+moved. What does change is a denominator: any statement of the form "N
+of 3,102 trials ran" understates the trials that exist by exactly the 300
+the defect lost; the corrected figure is 3,402 of 3,900.
+
+### Companion files (all new; nothing existing was modified)
+
+| file | what it is |
+|---|---|
+| `faults-f1-8-rerun-2026-10-12.json` | the addendum manifest, in `benchmarks/schema/result_manifest.schema.json` (`scripts/check_result_manifest.py` passes); built from the raw record by `scripts/fault_matrix_rerun_record.py`, reusing the campaign merge tool's table, digest and silent-violation code |
+| `faults-f1-8-rerun-2026-10-12-rows.jsonl` | the 300 per-trial rows, verbatim and in order |
+| `f1-8-rerun-2026-10-12/F1-8-collegemsg.json` | the driver's raw record, unmodified |
+| `f1-8-rerun-2026-10-12/defect-repro-F1-8-collegemsg-old-driver.json` | the defect reproduction's raw record |
+| `f1-8-rerun-2026-10-12/run-log.txt`, `run-meta.json` | the run log (timestamps, load, wall, defect reproduction, error-class capture) and the measured facts the manifest copies from it |
+| `SHA256SUMS-f1-8-rerun-2026-10-12.txt` | sha256 of every file above |
+
+- **result_digest** (the raw record's: sha256 over the canonical JSON of
+  `per_case`): `2e4237a74999ab4ef62a8f6c18daaa1993578111be91e0e1f24ecdca51a9e91e`
+- **file sha256** (`faults-f1-8-rerun-2026-10-12.json`):
+  `dc16a325c2f38a1a5482ee43923193ed7a446b689464351a9a7748be17a46e1c`
+
+### Regenerating
+
+```sh
+git worktree add --detach <dir> 6cdbdcacb11dd2b21215df4900746c8dab1cedfc
+# copy a built tgms/_engine*.so into <dir>/tgms/, then from <dir>:
+nice -n 19 python scripts/eval_trust_boundary_matrix.py --suite collegemsg \
+    --surface A --cells F1-8 --n 300 --seed 0 --store <private copy of stores/collegemsg> \
+    --out <scratch>
+python scripts/fault_matrix_rerun_record.py \
+    --raw <scratch>/F1-8-collegemsg.json \
+    --meta benchmarks/faults-v1/f1-8-rerun-2026-10-12/run-meta.json \
+    --out benchmarks/faults-v1/faults-f1-8-rerun-2026-10-12.json \
+    --rows-out benchmarks/faults-v1/faults-f1-8-rerun-2026-10-12-rows.jsonl
+python scripts/check_result_manifest.py benchmarks/faults-v1/faults-f1-8-rerun-2026-10-12.json
+```
+
+At the same seed and corpus the `per_case` array and `result_digest` are
+reproducible bit for bit; only the timestamps differ.

@@ -1,0 +1,70 @@
+F1-8 re-run (lane G-F18) -- run log, 2026-10-12. Host xzgpu, a quiet box: no other TGMS
+process running at either start. A correctness campaign (counts, not timings); nice -n 19.
+Paths are relative to the run's worktree, a fresh `git worktree add --detach` of the
+repository at 6cdbdcacb11dd2b21215df4900746c8dab1cedfc; tracked files unmodified. The
+engine shared object was copied in from an earlier lane's build (MANIFEST_FORMAT_VERSION 3;
+the 2026-09-13 campaign ran an engine with version 2 -- F1-8 reads the store through the
+executor only and no F1-8 trial depends on the manifest format).
+
+== 1. defect signature on the campaign-commit driver ==
+The driver file exactly as committed at 4af2181 (the 2026-09-13 campaign's commit), saved
+as scripts/_old_eval_tbm_4af2181.py (untracked, not committed), sha256
+189ab740a2196af28183f12706012e2660806559020639af129325f6af7d30ad; it contains no call to
+ensure_all_registered. Run against the 6cdbdca tree and engine, fresh interpreter:
+
+  Mon 12 Oct 2026 08:57:31 PM UTC
+  load average: 0.29, 0.27, 0.19
+  nice -n 19 python scripts/_old_eval_tbm_4af2181.py --cells F1-8 --n 1 --seed 0 \
+      --store stores/collegemsg --out ../out-repro
+  F1-8  n=0  {'correct': 0, 'safe-refusal': 0, 'explicit-failure': 0, 'silent-violation': 0}
+  real 1.363s
+
+n_cases 0 of 1 requested; result_digest 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945,
+byte-for-byte the result_digest of the 2026-09-13 campaign's F1-8-collegemsg.json (the
+digest of an empty per_case). Raw output: defect-repro-F1-8-collegemsg-old-driver.json.
+
+== 2. the re-run with the fixed driver ==
+Driver scripts/eval_trust_boundary_matrix.py at 6cdbdca, sha256
+533e0a8bec4c5ed5825547cec241b0fdd036fd9bd1f54e27574a2b702cda55ae (contains the e0527ea5 fix).
+Store: a private copy of stores/collegemsg (the driver's own auto-build from the frozen
+event log); dataset digest 8b047e233dc813e71cf7ae3f980e65ef911f0843d63a714f945ec3405656332e
+(suite-collegemsg.json), identical to the 2026-09-13 record's.
+
+== start
+Mon 12 Oct 2026 08:57:45 PM UTC
+ 20:57:45 up 11 days,  5:52,  0 users,  load average: 0.22, 0.26, 0.18
+0.22 0.26 0.18 1/1323 3510698
+CPU(s):                             40
+Model name:                         Intel(R) Xeon(R) Silver 4210 CPU @ 2.20GHz
+Mem:             93           3           4           0          85          88
+Python 3.12.13
+6cdbdcacb11dd2b21215df4900746c8dab1cedfc
+
+/usr/bin/time -v nice -n 19 python scripts/eval_trust_boundary_matrix.py --suite collegemsg \
+    --surface A --cells F1-8 --n 300 --seed 0 --store ../store-copy/collegemsg --out ../out-rerun
+F1-8	n=300	{'correct': 0, 'safe-refusal': 272, 'explicit-failure': 28, 'silent-violation': 0}	gold_mismatch=0	misattributed=0	weak_support=0
+  Elapsed (wall clock) time: 0:09.29     User 13.17 s   System 0.56 s   CPU 147%
+  Maximum resident set size: 96652 kB    Exit status: 0
+
+== end
+Mon 12 Oct 2026 08:57:54 PM UTC
+0.34 0.28 0.19 1/1317 3510786
+
+Flags are the campaign's own (scripts/fault_matrix_campaign.slurm: --suite collegemsg
+--surface A --cells F1-8 --n 300 --seed 0, primary arm; the campaign's raw record carries
+seed 0 and n_requested 300). Raw output unmodified: F1-8-collegemsg.json.
+
+== 3. determinism ==
+A second identical run (same worktree and store copy, started after the first) wrote a
+record with the same result_digest
+2e4237a74999ab4ef62a8f6c18daaa1993578111be91e0e1f24ecdca51a9e91e and an identical
+per_case array (only the timestamps differ, so the file shas differ).
+
+== 4. what the 300 trials were (diagnostic; the same cell run in-process with `classify`
+wrapped to capture each trial's executor error; same seed, same 300 trials) ==
+  eligible base plans: 79 of 116 oracle_plan tasks (the 116 = suite-collegemsg.json dev 22 + test 94)
+  distinct tasks drawn by the 300 trials: 32
+  215  E_LIMIT  "compute count would reduce a truncated result to one number, which is a wrong answer rather than a partial one"
+   57  E_LIMIT  "compute topk would reduce a truncated result to one number, which is a wrong answer rather than a partial one"
+   28  E_ANSWER "$ref 's2.rows[0].earliest_arrival': index 0 out of range (0 rows) -- the producing step returned no rows"
+  (E_LIMIT -> certificate class incompleteness -> safe-refusal: 272; E_ANSWER -> explicit-failure: 28)

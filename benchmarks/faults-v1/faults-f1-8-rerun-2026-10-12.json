@@ -1,0 +1,116 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "6cdbdcacb11dd2b21215df4900746c8dab1cedfc",
+ "timestamp_utc": "2026-10-12T20:57:54Z",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "cpus": 40,
+  "ram_gb": 93
+ },
+ "config": {
+  "harness": "scripts/eval_trust_boundary_matrix.py",
+  "campaign": "faults-v1 F1-8 re-run (addendum 2026-10-12)",
+  "command": "nice -n 19 python scripts/eval_trust_boundary_matrix.py --suite collegemsg --surface A --cells F1-8 --n 300 --seed 0 --store <private copy of stores/collegemsg> --out <scratch>",
+  "flags_from": "scripts/fault_matrix_campaign.slurm (--suite collegemsg --surface A --cells F1-8 --n 300 --seed 0, primary arm)",
+  "driver_sha256": "533e0a8bec4c5ed5825547cec241b0fdd036fd9bd1f54e27574a2b702cda55ae",
+  "driver_fix_commit": "e0527ea5b2a7b596e7c6d96d6b0fe51faa061b97",
+  "defect": "the F1-8 candidate filter read the operator registry, which is populated lazily by importing the operator modules, before anything in the process had populated it; every base plan then looked ineligible and the cell produced no trials",
+  "defect_recorded_in": [
+   "benchmarks/faults-v1/F1-8-collegemsg.json",
+   "benchmarks/faults-v1/d160-raw/F1-8-collegemsg.json"
+  ],
+  "defect_repro": {
+   "driver": "scripts/eval_trust_boundary_matrix.py as committed at 4af2181, run against the 6cdbdca tree",
+   "start_utc": "2026-10-12T20:57:31Z",
+   "n_requested": 1,
+   "n_cases": 0,
+   "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "raw": "benchmarks/faults-v1/f1-8-rerun-2026-10-12/defect-repro-F1-8-collegemsg-old-driver.json"
+  },
+  "addendum_to": [
+   "benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json",
+   "benchmarks/faults-v1/fault-matrix-campaign-2026-09-15-d160.json"
+  ],
+  "gate_independent": "F1-8 has no answer and no claim gate (the driver's own module docstring and run_cell); its trials are identical under the pre-D-160 and the D-160 gate",
+  "wall_s": 9.29,
+  "user_s": 13.17,
+  "max_rss_kb": 96652,
+  "host_snapshot": {
+   "start_utc": "2026-10-12T20:57:45Z",
+   "end_utc": "2026-10-12T20:57:54Z",
+   "loadavg_start": "0.22 0.26 0.18",
+   "loadavg_end": "0.34 0.28 0.19",
+   "cpu_model": "Intel(R) Xeon(R) Silver 4210 CPU @ 2.20GHz",
+   "cpus": 40,
+   "ram_gb": 93,
+   "other_tgms_processes": 0,
+   "python": "3.12.13",
+   "engine_manifest_format_version": 3
+  },
+  "diagnostic": {
+   "source": "run-log.txt section 4 (in-process capture of each trial's executor error, same seed)",
+   "eligible_base_plans": 79,
+   "oracle_plan_tasks": 116,
+   "distinct_tasks_drawn": 32,
+   "executor_error_codes": {
+    "E_LIMIT": 272,
+    "E_ANSWER": 28
+   }
+  },
+  "run_log": "benchmarks/faults-v1/f1-8-rerun-2026-10-12/run-log.txt",
+  "raw_record": "benchmarks/faults-v1/f1-8-rerun-2026-10-12/F1-8-collegemsg.json",
+  "result_digest_kind": "the raw record's result_digest: sha256 over the canonical JSON of its per_case array",
+  "dataset_digest_kind": "sha256 of benchmarks/frozen-v1/suite-collegemsg.json"
+ },
+ "seed": {
+  "value": 0
+ },
+ "dataset": {
+  "name": "collegemsg",
+  "digest": "8b047e233dc813e71cf7ae3f980e65ef911f0843d63a714f945ec3405656332e",
+  "digest_kind": "manifest"
+ },
+ "result_digest": "2e4237a74999ab4ef62a8f6c18daaa1993578111be91e0e1f24ecdca51a9e91e",
+ "protocol": {
+  "warmups": 0,
+  "reps": 300,
+  "ceilings": {}
+ },
+ "record": "benchmarks/faults-v1/faults-f1-8-rerun-2026-10-12.json",
+ "total_trials": 300,
+ "total_trials_requested": 300,
+ "n_records": 1,
+ "per_cell_gate_table": [
+  {
+   "cell": "F1-8",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "F1-8-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 272,
+    "explicit-failure": 28,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "2e4237a74999ab4ef62a8f6c18daaa1993578111be91e0e1f24ecdca51a9e91e"
+  }
+ ],
+ "outcome_reasons": {
+  "explicit-failure/E_ANSWER": 28,
+  "safe-refusal/incompleteness": 272
+ },
+ "distinct_tasks": 32,
+ "rows_file": "faults-f1-8-rerun-2026-10-12-rows.jsonl",
+ "shortfalls": [],
+ "silent_violations": [],
+ "headline_silent_violation_count": 0,
+ "non_headline_silent_violation_count": 0
+}

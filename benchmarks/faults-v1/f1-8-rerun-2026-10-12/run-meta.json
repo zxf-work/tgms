@@ -1,0 +1,39 @@
+{
+ "campaign_commit": "4af2181",
+ "campaign_record_f1_8": "benchmarks/faults-v1/F1-8-collegemsg.json",
+ "d160_record_f1_8": "benchmarks/faults-v1/d160-raw/F1-8-collegemsg.json",
+ "driver_fix_commit": "e0527ea5b2a7b596e7c6d96d6b0fe51faa061b97",
+ "driver_sha256": "533e0a8bec4c5ed5825547cec241b0fdd036fd9bd1f54e27574a2b702cda55ae",
+ "old_driver_sha256": "189ab740a2196af28183f12706012e2660806559020639af129325f6af7d30ad",
+ "command": "nice -n 19 python scripts/eval_trust_boundary_matrix.py --suite collegemsg --surface A --cells F1-8 --n 300 --seed 0 --store <private copy of stores/collegemsg> --out <scratch>",
+ "wall_s": 9.29,
+ "user_s": 13.17,
+ "max_rss_kb": 96652,
+ "host_snapshot": {
+  "start_utc": "2026-10-12T20:57:45Z",
+  "end_utc": "2026-10-12T20:57:54Z",
+  "loadavg_start": "0.22 0.26 0.18",
+  "loadavg_end": "0.34 0.28 0.19",
+  "cpu_model": "Intel(R) Xeon(R) Silver 4210 CPU @ 2.20GHz",
+  "cpus": 40,
+  "ram_gb": 93,
+  "other_tgms_processes": 0,
+  "python": "3.12.13",
+  "engine_manifest_format_version": 3
+ },
+ "defect_repro": {
+  "driver": "scripts/eval_trust_boundary_matrix.py as committed at 4af2181, run against the 6cdbdca tree",
+  "start_utc": "2026-10-12T20:57:31Z",
+  "n_requested": 1,
+  "n_cases": 0,
+  "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "raw": "benchmarks/faults-v1/f1-8-rerun-2026-10-12/defect-repro-F1-8-collegemsg-old-driver.json"
+ },
+ "diagnostic": {
+  "source": "run-log.txt section 4 (in-process capture of each trial's executor error, same seed)",
+  "eligible_base_plans": 79,
+  "oracle_plan_tasks": 116,
+  "distinct_tasks_drawn": 32,
+  "executor_error_codes": {"E_LIMIT": 272, "E_ANSWER": 28}
+ }
+}
