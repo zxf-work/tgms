@@ -737,3 +737,156 @@ byte-identical — a structural diff of the regenerated `.tex` against the
 committed one shows only the 5 new macro lines above plus the
 `recExt2UnanswerableMs` line changing from the literal text "not measured"
 to `70`, and the assertion-count comment.
+
+
+## Symmetric withheld correction (2026-10-29)
+
+**Pre-registration** (frozen 2026-10-29T12:26:44Z, before this lane ran
+anything): "on cell `synth-iv-60k-c4-deep-n1000-s0`, delay burst 10's
+correction for TGMS — append it to the event log after burst 11's reads —
+and read the affected artifacts at the burst-10 and burst-11 read points.
+Prediction: at the burst-10 read point TGMS reports the 39 affected
+artifacts FRESH (the correction is not in the log; the contract is defined
+relative to the log; relative to eventual truth these are 39 stale answers
+served as fresh, as the plain dataflow view does); at the first check
+after the correction lands all 39 are POSSIBLY STALE and 0 are false-fresh
+relative to the log. Falsifier: any affected artifact still FRESH after
+the correction lands."
+
+The dataflow configuration's withheld-correction cell ("The
+withheld-correction cell" above) delays burst 10's changelog by one
+interval and asks what the maintained view reports at the burst-10 read
+point. That check is asymmetric: it withholds the correction from the
+dataflow only. This section withholds it from TGMS as well, on the same
+cell, so the two systems are read under the same delivery schedule.
+
+**Mechanism.** A standalone replay of the cell's export bundle
+(`scripts/withheld_symmetric.py`), not a harness option: nothing under
+`tgms/` changed. The pristine base store is copied to a scratch
+directory; the bundle's 884 registered artifacts are re-registered with
+the correction-storm harness's own registration routine; the bundle's
+bursts are then appended one at a time with the harness's own write
+routine, and after each append the script runs the harness's per-burst
+cycle (the candidate pre-filter and `check_artifact` on the candidates,
+then a refresh of every registered artifact). The one change from the
+harness is the order of the appends. In the `delayed` schedule: bursts
+1–9 are appended and refreshed; the burst-10 interval passes with no
+append (read point **R10**); burst 11 is appended, checked and refreshed
+(read point **R11**); the burst-10 correction is then appended (read
+point **R11-after-arrival**, the first check after it lands). Appending
+a late burst cannot reuse its original transaction time (the log is
+append-only with increasing transaction times), so the correction enters
+the log with the next transaction time, `1790974344539116`, after burst
+11's `…115`. The `inorder` schedule replays the unmodified order and is
+the fidelity control: its per-burst candidate count and level-0 and
+level-1 invalidation counts equal the control run's rows for all 11
+bursts replayed (`tgms-L0` and `tgms-L1`, e.g. burst 10: 197 candidates,
+197 invalidated; burst 11: 216 and 216), the 884 registration digests
+equal the bundle's epoch-0 oracle, and the answer recomputed over the log
+equals the bundle's oracle at every read point.
+
+At each read point all 884 artifacts are checked at level 0 and level 1.
+Rows are written for the 39 affected artifacts (those whose oracle answer
+changes at epoch 10) and for a control sample of 39 artifacts whose
+answer does not change at epoch 10 (seeded draw, seed 0, from the
+name-sorted unaffected set). Per artifact the row carries the verdict,
+the served answer's digest, the digest of the answer recomputed over the
+log as it stands, and the oracle digest. Two scorings are kept apart:
+*false-fresh relative to the log* (verdict FRESH although the answer
+recomputed over the current log differs: the contract violation), and
+*stale relative to eventual truth* (verdict FRESH although the served
+answer differs from the oracle at the read point's epoch: the plain
+dataflow notion).
+
+**Counts** (two independent runs of the `delayed` schedule, identical in
+every count and every row; the record is not written unless they agree):
+
+| read point | log holds | group | n | FRESH | POSSIBLY STALE | FRESH but stale vs eventual truth | false-fresh vs the log |
+|---|---|---|---:|---:|---:|---:|---:|
+| R10 | bursts 1–9 | affected | 39 | 39 | 0 | 39 | 0 |
+| R10 | bursts 1–9 | control | 39 | 39 | 0 | 0 | 0 |
+| R11 | 1–9, 11 | affected | 39 | 38 | 1 | 38 | 0 |
+| R11 | 1–9, 11 | control | 39 | 31 | 8 | 0 | 0 |
+| R11-after-arrival | 1–9, 11, 10 | affected | 39 | 0 | 39 | 0 | 0 |
+| R11-after-arrival | 1–9, 11, 10 | control | 39 | 33 | 6 | 0 | 0 |
+
+Over the whole registry (884 artifacts): R10 884 FRESH (39 of them
+stale relative to eventual truth); R11 668 FRESH, 216 POSSIBLY STALE;
+R11-after-arrival 687 FRESH, 197 POSSIBLY STALE. False-fresh relative to
+the log is 0 at every read point for all 884. Level 1 agrees with level 0
+on every count above. For comparison, the `inorder` schedule (the
+correction arrives on time) reports the 39 affected artifacts POSSIBLY
+STALE at R10, with 6 of the 39 control artifacts flagged too.
+
+The prediction holds and the falsifier does not fire: 39 of 39 FRESH
+at R10, 39 of 39 POSSIBLY STALE after the correction lands, 0
+false-fresh relative to the log.
+
+**Reading: arrival delay, not maintenance lag.** At R10 the correction is
+not in the log, so no log-defined check can flag it, and TGMS's 39 FRESH
+verdicts are correct relative to the log and stale relative to eventual
+truth in exactly the way the plain dataflow view's 39 are
+(`ivm_f_epoch_false_fresh = 39`, the same 39 artifacts). That failure is
+an arrival delay, which the maintained view and the log-defined contract
+share; it is not a maintenance lag, because both systems are exact over
+what they have received (the dataflow's served value equals the
+whole-store reference over the delivered rows; TGMS's served answers
+equal the answers recomputed over the log at every read point). The
+systems differ in what they say once the correction has arrived. A
+maintained view has to apply it and refresh before its value is right
+(its inter-burst wall in the withheld-hold record above is 70 ms per
+burst); TGMS's next check answers POSSIBLY STALE for all 39 without
+recomputing, and the recomputation is the deferred step. This is a counts
+experiment: it makes no timing claim.
+
+**Things the pre-registration did not anticipate.**
+
+1. "Burst 11" is the cell's large burst (the `c4` mix fires its burst on
+   the 11th correction). At R11, before burst 10 arrives, it already
+   flags 1 of the 39 affected artifacts (and 216 of the 884); the other
+   38 are FRESH at R11 and stale relative to eventual truth. The 39
+   verdicts after arrival are all attributable to burst 10 alone, because
+   every artifact was refreshed after burst 11 and before burst 10
+   landed.
+2. The check is conservative as always: 197 artifacts are flagged after
+   arrival against 39 whose answer changes (158 flagged although their
+   answer is unchanged), and 6 of the 39 control artifacts are flagged.
+   The `inorder` schedule flags the same 197 at R10.
+3. After arrival and a refresh, 883 of 884 answers equal the bundle's
+   epoch-11 oracle. The exception is `storm-000203` (`entity_history` of
+   `n61` with edges), one of the 39: the payload lists version ids, and a
+   version id is derived from the transaction time, which differs for a
+   late-arriving correction. The verdict is unaffected; the answer
+   differs from the on-time one by that identifier only (checked by
+   replaying both orders into scratch stores and diffing the two
+   envelopes: the only differences are the request id, the log checkpoint's chain
+   hash, the query transaction time (twice), the version id of the
+   burst-10 edge, and the result digest).
+
+**Host protocol.** xzgpu, `nice -n 19`, a counts experiment so the host
+was not quiet; the two `delayed` runs executed concurrently (903.6 s and
+899.3 s wall), the `inorder` control alone (884.5 s). Code: public main
+`96b7f3f1` plus the two new scripts, uncommitted at run time
+(`git_commit` carries `-dirty`; `config.script_sha256` is the sha256 of
+the replay script as run), with the extension module copied from the
+build used for the fifth-arc re-measurement. The exported bundle and
+base store of lanes T1b/D1 were read, never written.
+
+**Files.** `withheld-symmetric-2026-10-29.json` (counts, fidelity check,
+repeat check; validates against `result_manifest.schema.json`) and
+`withheld-symmetric-2026-10-29-rows.jsonl` (390 rows: 39 affected + 39
+control artifacts at three read points for the `delayed` schedule, at two
+for the `inorder` schedule); both sha256-listed in `SHA256SUMS.txt`.
+Assembled by `scripts/withheld_symmetric_record.py`; replay by
+`scripts/withheld_symmetric.py`.
+
+**Macros** (`scripts/sys_paper_macros.py`'s
+`compute_external_withheld_symmetric`, gated on the record's sha256 and
+on the pre-registered prediction):
+
+| macro | value | field |
+|---|---:|---|
+| `recWithheldSymAffected` | 39 | `summary.affected` (equals `ivm_f_epoch_false_fresh`) |
+| `recWithheldSymTgmsFreshBeforeArrival` | 39 | `summary.tgms_fresh_before_arrival` |
+| `recWithheldSymTgmsStaleAfterArrival` | 39 | `summary.tgms_possibly_stale_after_arrival` |
+| `recWithheldSymTgmsFalseFreshAfterArrival` | 0 | `summary.tgms_false_fresh_log_after_arrival` |

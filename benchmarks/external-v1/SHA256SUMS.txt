@@ -16,3 +16,5 @@ ec8e02cb6e53e989ef98201707dcd7bac6fbd819c215f1a4f56cc8dcd8899832  benchmarks/ext
 313defdf52abe6f897da2af4816fcd2f38e90e3614f3cc16ba3a35e093140d12  benchmarks/external-v1/neo4j-recompute-2026-10-09-rerun.json
 4cfd5590d41e2b18f1bc28a23a10ad4251ef2fdacdc0f2266e28bb9e15f7afa8  benchmarks/external-v1/neo4j-recompute-2026-10-09-rerun-rows.jsonl
 767a203ae4a0f919552b3ccc6ba6533a397504a50a867c941ba3c465b45f629e  benchmarks/external-v1/ivm-differential-2026-10-09-withheld-hold.json
+f7d331ce735cbd17befcf42304509b6bf630253f32f497bb885dd41b199a49be  benchmarks/external-v1/withheld-symmetric-2026-10-29.json
+480fffafccfcea0006432b7d849d2bf85b5e4c1f3564dfbe9d42e930a26a2d67  benchmarks/external-v1/withheld-symmetric-2026-10-29-rows.jsonl
