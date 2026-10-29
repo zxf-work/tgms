@@ -559,6 +559,13 @@ EXTERNAL_NEO4J_RERUN_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-09-rerun-rows
 # See benchmarks/external-v1/README.md's "Watermark hold duration under a
 # withheld correction (2026-10-09)" section.
 EXTERNAL_IVM_WITHHELD_HOLD = EXTERNAL_V1 / "ivm-differential-2026-10-09-withheld-hold.json"
+# Symmetric withheld correction (2026-10-29, P-WH-SYM): the same cell, with
+# the delayed correction appended to TGMS's event log after burst 11's
+# reads (scripts/withheld_symmetric.py; assembled by
+# scripts/withheld_symmetric_record.py). See benchmarks/external-v1/README.md's
+# "Symmetric withheld correction (2026-10-29)" section.
+EXTERNAL_WITHHELD_SYM = EXTERNAL_V1 / "withheld-symmetric-2026-10-29.json"
+EXTERNAL_WITHHELD_SYM_ROWS = EXTERNAL_V1 / "withheld-symmetric-2026-10-29-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 # Lane W2af: the per-cell equality-manifest sidecar (never read by any
 # function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
@@ -10939,6 +10946,82 @@ def compute_external_withheld_hold(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Symmetric withheld correction (2026-10-29, P-WH-SYM). The pre-registration
+# (frozen 2026-10-29T12:26:44Z): on the withheld-correction cell, delay burst
+# 10's correction for TGMS -- append it to the event log after burst 11's
+# reads -- and read the affected artifacts at the burst-10 and burst-11 read
+# points. Prediction: at the burst-10 read point TGMS reports the 39 affected
+# artifacts FRESH (the contract is defined relative to the log; relative to
+# eventual truth these are 39 stale answers served as fresh, as the plain
+# dataflow view does); at the first check after the correction lands all 39
+# are POSSIBLY STALE and 0 are false-fresh relative to the log. Falsifier:
+# any affected artifact still FRESH after the correction lands.
+# --------------------------------------------------------------------------
+
+def compute_external_withheld_symmetric(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_WITHHELD_SYM, EXTERNAL_WITHHELD_SYM_ROWS):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry")
+
+    record = json.loads(EXTERNAL_WITHHELD_SYM.read_text(encoding="utf-8"))
+    where = relpath(EXTERNAL_WITHHELD_SYM)
+    eq(record["config"]["campaign"], "withheld-symmetric", f"{where}: config.campaign")
+    s = record["summary"]
+    eq(s["cell_id"], "synth-iv-60k-c4-deep-n1000-s0", f"{where}: summary.cell_id")
+
+    # The affected set is the one the dataflow record already names.
+    ivm = json.loads(EXTERNAL_IVM_WITHHELD_HOLD.read_text(encoding="utf-8"))["summary"]["withheld"]
+    affected = s["affected"]
+    eq(affected, ivm["ivm_f_epoch_false_fresh"],
+       f"{where}: summary.affected == {relpath(EXTERNAL_IVM_WITHHELD_HOLD)}'s "
+       "ivm_f_epoch_false_fresh (the same artifacts whose answer changes at epoch 10)")
+
+    fresh_before = s["tgms_fresh_before_arrival"]
+    stale_after = s["tgms_possibly_stale_after_arrival"]
+    false_fresh_after = s["tgms_false_fresh_log_after_arrival"]
+
+    # internal consistency of the counts against the per-read-point blocks
+    c = s["counts"]
+    eq(c["R10"]["affected"]["fresh"], fresh_before, f"{where}: counts.R10.affected.fresh")
+    eq(c["R11-after-arrival"]["affected"]["possibly_stale"], stale_after,
+       f"{where}: counts.R11-after-arrival.affected.possibly_stale")
+    eq(c["R11-after-arrival"]["affected"]["fresh"] + stale_after, affected,
+       f"{where}: fresh + possibly stale after arrival == affected")
+    eq(c["R10"]["affected"]["n"], affected, f"{where}: counts.R10.affected.n")
+    eq(s["tgms_stale_vs_eventual_before_arrival"], affected,
+       f"{where}: every affected artifact served FRESH at R10 differs from eventual truth")
+    eq(s["tgms_false_fresh_log_all_read_points"], 0,
+       f"{where}: no false-fresh relative to the log at any read point, either group")
+    eq(s["tgms_false_fresh_log_registry_all_read_points"], 0,
+       f"{where}: no false-fresh relative to the log anywhere in the registry")
+
+    # the frozen prediction and its falsifier
+    eq(fresh_before, affected, f"{where}: P-WH-SYM -- all affected artifacts FRESH at R10")
+    eq(stale_after, affected,
+       f"{where}: P-WH-SYM -- all affected artifacts POSSIBLY STALE after the correction lands")
+    eq(false_fresh_after, 0, f"{where}: P-WH-SYM -- 0 false-fresh relative to the log")
+    eq(s["falsifier_triggered"], False, f"{where}: P-WH-SYM falsifier did not fire")
+
+    # the run is repeatable and the replay reproduces the control run
+    require(s["repeat"]["identical_counts_and_rows"] is True and s["repeat"]["runs"] >= 2,
+            f"{where}: at least two delayed runs with identical counts and rows")
+    require(s["fidelity"]["all_match"] is True,
+            f"{where}: the in-order replay reproduces the control run's per-burst counts")
+
+    m.add("recWithheldSymAffected", affected, f"{where}: summary.affected")
+    m.add("recWithheldSymTgmsFreshBeforeArrival", fresh_before,
+          f"{where}: summary.tgms_fresh_before_arrival -- affected artifacts reported FRESH at "
+          "the burst-10 read point, the correction not yet in the log")
+    m.add("recWithheldSymTgmsStaleAfterArrival", stale_after,
+          f"{where}: summary.tgms_possibly_stale_after_arrival -- affected artifacts reported "
+          "POSSIBLY STALE at the first check after the correction lands")
+    m.add("recWithheldSymTgmsFalseFreshAfterArrival", false_fresh_after,
+          f"{where}: summary.tgms_false_fresh_log_after_arrival -- affected artifacts FRESH "
+          "although recomputing over the log gives another answer")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -11047,6 +11130,7 @@ def main() -> int:
     compute_external_arc5(m)
     compute_external_rerun_n1b(m)
     compute_external_withheld_hold(m)
+    compute_external_withheld_symmetric(m)
     compute_c8_f18(m)
     compute_refresh_cost_attribution(m)
     add_pending_stubs(m)

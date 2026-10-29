@@ -4837,6 +4837,78 @@ def test_tampered_external_withheld_hold_count_fails_even_with_a_patched_digest(
 
 
 # --------------------------------------------------------------------------
+# Symmetric withheld correction (2026-10-29, P-WH-SYM) --
+# compute_external_withheld_symmetric, outside _run_all_landed/
+# FROZEN_LANDED_VALUES, same convention as the withheld-hold section above.
+# --------------------------------------------------------------------------
+
+def test_external_withheld_symmetric_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_withheld_symmetric(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert values["recWithheldSymAffected"] == "39"
+    assert values["recWithheldSymTgmsFreshBeforeArrival"] == "39"
+    assert values["recWithheldSymTgmsStaleAfterArrival"] == "39"
+    assert values["recWithheldSymTgmsFalseFreshAfterArrival"] == "0"
+
+
+def test_external_withheld_symmetric_affected_matches_the_dataflow_record():
+    """The affected set is the one the dataflow record's ivm_f_epoch_false_fresh
+    names, not a second count."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_withheld_hold(m)
+    mod.compute_external_withheld_symmetric(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recWithheldSymAffected"] == values["recExt2WithheldHeldArtifacts"]
+
+
+def test_tampered_external_withheld_symmetric_sha256_mismatch_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_WITHHELD_SYM.read_text(encoding="utf-8"))
+    data["summary"]["tgms_possibly_stale_after_arrival"] = 0
+    tampered = tmp_path / mod.EXTERNAL_WITHHELD_SYM.name
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.EXTERNAL_WITHHELD_SYM = tampered
+    m = mod.Macros()
+    mod.compute_external_withheld_symmetric(m)
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_tampered_external_withheld_symmetric_count_fails_even_with_a_patched_digest(tmp_path):
+    """Patching SHA256SUMS.txt to match a tampered copy must still fail: a
+    FRESH verdict left after the correction lands is the pre-registered
+    falsifier, and the counts must agree with each other."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_WITHHELD_SYM.read_text(encoding="utf-8"))
+    data["summary"]["tgms_possibly_stale_after_arrival"] = 38
+    data["summary"]["tgms_fresh_after_arrival"] = 1
+    data["summary"]["falsifier_triggered"] = True
+    tampered = tmp_path / mod.EXTERNAL_WITHHELD_SYM.name
+    tampered_bytes = json.dumps(data).encode()
+    tampered.write_bytes(tampered_bytes)
+
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    patched_digest = hashlib.sha256(tampered_bytes).hexdigest()
+    patched_sums = re.sub(
+        r"^[0-9a-f]{64}(\s+\S*withheld-symmetric-2026-10-29\.json)$",
+        patched_digest + r"\1", sums_text, flags=re.MULTILINE)
+    assert patched_sums != sums_text, "fixture did not find the row to patch"
+    patched_sums_path = tmp_path / "SHA256SUMS.txt"
+    patched_sums_path.write_text(patched_sums, encoding="utf-8")
+
+    mod.EXTERNAL_WITHHELD_SYM = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = patched_sums_path
+    m = mod.Macros()
+    mod.compute_external_withheld_symmetric(m)
+    assert mod.FAILURES, "a record whose counts contradict the pre-registered " \
+        "prediction must fail even though the sha256 gate was patched to match"
+
+
+# --------------------------------------------------------------------------
 # F1-8 re-run addendum (2026-10-12) -- compute_c8_f18, outside
 # _run_all_landed/FROZEN_LANDED_VALUES, same convention as the sections
 # above. The cell both fault-matrix records carry at 0 of 300 (a driver
