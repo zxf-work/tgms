@@ -1,0 +1,180 @@
+{
+  "config": {
+    "addendum_id": null,
+    "age": null,
+    "allow_r18_trip": false,
+    "arms": [
+      "global-recompute",
+      "entity-touch",
+      "window-overlap",
+      "row-touch",
+      "tgms-L0",
+      "tgms-L1"
+    ],
+    "backend": "native",
+    "batches": 2,
+    "burst_after": 10,
+    "burst_size": 10000,
+    "check_cache": "chain",
+    "dag_cascade_k": 4,
+    "dag_depth": 4,
+    "dag_fanout": 3,
+    "dag_seed_from_affected": false,
+    "dag_shape": null,
+    "degree": null,
+    "freeze_sha256": null,
+    "interval_vt": false,
+    "measure_ttf": "end-to-end",
+    "mix": "c1",
+    "n_artifacts": 1000,
+    "n_registered": 884,
+    "n_registration_skipped": 116,
+    "range_width": null,
+    "seed": 0,
+    "store": "store-src",
+    "wall_cap_s": null,
+    "wall_capped": false,
+    "wall_s": 134.42465376853943
+  },
+  "dag": null,
+  "dataset": {
+    "digest": "ab925f025e6c5aaedcd3259966f68d39c60ba6016a0bd66b5eed0c78a51f3587",
+    "digest_kind": "eventlog_sha",
+    "name": "store-src"
+  },
+  "git_commit": "96b7f3f122a93e37b5b4e6120b7664d2c6bbc789",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.03
+  },
+  "protocol": {
+    "ceilings": {
+      "r18_trip_n_artifacts": 10000
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "run1000/o/storm-store-src-0-rows.jsonl",
+  "result_digest": "e3d560ad0eb8a1947e67232ecce05904f95bd5b3e41a979b94b054cea84dc169",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "arms": {
+      "entity-touch": {
+        "avoided_recompute_decision": 0.9983031674208145,
+        "avoided_recompute_wall": 0.9993941782995321,
+        "false_fresh": 120,
+        "false_stale": 3,
+        "invalidated": 3,
+        "ttf_incomplete_batches": 2,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "global-recompute": {
+        "avoided_recompute_decision": 0.0,
+        "avoided_recompute_wall": 0.0,
+        "false_fresh": 0,
+        "false_stale": 1648,
+        "invalidated": 1768,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 16319.806615356356,
+        "ttf_p95_ms": 16625.925997737795
+      },
+      "row-touch": {
+        "avoided_recompute_decision": 1.0,
+        "avoided_recompute_wall": 1.0,
+        "false_fresh": 120,
+        "false_stale": 0,
+        "invalidated": 0,
+        "ttf_incomplete_batches": 2,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "tgms-L0": {
+        "avoided_recompute_decision": 0.7177601809954751,
+        "avoided_recompute_wall": 0.4223434090118089,
+        "false_fresh": 0,
+        "false_stale": 379,
+        "invalidated": 499,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 11933.507196139544,
+        "ttf_p95_ms": 13255.010555963963
+      },
+      "tgms-L1": {
+        "avoided_recompute_decision": 0.7177601809954751,
+        "avoided_recompute_wall": 0.4223434090118089,
+        "false_fresh": 0,
+        "false_stale": 379,
+        "invalidated": 499,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 11889.833577908576,
+        "ttf_p95_ms": 13034.078097902238
+      },
+      "window-overlap": {
+        "avoided_recompute_decision": 0.6962669683257918,
+        "avoided_recompute_wall": 0.6347751545451282,
+        "false_fresh": 0,
+        "false_stale": 417,
+        "invalidated": 537,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 5699.514576699585,
+        "ttf_p95_ms": 6333.085525315255
+      }
+    },
+    "batches": 2,
+    "check_cost_curve": [
+      {
+        "batch_index": 0,
+        "check_ms_tgms_L0": 3404.210544191301,
+        "check_ms_tgms_L1": 3175.8030727505684,
+        "log_bytes": 4102411,
+        "log_records": 1,
+        "registry_bytes": 2603456
+      },
+      {
+        "batch_index": 1,
+        "check_ms_tgms_L0": 3077.830882743001,
+        "check_ms_tgms_L1": 2989.6332784555852,
+        "log_bytes": 4102655,
+        "log_records": 2,
+        "registry_bytes": 4002400
+      }
+    ],
+    "first_write_refusal": null,
+    "mix_starved": 0,
+    "narrowing_coverage": {
+      "n_all_top_term": 0,
+      "n_artifacts": 884,
+      "n_empty_scope": 81,
+      "per_template_counts": {
+        "aggregate_events": 82,
+        "burst_detection": 68,
+        "compute": 81,
+        "count_temporal_motifs": 64,
+        "diff_snapshots": 72,
+        "entity_history": 71,
+        "find_temporal_motif_instances": 73,
+        "graph_metric_timeseries": 70,
+        "neighborhood_evolution": 68,
+        "snapshot_subgraph": 77,
+        "temporal_paths": 27,
+        "temporal_reachability": 63,
+        "version_history": 68
+      },
+      "top_axis_counts": {
+        "kinds": 0,
+        "props": 391,
+        "rel_types": 1700,
+        "targets": 0,
+        "vt": 819
+      },
+      "total_terms": 1700
+    },
+    "write_refusals": 0
+  },
+  "timestamp_utc": "2026-10-29T12:34:46Z"
+}

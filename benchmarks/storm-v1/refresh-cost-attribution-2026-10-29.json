@@ -1,0 +1,921 @@
+{
+  "config": {
+    "addendum_id": "P-SHRINK",
+    "backend": "native",
+    "batches_registration_run": 2,
+    "check_cache": "chain",
+    "dataset_digest_note": "sha256 of the source external-v1/t1b-stores/synth-iv-60k/eventlog.jsonl; the harness runs on a copy, which gains one correction record per batch",
+    "engine_so": "work/arc5-fab/dev/tgms/_engine.cpython-312-x86_64-linux-gnu.so (built 2026-09-26)",
+    "freeze_utc": "2026-10-29T12:26:44Z",
+    "generations_per_name": 3,
+    "measure_ttf": "end-to-end",
+    "mix": "c1",
+    "n_artifacts": [
+      1000,
+      10000
+    ],
+    "n_registered": [
+      884,
+      8922
+    ],
+    "profile": {
+      "cprofile_calls": 50,
+      "process": "separate process, nice 19, one run at a time",
+      "rounds": 3,
+      "same50_sample": "seeded sample (Random(7)) of 50 names registered at both sizes",
+      "stratified_per_kind": 20
+    },
+    "run_log": "benchmarks/storm-v1/refresh-cost-attribution-2026-10-29/chain.log"
+  },
+  "dataset": {
+    "digest": "8383b23b94a41a8fde2febc0fa36b52978449445b50e25ba53c823467f6c1068",
+    "digest_kind": "eventlog_sha",
+    "name": "synth-iv-60k"
+  },
+  "git_commit": "96b7f3f122a93e37b5b4e6120b7664d2c6bbc789",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.0
+  },
+  "preregistration": "P-SHRINK, frozen 2026-10-29T12:26:44Z. Observed in the storm-v3 cluster rows: about 11 ms per refreshed artifact at N = 10^3 vs about 20 ms at N = 10^4 on the same store, while survivor fraction, check cost per candidate and global-recompute cost per artifact are flat. Prediction: the growth is in publication (the registry's per-publish work: append, in-memory fold, checkpoint bookkeeping) growing with the number of registered artifacts and their version history; plan execution per artifact is flat. Falsifier: execution grows and publication is flat.",
+  "protocol": {
+    "ceilings": {},
+    "notes": "10 discarded warm-up refresh() calls per profile process; 3 rounds of the same 50 artifacts; one pass of 20 artifacts per kind; one 50-call cProfile pass",
+    "reps": 3,
+    "warmups": 10
+  },
+  "record": "benchmarks/storm-v1/refresh-cost-attribution-2026-10-29-rows.jsonl",
+  "result_digest": "f5765d456d2fd4ff0babd992309be80a6d5627b4f8f69197f700250ded313ccc",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "cheap_kinds": {
+      "kinds": [
+        "aggregate_events",
+        "burst_detection",
+        "compute",
+        "entity_history",
+        "graph_metric_timeseries",
+        "neighborhood_evolution",
+        "temporal_reachability",
+        "version_history"
+      ],
+      "max_mean_ms": 7.490773289464414,
+      "threshold_ms": 10.0
+    },
+    "committed": {
+      "cell_n1000_seed0_c1_none": {
+        "batches": 20,
+        "cheaper_mean_ms": 8.321187666933328,
+        "expensive_batches": 6,
+        "expensive_mean_ms": 21.40757482428936,
+        "refresh_ms_median": 10.84388640544389,
+        "refresh_ms_per_refreshed_artifact": [
+          19.526495056143446,
+          19.93193555066818,
+          10.696917948165165,
+          11.143462101774892,
+          9.464460894378135,
+          4.101933549942546,
+          12.607426171735773,
+          10.990854862722612,
+          26.110644858990668,
+          4.189755274167913,
+          4.24532097030357,
+          10.581798035651445,
+          4.130690235225176,
+          10.506729035023831,
+          20.64085852727294,
+          21.916302754765464,
+          4.3203083967620675,
+          20.319212197895475,
+          7.5352257956658395,
+          11.98174406554762
+        ],
+        "refresh_ms_pooled": 12.818061066996854,
+        "speedup_max": 7.464897183184936,
+        "speedup_median": 2.088302709961674,
+        "speedup_min": 1.189299787087684,
+        "speedup_per_batch": [
+          1.189299787087684,
+          1.2834109186836467,
+          2.5291600098404734,
+          1.958041144391639,
+          2.1447362767781906,
+          7.464897183184936,
+          1.995995493200953,
+          2.007802369591806,
+          1.59826516456369,
+          7.362203470508436,
+          7.355587430672184,
+          2.0410017053534744,
+          6.9892272392195895,
+          2.250609228877375,
+          1.2747031589515443,
+          1.370192580295263,
+          7.353320484219437,
+          1.2496496183070545,
+          3.487685024879527,
+          2.135603714569874
+        ]
+      },
+      "probe_n10000": {
+        "batches": 5,
+        "cheaper_mean_ms": 4.513052613642236,
+        "expensive_batches": 3,
+        "expensive_mean_ms": 20.192227228357144,
+        "refresh_ms_median": 20.058721526464993,
+        "refresh_ms_per_refreshed_artifact": [
+          20.058721526464993,
+          4.311361015149111,
+          20.407113590670573,
+          4.714744212135361,
+          20.110846567935873
+        ],
+        "refresh_ms_pooled": 15.610585207210512,
+        "speedup_max": 7.24997951994743,
+        "speedup_median": 1.4130947388155908,
+        "speedup_min": 1.398752212936693,
+        "speedup_per_batch": [
+          1.4080733852510852,
+          7.237666366768484,
+          1.398752212936693,
+          7.24997951994743,
+          1.4130947388155908
+        ]
+      },
+      "refresh_cost_expensive_threshold_ms": 15.0,
+      "storm_v3_synth_all_cells": {
+        "batches": 360,
+        "cheaper_mean_ms": 7.009005374366331,
+        "expensive_batches": 91,
+        "expensive_mean_ms": 19.70010343537163,
+        "expensive_share": 0.25277777777777777,
+        "per_artifact_ms_median": 8.890985423459547,
+        "per_artifact_ms_pooled": 10.620459796120798
+      },
+      "temporal_paths_share_of_refreshed": "not derivable from the committed rows: they record the oracle-changed names only (arms.*.invalidated_count and false_stale_count are counts), and temporal_paths artifacts almost never change"
+    },
+    "kind_histograms": {
+      "n1000": {
+        "counts": {
+          "aggregate_events": 82,
+          "burst_detection": 68,
+          "compute": 81,
+          "count_temporal_motifs": 64,
+          "diff_snapshots": 72,
+          "entity_history": 71,
+          "find_temporal_motif_instances": 73,
+          "graph_metric_timeseries": 70,
+          "neighborhood_evolution": 68,
+          "snapshot_subgraph": 77,
+          "temporal_paths": 27,
+          "temporal_reachability": 63,
+          "version_history": 68
+        },
+        "registered": 884
+      },
+      "n10000": {
+        "counts": {
+          "aggregate_events": 723,
+          "burst_detection": 732,
+          "compute": 719,
+          "count_temporal_motifs": 704,
+          "diff_snapshots": 716,
+          "entity_history": 743,
+          "find_temporal_motif_instances": 715,
+          "graph_metric_timeseries": 709,
+          "neighborhood_evolution": 657,
+          "snapshot_subgraph": 770,
+          "temporal_paths": 317,
+          "temporal_reachability": 686,
+          "version_history": 731
+        },
+        "registered": 8922
+      },
+      "prefix_check": "every name registered at N=1000 has the same operator at N=10000: True"
+    },
+    "mix_predicted_mean_ms_all_registered": {
+      "n1000": 18.095397737011,
+      "n10000": 19.080553152675165
+    },
+    "per_kind_ms": {
+      "aggregate_events": {
+        "n1000": {
+          "execution": 2.8810878517106175,
+          "n_calls": 20,
+          "publication": 2.658282849006355,
+          "total": 5.571578582748771
+        },
+        "n10000": {
+          "execution": 3.0220165848731995,
+          "n_calls": 20,
+          "publication": 2.594647672958672,
+          "total": 5.649764114059508
+        },
+        "total_both_sizes": 5.610671348404139
+      },
+      "burst_detection": {
+        "n1000": {
+          "execution": 2.783466409891844,
+          "n_calls": 20,
+          "publication": 2.7800433337688446,
+          "total": 5.583130451850593
+        },
+        "n10000": {
+          "execution": 2.854455728083849,
+          "n_calls": 20,
+          "publication": 2.7650581672787666,
+          "total": 5.6406521471217275
+        },
+        "total_both_sizes": 5.61189129948616
+      },
+      "compute": {
+        "n1000": {
+          "execution": 0.7882092613726854,
+          "n_calls": 20,
+          "publication": 2.4939518654718995,
+          "total": 3.3013123087584972
+        },
+        "n10000": {
+          "execution": 0.8184546371921897,
+          "n_calls": 20,
+          "publication": 2.411790331825614,
+          "total": 3.249310189858079
+        },
+        "total_both_sizes": 3.275311249308288
+      },
+      "count_temporal_motifs": {
+        "n1000": {
+          "execution": 25.699180457741022,
+          "n_calls": 20,
+          "publication": 3.271730407141149,
+          "total": 28.990038228221238
+        },
+        "n10000": {
+          "execution": 26.575481588952243,
+          "n_calls": 20,
+          "publication": 3.2418782357126474,
+          "total": 29.83777516055852
+        },
+        "total_both_sizes": 29.41390669438988
+      },
+      "diff_snapshots": {
+        "n1000": {
+          "execution": 25.534433824941516,
+          "n_calls": 20,
+          "publication": 3.23693857062608,
+          "total": 28.826839290559292
+        },
+        "n10000": {
+          "execution": 25.871384423226118,
+          "n_calls": 20,
+          "publication": 3.445042041130364,
+          "total": 29.379749787040055
+        },
+        "total_both_sizes": 29.103294538799673
+      },
+      "entity_history": {
+        "n1000": {
+          "execution": 3.6851628217846155,
+          "n_calls": 20,
+          "publication": 2.598901931196451,
+          "total": 6.319790659472346
+        },
+        "n10000": {
+          "execution": 3.795013320632279,
+          "n_calls": 20,
+          "publication": 2.6780646992847323,
+          "total": 6.513381120748818
+        },
+        "total_both_sizes": 6.416585890110582
+      },
+      "find_temporal_motif_instances": {
+        "n1000": {
+          "execution": 34.92207408417016,
+          "n_calls": 20,
+          "publication": 3.3658640226349235,
+          "total": 38.320324453525245
+        },
+        "n10000": {
+          "execution": 36.49397944100201,
+          "n_calls": 20,
+          "publication": 3.4092983696609735,
+          "total": 39.94179868604988
+        },
+        "total_both_sizes": 39.13106156978756
+      },
+      "graph_metric_timeseries": {
+        "n1000": {
+          "execution": 2.1243936149403453,
+          "n_calls": 20,
+          "publication": 2.437573275528848,
+          "total": 4.579092818312347
+        },
+        "n10000": {
+          "execution": 2.4017229909077287,
+          "n_calls": 20,
+          "publication": 2.7917266357690096,
+          "total": 5.215039569884539
+        },
+        "total_both_sizes": 4.897066194098443
+      },
+      "neighborhood_evolution": {
+        "n1000": {
+          "execution": 3.2361418940126896,
+          "n_calls": 20,
+          "publication": 2.7648443588986993,
+          "total": 6.022782390937209
+        },
+        "n10000": {
+          "execution": 3.6823308560997248,
+          "n_calls": 20,
+          "publication": 2.8376134810969234,
+          "total": 6.542436475865543
+        },
+        "total_both_sizes": 6.282609433401376
+      },
+      "snapshot_subgraph": {
+        "n1000": {
+          "execution": 8.859871397726238,
+          "n_calls": 20,
+          "publication": 3.170162462629378,
+          "total": 12.06209969241172
+        },
+        "n10000": {
+          "execution": 9.313893551006913,
+          "n_calls": 20,
+          "publication": 3.106994554400444,
+          "total": 12.455495889298618
+        },
+        "total_both_sizes": 12.25879779085517
+      },
+      "temporal_paths": {
+        "n1000": {
+          "execution": 184.84051986597478,
+          "n_calls": 20,
+          "publication": 3.6573618417605758,
+          "total": 188.524912414141
+        },
+        "n10000": {
+          "execution": 185.7606408186257,
+          "n_calls": 20,
+          "publication": 3.601379250176251,
+          "total": 189.38905445393175
+        },
+        "total_both_sizes": 188.95698343403637
+      },
+      "temporal_reachability": {
+        "n1000": {
+          "execution": 4.409475927241147,
+          "n_calls": 20,
+          "publication": 2.870678110048175,
+          "total": 7.324372045695782
+        },
+        "n10000": {
+          "execution": 4.581460449844599,
+          "n_calls": 20,
+          "publication": 2.8629268053919077,
+          "total": 7.490773289464414
+        },
+        "total_both_sizes": 7.407572667580098
+      },
+      "version_history": {
+        "n1000": {
+          "execution": 1.8640388501808047,
+          "n_calls": 20,
+          "publication": 2.5952250696718693,
+          "total": 4.499338637106121
+        },
+        "n10000": {
+          "execution": 2.0275759510695934,
+          "n_calls": 20,
+          "publication": 2.7460038661956787,
+          "total": 4.818904469721019
+        },
+        "total_both_sizes": 4.65912155341357
+      }
+    },
+    "phase_means_ms": {
+      "same50": {
+        "n1000": {
+          "append": {
+            "mean": 1.640091786781947,
+            "median": 1.6167929861694574
+          },
+          "append_locked": {
+            "mean": 0.6351911524931589,
+            "median": 0.6291959434747696
+          },
+          "chain_extend": {
+            "mean": 0.008924572418133417,
+            "median": 0.008844071999192238
+          },
+          "execution": {
+            "mean": 10.403817296028137,
+            "median": 3.4857133869081736
+          },
+          "float_canonicalisation": {
+            "mean": 0.596258481964469,
+            "median": 0.16321195289492607
+          },
+          "fold_index": {
+            "mean": 0.005774650101860364,
+            "median": 0.005484558641910553
+          },
+          "fsync": {
+            "mean": 0.42592435143887997,
+            "median": 0.40914537385106087
+          },
+          "gc": {
+            "mean": 0.012330055857698122,
+            "median": 0.0
+          },
+          "kernel": {
+            "mean": 9.204574028650919,
+            "median": 2.2167135030031204
+          },
+          "leaf_meta": {
+            "mean": 0.18339059626062712,
+            "median": 0.17641764134168625
+          },
+          "n_calls": 150,
+          "publication": {
+            "mean": 2.884645356486241,
+            "median": 2.8188289143145084
+          },
+          "readback_verify": {
+            "mean": 0.015244747822483381,
+            "median": 0.014758901670575142
+          },
+          "record_canonical_json": {
+            "mean": 0.030249714230497677,
+            "median": 0.029980437830090523
+          },
+          "register": {
+            "mean": 2.756515396758914,
+            "median": 2.693834016099572
+          },
+          "result_digest": {
+            "mean": 0.07931937463581562,
+            "median": 0.02828403376042843
+          },
+          "result_put": {
+            "mean": 0.021781834463278454,
+            "median": 0.02069631591439247
+          },
+          "store_identity": {
+            "mean": 2.055205168823401,
+            "median": 1.9865932408720255
+          },
+          "tail_reload": {
+            "mean": 0.02129528361062209,
+            "median": 0.021957559511065483
+          },
+          "total": {
+            "mean": 13.317636164526144,
+            "median": 6.253363797441125
+          }
+        },
+        "n10000": {
+          "append": {
+            "mean": 1.6445723238090675,
+            "median": 1.6319483984261751
+          },
+          "append_locked": {
+            "mean": 0.6640662377079328,
+            "median": 0.6590504199266434
+          },
+          "chain_extend": {
+            "mean": 0.009273759399851164,
+            "median": 0.009279698133468628
+          },
+          "execution": {
+            "mean": 10.811323390031854,
+            "median": 3.6328048445284367
+          },
+          "float_canonicalisation": {
+            "mean": 0.6275865249335766,
+            "median": 0.18025841563940048
+          },
+          "fold_index": {
+            "mean": 0.0061496347188949585,
+            "median": 0.005813548341393471
+          },
+          "fsync": {
+            "mean": 0.4470797690252463,
+            "median": 0.4368801601231098
+          },
+          "gc": {
+            "mean": 0.011299687127272287,
+            "median": 0.0
+          },
+          "kernel": {
+            "mean": 9.541545690347752,
+            "median": 2.314867451786995
+          },
+          "leaf_meta": {
+            "mean": 0.19066652283072472,
+            "median": 0.1838989555835724
+          },
+          "n_calls": 150,
+          "publication": {
+            "mean": 2.9060819869240127,
+            "median": 2.7948645874857903
+          },
+          "readback_verify": {
+            "mean": 0.015848496307929356,
+            "median": 0.015380093827843666
+          },
+          "record_canonical_json": {
+            "mean": 0.031209010630846024,
+            "median": 0.03119325265288353
+          },
+          "register": {
+            "mean": 2.771008334433039,
+            "median": 2.654913580045104
+          },
+          "result_digest": {
+            "mean": 0.08221653600533803,
+            "median": 0.027565518394112587
+          },
+          "result_put": {
+            "mean": 0.023119132965803146,
+            "median": 0.02164742909371853
+          },
+          "store_identity": {
+            "mean": 2.0380226181199155,
+            "median": 1.9160718657076359
+          },
+          "tail_reload": {
+            "mean": 0.023118844255805016,
+            "median": 0.023405300453305244
+          },
+          "total": {
+            "mean": 13.74810140269498,
+            "median": 6.423549028113484
+          }
+        },
+        "ratio_n10000_over_n1000": {
+          "append": 1.002731881875899,
+          "append_locked": 1.0454588907629423,
+          "chain_extend": 1.0391264662728548,
+          "execution": 1.0391689014146077,
+          "float_canonicalisation": 1.0525410437196505,
+          "fold_index": 1.0649363356082457,
+          "fsync": 1.0496694248988065,
+          "gc": 0.9164343825918245,
+          "kernel": 1.0366091533022546,
+          "leaf_meta": 1.0396744801448672,
+          "publication": 1.007431288005498,
+          "readback_verify": 1.0396037043364896,
+          "record_canonical_json": 1.0317125772838271,
+          "register": 1.0052577024206597,
+          "result_digest": 1.0365252674119576,
+          "result_put": 1.0613951274296578,
+          "store_identity": 0.9916394961611923,
+          "tail_reload": 1.0856321370743958,
+          "total": 1.0323229462684569
+        }
+      },
+      "stratified": {
+        "n1000": {
+          "append": {
+            "mean": 1.6532167577399657,
+            "median": 1.6350280493497849
+          },
+          "append_locked": {
+            "mean": 0.6382984001762592,
+            "median": 0.6340164691209793
+          },
+          "chain_extend": {
+            "mean": 0.008878237209641017,
+            "median": 0.0088538508862257
+          },
+          "execution": {
+            "mean": 23.202158173976038,
+            "median": 3.686049487441778
+          },
+          "float_canonicalisation": {
+            "mean": 0.716034326559076,
+            "median": 0.21648709662258625
+          },
+          "fold_index": {
+            "mean": 0.005654585905946218,
+            "median": 0.005352776497602463
+          },
+          "fsync": {
+            "mean": 0.4285958935864843,
+            "median": 0.41475496254861355
+          },
+          "gc": {
+            "mean": 0.013373197557834478,
+            "median": 0.0
+          },
+          "kernel": {
+            "mean": 22.113649590084187,
+            "median": 2.5131595320999622
+          },
+          "leaf_meta": {
+            "mean": 0.18092242893404686,
+            "median": 0.17657247371971607
+          },
+          "n_calls": 260,
+          "publication": {
+            "mean": 2.915504469106404,
+            "median": 2.8252836782485247
+          },
+          "readback_verify": {
+            "mean": 0.01544359211738293,
+            "median": 0.014736084267497063
+          },
+          "record_canonical_json": {
+            "mean": 0.030429385459193818,
+            "median": 0.030589057132601738
+          },
+          "register": {
+            "mean": 2.782347760736369,
+            "median": 2.6897452771663666
+          },
+          "result_digest": {
+            "mean": 0.0931144906924321,
+            "median": 0.03755604848265648
+          },
+          "result_put": {
+            "mean": 0.022145333843162425,
+            "median": 0.02097547985613346
+          },
+          "store_identity": {
+            "mean": 2.0764275973376174,
+            "median": 1.970658777281642
+          },
+          "tail_reload": {
+            "mean": 0.021105619648901317,
+            "median": 0.02180389128625393
+          },
+          "total": {
+            "mean": 26.14812399798001,
+            "median": 6.379221566021442
+          }
+        },
+        "n10000": {
+          "append": {
+            "mean": 1.6740296609126604,
+            "median": 1.6693533398211002
+          },
+          "append_locked": {
+            "mean": 0.6696745878658615,
+            "median": 0.6628509145230055
+          },
+          "chain_extend": {
+            "mean": 0.009381971680201016,
+            "median": 0.009391456842422485
+          },
+          "execution": {
+            "mean": 23.630646949347394,
+            "median": 3.883064491674304
+          },
+          "float_canonicalisation": {
+            "mean": 0.7910396688832686,
+            "median": 0.24247076362371445
+          },
+          "fold_index": {
+            "mean": 0.006161880894349172,
+            "median": 0.005944864824414253
+          },
+          "fsync": {
+            "mean": 0.45029123027164203,
+            "median": 0.441655982285738
+          },
+          "gc": {
+            "mean": 0.01211869172178782,
+            "median": 0.0
+          },
+          "kernel": {
+            "mean": 22.467972522673126,
+            "median": 2.596307545900345
+          },
+          "leaf_meta": {
+            "mean": 0.1928732658808048,
+            "median": 0.18495856784284115
+          },
+          "n_calls": 260,
+          "publication": {
+            "mean": 2.9609557008370757,
+            "median": 2.867148956283927
+          },
+          "readback_verify": {
+            "mean": 0.016310828952835157,
+            "median": 0.015636440366506577
+          },
+          "record_canonical_json": {
+            "mean": 0.03174632035482388,
+            "median": 0.03226008266210556
+          },
+          "register": {
+            "mean": 2.820909325964749,
+            "median": 2.728087594732642
+          },
+          "result_digest": {
+            "mean": 0.09761599358171225,
+            "median": 0.045439694076776505
+          },
+          "result_put": {
+            "mean": 0.022648914287296627,
+            "median": 0.021562911570072174
+          },
+          "store_identity": {
+            "mean": 2.079905983275519,
+            "median": 1.9900142215192318
+          },
+          "tail_reload": {
+            "mean": 0.022447680552991536,
+            "median": 0.023022061213850975
+          },
+          "total": {
+            "mean": 26.62493348873865,
+            "median": 6.699457066133618
+          }
+        },
+        "ratio_n10000_over_n1000": {
+          "append": 1.01258933716662,
+          "append_locked": 1.0491559867311875,
+          "chain_extend": 1.0567381180143494,
+          "execution": 1.0184676258199101,
+          "float_canonicalisation": 1.1047510427113643,
+          "fold_index": 1.0897139059943355,
+          "fsync": 1.050619562645856,
+          "gc": 0.906192529451438,
+          "kernel": 1.016022815734035,
+          "leaf_meta": 1.066055032630114,
+          "publication": 1.0155894913598271,
+          "readback_verify": 1.056155124329921,
+          "record_canonical_json": 1.0432783927692555,
+          "register": 1.0138593621446423,
+          "result_digest": 1.0483437417291914,
+          "result_put": 1.022739799169462,
+          "store_identity": 1.0016751780521322,
+          "tail_reload": 1.0635878465743165,
+          "total": 1.0182349407091489
+        }
+      }
+    },
+    "registry": {
+      "n1000": {
+        "eventlog_bytes": 4102655,
+        "gens_per_name_max": 3,
+        "gens_per_name_mean": 3.0,
+        "n_entries": 2652,
+        "n_entries_after": 3122,
+        "n_names": 884,
+        "registry_bytes_after": 4750132,
+        "registry_bytes_before": 4002400,
+        "registry_load_ms": 312.2253520414233,
+        "results_files": 690,
+        "store_dir": "run1000/w/storm-onojdezm/store"
+      },
+      "n10000": {
+        "eventlog_bytes": 4102629,
+        "gens_per_name_max": 3,
+        "gens_per_name_mean": 3.0,
+        "n_entries": 26766,
+        "n_entries_after": 27236,
+        "n_names": 8922,
+        "registry_bytes_after": 41302299,
+        "registry_bytes_before": 40554567,
+        "registry_load_ms": 3361.7837368510664,
+        "results_files": 5828,
+        "store_dir": "run10000/w/storm-65y5e1a6/store"
+      }
+    },
+    "replicate_batches": {
+      "batches": [
+        {
+          "batch_index": 0,
+          "kind_counts": {
+            "aggregate_events": 36,
+            "count_temporal_motifs": 24,
+            "diff_snapshots": 10,
+            "find_temporal_motif_instances": 34,
+            "graph_metric_timeseries": 28,
+            "snapshot_subgraph": 77,
+            "temporal_paths": 27,
+            "temporal_reachability": 27
+          },
+          "mean_ms_per_refresh": 37.06246574795291,
+          "n_target": 1000,
+          "oracle_pass": {
+            "calls": 884,
+            "mean_execution_ms": 15.347975360469817,
+            "mean_publication_ms": 3.3199934845124432,
+            "mean_total_ms": 18.717935628561108
+          },
+          "refreshed": 263,
+          "temporal_paths_count": 27,
+          "temporal_paths_share": 0.10266159695817491
+        },
+        {
+          "batch_index": 1,
+          "kind_counts": {
+            "aggregate_events": 31,
+            "burst_detection": 1,
+            "count_temporal_motifs": 25,
+            "diff_snapshots": 7,
+            "find_temporal_motif_instances": 26,
+            "graph_metric_timeseries": 14,
+            "neighborhood_evolution": 1,
+            "snapshot_subgraph": 77,
+            "temporal_paths": 27,
+            "temporal_reachability": 27
+          },
+          "mean_ms_per_refresh": 37.83978860414887,
+          "n_target": 1000,
+          "oracle_pass": {
+            "calls": 884,
+            "mean_execution_ms": 15.235641885367622,
+            "mean_publication_ms": 3.093310577027938,
+            "mean_total_ms": 18.375805159820015
+          },
+          "refreshed": 236,
+          "temporal_paths_count": 27,
+          "temporal_paths_share": 0.11440677966101695
+        },
+        {
+          "batch_index": 0,
+          "kind_counts": {
+            "aggregate_events": 280,
+            "burst_detection": 5,
+            "count_temporal_motifs": 280,
+            "diff_snapshots": 94,
+            "entity_history": 4,
+            "find_temporal_motif_instances": 249,
+            "graph_metric_timeseries": 270,
+            "neighborhood_evolution": 7,
+            "snapshot_subgraph": 770,
+            "temporal_paths": 317,
+            "temporal_reachability": 276
+          },
+          "mean_ms_per_refresh": 40.28480433290357,
+          "n_target": 10000,
+          "oracle_pass": {
+            "calls": 8922,
+            "mean_execution_ms": 16.134634596454113,
+            "mean_publication_ms": 3.269632930231252,
+            "mean_total_ms": 19.449906187360394
+          },
+          "refreshed": 2552,
+          "temporal_paths_count": 317,
+          "temporal_paths_share": 0.12421630094043887
+        },
+        {
+          "batch_index": 1,
+          "kind_counts": {
+            "burst_detection": 4,
+            "diff_snapshots": 72,
+            "neighborhood_evolution": 1,
+            "snapshot_subgraph": 770,
+            "temporal_paths": 2,
+            "temporal_reachability": 2,
+            "version_history": 731
+          },
+          "mean_ms_per_refresh": 11.433457889489349,
+          "n_target": 10000,
+          "oracle_pass": {
+            "calls": 8922,
+            "mean_execution_ms": 16.559041094354747,
+            "mean_publication_ms": 3.3312106114741007,
+            "mean_total_ms": 19.92864530584492
+          },
+          "refreshed": 1582,
+          "temporal_paths_count": 2,
+          "temporal_paths_share": 0.0012642225031605564
+        }
+      ],
+      "note": "Aggregated from the instrumented replicate of the committed CLI (2 batches per size, flags --mix c1 --measure-ttf end-to-end --check-cache chain --seed 0): per batch, the tgms-L1 end-to-end pass's refreshed set (segment 1 of the per-call log) by operator kind, and the mean wall per refresh() call. The per-call logs are kept on the measurement host (path and sha256 below); they are not committed (3 MB and 29 MB).",
+      "per_call_logs": {
+        "1000": {
+          "bytes": 3057293,
+          "host_path": "/mnt/project/xzhang/tgms/work/shrink/run1000/o/calls.jsonl",
+          "sha256": "f7b698e204b29909142ff63e4ed4c07119507ada12acce55914246c7dad7d4fb"
+        },
+        "10000": {
+          "bytes": 28859601,
+          "host_path": "/mnt/project/xzhang/tgms/work/shrink/run10000/o/calls.jsonl",
+          "sha256": "872adb1d49edd2d1d77c1323683db737fc6817111a80b29840142396d9b8cb88"
+        }
+      }
+    },
+    "temporal_paths_ms": 188.95698343403637
+  },
+  "timestamp_utc": "2026-10-29T12:54:20Z",
+  "verdict": {
+    "falsifier": "not triggered: execution per artifact is also flat (10.40 vs 10.81 ms on the same 50 artifacts), so 'execution grows and publication is flat' does not hold",
+    "prediction": "not supported: publication is flat in N (2.885 vs 2.906 ms per refresh on the same 50 artifacts) while the registry file and the in-memory entry count grow tenfold",
+    "premise": "a batch-composition artifact of comparing medians over 5 batches (N = 10^4) against 20 batches (N = 10^3): the cost of a refreshed artifact depends on its operator kind (3 to 189 ms), and the mix of kinds in the refreshed set differs between batches, not between sizes",
+    "side_finding": "Registry._store_identity re-reads and compares the event log's genesis prefix (one 4.1 MB line on these stores) on every call, twice per publish, 2.1 ms per refresh of 2.9 ms publication at N = 10^3; it scales with the genesis record, not with N"
+  }
+}

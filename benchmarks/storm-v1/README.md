@@ -777,6 +777,32 @@ macros (and the sum-mode-vs-end-to-end comparison above) need. All six
 files' sha256 were verified against the originating lane's own
 `SHA256SUMS.txt` before landing here.
 
+## Refresh cost does not grow with N (2026-10-29)
+
+Lane SHRINK, pre-registration P-SHRINK, quoted verbatim:
+
+> P-SHRINK, frozen 2026-10-29T12:26:44Z. Observed in the storm-v3 cluster rows: about 11 ms per refreshed artifact at N = 10^3 vs about 20 ms at N = 10^4 on the same store, while survivor fraction, check cost per candidate and global-recompute cost per artifact are flat. Prediction: the growth is in publication (the registry's per-publish work: append, in-memory fold, checkpoint bookkeeping) growing with the number of registered artifacts and their version history; plan execution per artifact is flat. Falsifier: execution grows and publication is flat.
+
+**Outcome: prediction not supported, falsifier not triggered. The premise was a batch-composition artifact of comparing medians over 5 batches (N = 10^4) against 20 batches (N = 10^3).**
+
+The committed rows give a median of 10.84 ms per refreshed artifact for the N = 10^3 cell (`synth-iv-60k`, c1, age none, seed 0, 20 batches) and 20.06 ms for the five-batch N = 10^4 probe. The per-batch values are not one level: they cluster near 4 ms, near 10 ms and near 20 ms, and both sizes contain the cheap and the expensive batches (expensive batches average 19.7 ms over the 91 of the 360 `synth-iv-60k` storm-v3 batches above 15 ms, and 20.2 ms over the 3 of 5 probe batches above 15 ms). Re-measured on xzgpu at 96b7f3f1 with the committed harness (`--check-cache chain`, 2 batches, N = 1,000 and 10,000 registering 884 and 8,922 artifacts), then profiled in a separate process on the same 50 artifacts (150 `refresh()` calls, 3 rounds) at both sizes, ms per artifact:
+
+| phase | N = 10^3 | N = 10^4 |
+|---|---:|---:|
+| total | 13.32 | 13.75 |
+| plan execution | 10.40 | 10.81 |
+| of which operator kernel | 9.20 | 9.54 |
+| of which result digest | 0.08 | 0.08 |
+| publication | 2.88 | 2.91 |
+| of which `Registry.append` | 1.64 | 1.64 |
+| of which fsync | 0.43 | 0.45 |
+
+The registry file is 4.0 MB at N = 10^3 and 40.6 MB at N = 10^4, and holds 2,652 and 26,766 entries (three generations per name); publication does not move. A 20-per-kind sample gives the same picture (26.15 vs 26.63 ms total). Cost per refresh is set by the operator kind: 3.3 to 7.5 ms for the eight cheap kinds, 12 ms for `snapshot_subgraph`, 29 to 39 ms for the motif and snapshot-diff kinds, and 189 ms for `temporal_paths`, at both sizes alike. The kind mix of the registered artifacts is the same at both sizes (`temporal_paths` is 3.05% and 3.55%); what differs between batches is which kinds the correction sends to refresh. The committed rows carry only the oracle-changed names, not the refreshed set, so the per-batch `temporal_paths` share is not derivable from them; an instrumented replicate (two batches per size) shows it at 10 to 12% of the refreshed set in the expensive batches and 0.1% in the cheap one. The per-batch speedup of the tgms-L1 configuration over global recompute (global-recompute `ttf_ms` over tgms-L1 `ttf_ms`) ranges from 1.19 to 7.46 over the 20 batches of the N = 10^3 cell and from 1.40 to 7.25 over the five probe batches (sum mode).
+
+Side finding: `Registry._store_identity` re-reads and compares the event log's genesis prefix (one 4.1 MB line on these stores) on every call, twice per publish, about 2.0 ms per refresh of the 2.9 ms publication; it scales with the genesis record, not with N.
+
+**Records**: `refresh-cost-attribution-2026-10-29.json` (manifest; validates with `scripts/check_result_manifest.py`) and `refresh-cost-attribution-2026-10-29-rows.jsonl` (820 per-call profile rows and 365 committed-batch rows), the as-run inputs under `refresh-cost-attribution-2026-10-29/` (instrumentation scripts, harness manifests, cProfile output, kind-label maps, run log), checksums in `SHA256SUMS-refresh-cost-attribution-2026-10-29.txt`. `scripts/refresh_cost_attribution_record.py --check` re-derives the manifest from the rows and the committed storm-v3 tarballs. The macros are `recShrink*`, `recProbe*` and `recStormV3N1k*PerBatch*` in `scripts/sys_paper_macros.py`. Run log and load averages are in `chain.log`.
+
 ## Regenerating (once the C6 freeze creates `campaign.yaml`/`FREEZE_BINDING`)
 
 ```sh

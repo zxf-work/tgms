@@ -1,0 +1,53 @@
+         801266 function calls (697017 primitive calls) in 0.983 seconds
+
+   Ordered by: cumulative time
+   List reduced from 493 to 45 due to restriction <45>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+       50    0.002    0.000    0.988    0.020 /mnt/project/xzhang/tgms/work/shrink/shrink_profile.py:30(one)
+       50    0.000    0.000    0.985    0.020 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/refresh.py:114(refresh)
+14156/100    0.014    0.000    0.985    0.010 /mnt/project/xzhang/tgms/work/shrink/shrink_instr.py:22(w)
+       50    0.001    0.000    0.823    0.016 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/refresh.py:227(_run_operator)
+       50    0.001    0.000    0.791    0.016 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tools/server.py:65(call)
+       50    0.001    0.000    0.789    0.016 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/algebra.py:187(call_operator)
+       50    0.004    0.000    0.695    0.014 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/evaluate.py:83(evaluate_leaf)
+        1    0.000    0.000    0.354    0.354 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_paths.py:201(temporal_paths)
+  63646/1    0.257    0.000    0.354    0.354 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_paths.py:228(dfs)
+       70    0.000    0.000    0.245    0.004 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/storage/native/adapter.py:135(_read_op)
+       42    0.000    0.000    0.236    0.006 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/storage/native/adapter.py:508(edges_columnar)
+       42    0.000    0.000    0.224    0.005 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/storage/native/adapter.py:518(<lambda>)
+       42    0.224    0.005    0.224    0.005 {method 'scan_edges' of 'tgms._engine.NativeStore' objects}
+       50    0.001    0.000    0.162    0.003 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/refresh.py:254(_publish)
+       50    0.001    0.000    0.150    0.003 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/registry.py:290(register)
+        6    0.004    0.001    0.143    0.024 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_motifs.py:116(_events)
+      100    0.000    0.000    0.109    0.001 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/registry.py:116(_store_identity)
+      100    0.039    0.000    0.108    0.001 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/depscope.py:638(identity)
+        4    0.001    0.000    0.107    0.027 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_motifs.py:185(find_temporal_motif_instances)
+       50    0.000    0.000    0.090    0.002 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/registry.py:374(append)
+        9    0.001    0.000    0.069    0.008 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_snapshot.py:39(edges_at)
+        2    0.000    0.000    0.068    0.034 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_motifs.py:165(count_temporal_motifs)
+      200    0.063    0.000    0.063    0.000 {method 'read' of '_io.BufferedReader' objects}
+        2    0.003    0.002    0.055    0.028 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_snapshot.py:208(diff_snapshots)
+      100    0.000    0.000    0.046    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/evaluate.py:100(meta_json)
+        5    0.001    0.000    0.042    0.008 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_snapshot.py:134(snapshot_subgraph)
+ 12906/50    0.012    0.000    0.041    0.001 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/algebra.py:258(_canonicalize_floats)
+   141082    0.029    0.000    0.039    0.000 {built-in method builtins.max}
+        4    0.003    0.001    0.038    0.009 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_snapshot.py:199(_point_state)
+       50    0.001    0.000    0.036    0.001 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/artifact/registry.py:397(_append_locked)
+      300    0.001    0.000    0.031    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/node.py:112(node_digest)
+        6    0.001    0.000    0.030    0.005 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_motifs.py:143(_match)
+        6    0.028    0.005    0.028    0.005 {built-in method tgms._engine.motif_match}
+      400    0.003    0.000    0.027    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/node.py:99(canonical_args)
+      100    0.000    0.000    0.025    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/evaluate.py:126(leaf_meta)
+     4626    0.011    0.000    0.023    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/storage/tcsr.py:104(neighbors)
+       50    0.000    0.000    0.023    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tools/server.py:149(leaf_meta)
+       50    0.000    0.000    0.023    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/evaluate.py:116(meta_for)
+       50    0.022    0.000    0.022    0.000 {built-in method posix.fsync}
+      100    0.001    0.000    0.021    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/tgir/evaluate.py:162(leaf_provenance)
+       11    0.000    0.000    0.017    0.002 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/storage/native/adapter.py:550(aggregate_events_columnar)
+       11    0.000    0.000    0.017    0.002 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/storage/native/adapter.py:566(<lambda>)
+       11    0.017    0.002    0.017    0.002 {method 'aggregate_edges' of 'tgms._engine.NativeStore' objects}
+      400    0.000    0.000    0.017    0.000 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/core/model.py:49(digest)
+        4    0.006    0.001    0.016    0.004 /mnt/project/xzhang/tgms/work/shrink/wt/tgms/temporal/ops_paths.py:90(temporal_reachability)
+
+

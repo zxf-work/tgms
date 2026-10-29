@@ -1,0 +1,1 @@
+{"store_dir": "run10000/w/storm-65y5e1a6/store", "registry_load_ms": 3361.7837368510664, "registry_bytes_before": 40554567, "n_names": 8922, "n_entries": 26766, "gens_per_name_max": 3, "gens_per_name_mean": 3.0, "eventlog_bytes": 4102629, "results_files": 5828, "registry_bytes_after": 41302299, "n_entries_after": 27236}

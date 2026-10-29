@@ -1,0 +1,117 @@
+{
+ "batches": [
+  {
+   "batch_index": 0,
+   "kind_counts": {
+    "aggregate_events": 36,
+    "count_temporal_motifs": 24,
+    "diff_snapshots": 10,
+    "find_temporal_motif_instances": 34,
+    "graph_metric_timeseries": 28,
+    "snapshot_subgraph": 77,
+    "temporal_paths": 27,
+    "temporal_reachability": 27
+   },
+   "mean_ms_per_refresh": 37.06246574795291,
+   "n_target": 1000,
+   "oracle_pass": {
+    "calls": 884,
+    "mean_execution_ms": 15.347975360469817,
+    "mean_publication_ms": 3.3199934845124432,
+    "mean_total_ms": 18.717935628561108
+   },
+   "refreshed": 263,
+   "temporal_paths_count": 27,
+   "temporal_paths_share": 0.10266159695817491
+  },
+  {
+   "batch_index": 1,
+   "kind_counts": {
+    "aggregate_events": 31,
+    "burst_detection": 1,
+    "count_temporal_motifs": 25,
+    "diff_snapshots": 7,
+    "find_temporal_motif_instances": 26,
+    "graph_metric_timeseries": 14,
+    "neighborhood_evolution": 1,
+    "snapshot_subgraph": 77,
+    "temporal_paths": 27,
+    "temporal_reachability": 27
+   },
+   "mean_ms_per_refresh": 37.83978860414887,
+   "n_target": 1000,
+   "oracle_pass": {
+    "calls": 884,
+    "mean_execution_ms": 15.235641885367622,
+    "mean_publication_ms": 3.093310577027938,
+    "mean_total_ms": 18.375805159820015
+   },
+   "refreshed": 236,
+   "temporal_paths_count": 27,
+   "temporal_paths_share": 0.11440677966101695
+  },
+  {
+   "batch_index": 0,
+   "kind_counts": {
+    "aggregate_events": 280,
+    "burst_detection": 5,
+    "count_temporal_motifs": 280,
+    "diff_snapshots": 94,
+    "entity_history": 4,
+    "find_temporal_motif_instances": 249,
+    "graph_metric_timeseries": 270,
+    "neighborhood_evolution": 7,
+    "snapshot_subgraph": 770,
+    "temporal_paths": 317,
+    "temporal_reachability": 276
+   },
+   "mean_ms_per_refresh": 40.28480433290357,
+   "n_target": 10000,
+   "oracle_pass": {
+    "calls": 8922,
+    "mean_execution_ms": 16.134634596454113,
+    "mean_publication_ms": 3.269632930231252,
+    "mean_total_ms": 19.449906187360394
+   },
+   "refreshed": 2552,
+   "temporal_paths_count": 317,
+   "temporal_paths_share": 0.12421630094043887
+  },
+  {
+   "batch_index": 1,
+   "kind_counts": {
+    "burst_detection": 4,
+    "diff_snapshots": 72,
+    "neighborhood_evolution": 1,
+    "snapshot_subgraph": 770,
+    "temporal_paths": 2,
+    "temporal_reachability": 2,
+    "version_history": 731
+   },
+   "mean_ms_per_refresh": 11.433457889489349,
+   "n_target": 10000,
+   "oracle_pass": {
+    "calls": 8922,
+    "mean_execution_ms": 16.559041094354747,
+    "mean_publication_ms": 3.3312106114741007,
+    "mean_total_ms": 19.92864530584492
+   },
+   "refreshed": 1582,
+   "temporal_paths_count": 2,
+   "temporal_paths_share": 0.0012642225031605564
+  }
+ ],
+ "note": "Aggregated from the instrumented replicate of the committed CLI (2 batches per size, flags --mix c1 --measure-ttf end-to-end --check-cache chain --seed 0): per batch, the tgms-L1 end-to-end pass's refreshed set (segment 1 of the per-call log) by operator kind, and the mean wall per refresh() call. The per-call logs are kept on the measurement host (path and sha256 below); they are not committed (3 MB and 29 MB).",
+ "per_call_logs": {
+  "1000": {
+   "bytes": 3057293,
+   "host_path": "/mnt/project/xzhang/tgms/work/shrink/run1000/o/calls.jsonl",
+   "sha256": "f7b698e204b29909142ff63e4ed4c07119507ada12acce55914246c7dad7d4fb"
+  },
+  "10000": {
+   "bytes": 28859601,
+   "host_path": "/mnt/project/xzhang/tgms/work/shrink/run10000/o/calls.jsonl",
+   "sha256": "872adb1d49edd2d1d77c1323683db737fc6817111a80b29840142396d9b8cb88"
+  }
+ }
+}

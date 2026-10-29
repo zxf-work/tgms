@@ -1,0 +1,11 @@
+chain start Thu 29 Oct 2026 12:32:31 PM UTC load 0.52 0.24 0.14
+harness N=1000 start Thu 29 Oct 2026 12:32:31 PM UTC load 0.52 0.24 0.14
+harness N=1000 done Thu 29 Oct 2026 12:34:46 PM UTC rc=0 load 2.41 1.07 0.46
+harness N=10000 start Thu 29 Oct 2026 12:34:46 PM UTC load 2.41 1.07 0.46
+harness N=10000 done Thu 29 Oct 2026 12:53:54 PM UTC rc=0 load 3.65 3.11 2.21
+884 8922 884 0
+profile N=1000 start Thu 29 Oct 2026 12:53:54 PM UTC load 3.60 3.11 2.21
+profile N=1000 done Thu 29 Oct 2026 12:54:06 PM UTC load 3.50 3.11 2.22
+profile N=10000 start Thu 29 Oct 2026 12:54:06 PM UTC load 3.50 3.11 2.22
+profile N=10000 done Thu 29 Oct 2026 12:54:20 PM UTC load 3.61 3.15 2.25
+chain done Thu 29 Oct 2026 12:54:20 PM UTC

@@ -1,0 +1,43 @@
+{
+ "config": {
+  "addendum_id": "P-SHRINK",
+  "backend": "native",
+  "batches_registration_run": 2,
+  "check_cache": "chain",
+  "dataset_digest_note": "sha256 of the source external-v1/t1b-stores/synth-iv-60k/eventlog.jsonl; the harness runs on a copy, which gains one correction record per batch",
+  "engine_so": "work/arc5-fab/dev/tgms/_engine.cpython-312-x86_64-linux-gnu.so (built 2026-09-26)",
+  "freeze_utc": "2026-10-29T12:26:44Z",
+  "generations_per_name": 3,
+  "measure_ttf": "end-to-end",
+  "mix": "c1",
+  "n_artifacts": [
+   1000,
+   10000
+  ],
+  "n_registered": [
+   884,
+   8922
+  ],
+  "profile": {
+   "cprofile_calls": 50,
+   "process": "separate process, nice 19, one run at a time",
+   "rounds": 3,
+   "same50_sample": "seeded sample (Random(7)) of 50 names registered at both sizes",
+   "stratified_per_kind": 20
+  },
+  "run_log": "benchmarks/storm-v1/refresh-cost-attribution-2026-10-29/chain.log"
+ },
+ "dataset": {
+  "digest": "8383b23b94a41a8fde2febc0fa36b52978449445b50e25ba53c823467f6c1068",
+  "digest_kind": "eventlog_sha",
+  "name": "synth-iv-60k"
+ },
+ "git_commit": "96b7f3f122a93e37b5b4e6120b7664d2c6bbc789",
+ "machine": {
+  "cpus": 40,
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "ram_gb": 93.0
+ },
+ "timestamp_utc": "2026-10-29T12:54:20Z"
+}

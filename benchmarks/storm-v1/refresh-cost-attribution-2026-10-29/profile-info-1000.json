@@ -1,0 +1,1 @@
+{"store_dir": "run1000/w/storm-onojdezm/store", "registry_load_ms": 312.2253520414233, "registry_bytes_before": 4002400, "n_names": 884, "n_entries": 2652, "gens_per_name_max": 3, "gens_per_name_mean": 3.0, "eventlog_bytes": 4102655, "results_files": 690, "registry_bytes_after": 4750132, "n_entries_after": 3122}

@@ -1,0 +1,180 @@
+{
+  "config": {
+    "addendum_id": null,
+    "age": null,
+    "allow_r18_trip": false,
+    "arms": [
+      "global-recompute",
+      "entity-touch",
+      "window-overlap",
+      "row-touch",
+      "tgms-L0",
+      "tgms-L1"
+    ],
+    "backend": "native",
+    "batches": 2,
+    "burst_after": 10,
+    "burst_size": 10000,
+    "check_cache": "chain",
+    "dag_cascade_k": 4,
+    "dag_depth": 4,
+    "dag_fanout": 3,
+    "dag_seed_from_affected": false,
+    "dag_shape": null,
+    "degree": null,
+    "freeze_sha256": null,
+    "interval_vt": false,
+    "measure_ttf": "end-to-end",
+    "mix": "c1",
+    "n_artifacts": 10000,
+    "n_registered": 8922,
+    "n_registration_skipped": 1078,
+    "range_width": null,
+    "seed": 0,
+    "store": "store-src",
+    "wall_cap_s": null,
+    "wall_capped": false,
+    "wall_s": 1147.3857889175415
+  },
+  "dag": null,
+  "dataset": {
+    "digest": "c3a2f246154e7ec3091570e3aa96ba7fee80b0d673055722cc9dab709d6f3bf9",
+    "digest_kind": "eventlog_sha",
+    "name": "store-src"
+  },
+  "git_commit": "96b7f3f122a93e37b5b4e6120b7664d2c6bbc789",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.03
+  },
+  "protocol": {
+    "ceilings": {
+      "r18_trip_n_artifacts": 10000
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "run10000/o/storm-store-src-0-rows.jsonl",
+  "result_digest": "e7eb93dda0bd5c76a3b7a7bfb4b0399e86e03107b497bb9c2b194505f6843a88",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "arms": {
+      "entity-touch": {
+        "avoided_recompute_decision": 0.9977583501457072,
+        "avoided_recompute_wall": 0.9927573640799298,
+        "false_fresh": 1014,
+        "false_stale": 30,
+        "invalidated": 40,
+        "ttf_incomplete_batches": 2,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "global-recompute": {
+        "avoided_recompute_decision": 0.0,
+        "avoided_recompute_wall": 0.0,
+        "false_fresh": 0,
+        "false_stale": 16820,
+        "invalidated": 17844,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 174248.39603109285,
+        "ttf_p95_ms": 178275.77380277216
+      },
+      "row-touch": {
+        "avoided_recompute_decision": 1.0,
+        "avoided_recompute_wall": 1.0,
+        "false_fresh": 1024,
+        "false_stale": 0,
+        "invalidated": 0,
+        "ttf_incomplete_batches": 2,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "tgms-L0": {
+        "avoided_recompute_decision": 0.7683254875588433,
+        "avoided_recompute_wall": 0.6576037553598428,
+        "false_fresh": 0,
+        "false_stale": 3110,
+        "invalidated": 4134,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 38093.80960185081,
+        "ttf_p95_ms": 135459.16940411553
+      },
+      "tgms-L1": {
+        "avoided_recompute_decision": 0.7683254875588433,
+        "avoided_recompute_wall": 0.6576037553598428,
+        "false_fresh": 0,
+        "false_stale": 3110,
+        "invalidated": 4134,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 38955.84956975654,
+        "ttf_p95_ms": 134982.98705881462
+      },
+      "window-overlap": {
+        "avoided_recompute_decision": 0.7785810356422327,
+        "avoided_recompute_wall": 0.7511672627745763,
+        "false_fresh": 4,
+        "false_stale": 2931,
+        "invalidated": 3951,
+        "ttf_incomplete_batches": 1,
+        "ttf_p50_ms": 34825.02501877025,
+        "ttf_p95_ms": 34825.02501877025
+      }
+    },
+    "batches": 2,
+    "check_cost_curve": [
+      {
+        "batch_index": 0,
+        "check_ms_tgms_L0": 31085.82914667204,
+        "check_ms_tgms_L1": 30843.395875766873,
+        "log_bytes": 4102411,
+        "log_records": 1,
+        "registry_bytes": 26382114
+      },
+      {
+        "batch_index": 1,
+        "check_ms_tgms_L0": 21108.568128198385,
+        "check_ms_tgms_L1": 21002.41385679692,
+        "log_bytes": 4102629,
+        "log_records": 2,
+        "registry_bytes": 40554567
+      }
+    ],
+    "first_write_refusal": null,
+    "mix_starved": 0,
+    "narrowing_coverage": {
+      "n_all_top_term": 0,
+      "n_artifacts": 8922,
+      "n_empty_scope": 719,
+      "per_template_counts": {
+        "aggregate_events": 723,
+        "burst_detection": 732,
+        "compute": 719,
+        "count_temporal_motifs": 704,
+        "diff_snapshots": 716,
+        "entity_history": 743,
+        "find_temporal_motif_instances": 715,
+        "graph_metric_timeseries": 709,
+        "neighborhood_evolution": 657,
+        "snapshot_subgraph": 770,
+        "temporal_paths": 317,
+        "temporal_reachability": 686,
+        "version_history": 731
+      },
+      "top_axis_counts": {
+        "kinds": 0,
+        "props": 4074,
+        "rel_types": 17499,
+        "targets": 0,
+        "vt": 8553
+      },
+      "total_terms": 17499
+    },
+    "write_refusals": 0
+  },
+  "timestamp_utc": "2026-10-29T12:53:54Z"
+}
