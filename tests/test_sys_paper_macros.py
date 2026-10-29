@@ -4936,6 +4936,116 @@ def test_tampered_f1_8_rerun_manifest_fails_the_sha256_gate(tmp_path):
 
 
 # --------------------------------------------------------------------------
+# Refresh-cost attribution (P-SHRINK, 2026-10-29) -- compute_refresh_cost_
+# attribution, outside _run_all_landed/FROZEN_LANDED_VALUES, same convention
+# as the sections above. Refresh cost per artifact does not grow with N.
+# --------------------------------------------------------------------------
+
+SHRINK_NEW_MACROS = {
+    "recShrinkTotalMsN1k": "13.32", "recShrinkTotalMsN10k": "13.75",
+    "recShrinkExecMsN1k": "10.40", "recShrinkExecMsN10k": "10.81",
+    "recShrinkPublishMsN1k": "2.88", "recShrinkPublishMsN10k": "2.91",
+    "recShrinkRegistryEntriesN1k": "2{,}652", "recShrinkRegistryEntriesN10k": "26{,}766",
+    "recShrinkTemporalPathsMs": "189", "recShrinkCheapKindsMsMax": "7",
+    "recProbeSpeedupPerBatchMin": "1.40", "recProbeSpeedupPerBatchMax": "7.25",
+    "recStormV3N1kSpeedupPerBatchMin": "1.19", "recStormV3N1kSpeedupPerBatchMax": "7.46",
+    "recProbeExpensiveBatches": "3", "recStormV3N1kExpensiveBatchShare": "0.25",
+}
+
+
+def test_refresh_cost_attribution_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_refresh_cost_attribution(m)
+    assert mod.FAILURES == []
+    assert {name: value for name, value, _ in m.items} == SHRINK_NEW_MACROS
+
+
+def test_refresh_cost_attribution_changes_no_existing_macro():
+    """The new function adds sixteen macros and moves none of the storm-v3
+    ones it reads beside; no name collides with an existing macro."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c7_storm_v3_probe(m)
+    mod.compute_c7_storm_v3(m)
+    mod.compute_c8_f18(m)
+    before = {name: value for name, value, _ in m.items}
+    mod.compute_refresh_cost_attribution(m)
+    assert mod.FAILURES == []
+    after = {name: value for name, value, _ in m.items}
+    for name, value in before.items():
+        assert after[name] == value
+    assert set(after) - set(before) == set(SHRINK_NEW_MACROS)
+
+
+def _shrink_sums_patched(mod, tmp_path, name, new_bytes):
+    text = mod.SHRINK_SHA256SUMS.read_text(encoding="utf-8")
+    patched = re.sub(rf"^[0-9a-f]{{64}}(  (?:\S+/)?{re.escape(name)})$",
+                     hashlib.sha256(new_bytes).hexdigest() + r"\1", text, flags=re.MULTILINE)
+    assert patched != text, "fixture did not find the entry to patch"
+    out = tmp_path / "SHA256SUMS.txt"
+    out.write_text(patched, encoding="utf-8")
+    return out
+
+
+def _shrink_tampered_rows_bytes(mod):
+    lines = mod.SHRINK_ROWS.read_text(encoding="utf-8").splitlines()
+    edited = json.loads(lines[0])
+    assert edited["row_type"] == "profile_call"
+    edited["phases_ms"]["publish"] = edited["phases_ms"]["publish"] * 3
+    lines[0] = json.dumps(edited, sort_keys=True, separators=(",", ":"))
+    return ("\n".join(lines) + "\n").encode()
+
+
+def test_tampered_shrink_rows_fail_the_sha256_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+    tampered = tmp_path / mod.SHRINK_ROWS.name
+    tampered.write_bytes(_shrink_tampered_rows_bytes(mod))
+    mod.SHRINK_ROWS = tampered
+    mod.compute_refresh_cost_attribution(mod.Macros())
+    assert mod.FAILURES and any("sha256" in f for f in mod.FAILURES)
+
+
+def test_tampered_shrink_rows_fail_even_with_a_patched_checksum(tmp_path):
+    """The rows are re-hashed into the manifest's result_digest and every
+    mean is compared with the manifest's, so a patched checksum is not
+    enough."""
+    mod = _load("sys_paper_macros")
+    data = _shrink_tampered_rows_bytes(mod)
+    tampered = tmp_path / mod.SHRINK_ROWS.name
+    tampered.write_bytes(data)
+    mod.SHRINK_SHA256SUMS = _shrink_sums_patched(mod, tmp_path, mod.SHRINK_ROWS.name, data)
+    mod.SHRINK_ROWS = tampered
+    mod.compute_refresh_cost_attribution(mod.Macros())
+    assert mod.FAILURES, "edited profile rows must fail with a patched checksum"
+    assert not any("matches" in f for f in mod.FAILURES)
+
+
+def test_tampered_shrink_manifest_fails_the_sha256_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.SHRINK.read_text(encoding="utf-8"))
+    data["summary"]["registry"]["n10000"]["n_entries"] = 1
+    tampered = tmp_path / mod.SHRINK.name
+    tampered.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    mod.SHRINK = tampered
+    mod.compute_refresh_cost_attribution(mod.Macros())
+    assert mod.FAILURES and any("sha256" in f for f in mod.FAILURES)
+
+
+def test_tampered_shrink_kind_labels_fail_the_sha256_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+    ops = json.loads((mod.SHRINK_RAW / "ops-10000.json").read_text(encoding="utf-8"))
+    first = next(iter(ops))
+    ops[first] = "compute" if ops[first] != "compute" else "entity_history"
+    raw = tmp_path / "raw"
+    shutil.copytree(mod.SHRINK_RAW, raw)
+    (raw / "ops-10000.json").write_text(json.dumps(ops), encoding="utf-8")
+    mod.SHRINK_RAW = raw
+    mod.compute_refresh_cost_attribution(mod.Macros())
+    assert mod.FAILURES and any("sha256" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
 # ruff
 # --------------------------------------------------------------------------
 

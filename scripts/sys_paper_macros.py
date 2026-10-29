@@ -47,6 +47,12 @@ skeleton --
       faults-f1-8-rerun-2026-10-12.json), compute_c8_f18: the cell both
       records above carry at 0 of 300 trials (a driver defect), now 300;
       recFOneEight* and recFaultTrialsCorrected; existing C8 macros unchanged
+  C7-SHRINK  benchmarks/storm-v1/refresh-cost-attribution-2026-10-29.json (+ rows),
+      compute_refresh_cost_attribution: the pre-registered P-SHRINK check of why the
+      storm-v3 rows show ~11 ms vs ~20 ms per refreshed artifact at N = 10^3 vs 10^4
+      (prediction not supported, falsifier not triggered; a batch-composition artifact);
+      recShrink*, recProbeSpeedupPerBatch*, recProbeExpensiveBatches,
+      recStormV3N1kSpeedupPerBatch*, recStormV3N1kExpensiveBatchShare
       except that recFaultTrials now prints its thousands separator (3{,}102)
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
@@ -456,6 +462,16 @@ FAULTS_F18_SHA256SUMS = (ROOT / "benchmarks" / "faults-v1"
                          / "SHA256SUMS-f1-8-rerun-2026-10-12.txt")
 
 STORM_V1 = ROOT / "benchmarks" / "storm-v1"
+
+# Refresh-cost attribution (lane SHRINK, P-SHRINK, 2026-10-29): why the
+# storm-v3 rows show about 11 ms per refreshed artifact at N = 10^3 and about
+# 20 ms at N = 10^4. Manifest, rows and four of the as-run inputs are
+# sha256-gated against the record's own checksum file.
+SHRINK = STORM_V1 / "refresh-cost-attribution-2026-10-29.json"
+SHRINK_ROWS = STORM_V1 / "refresh-cost-attribution-2026-10-29-rows.jsonl"
+SHRINK_RAW = STORM_V1 / "refresh-cost-attribution-2026-10-29"
+SHRINK_SHA256SUMS = STORM_V1 / "SHA256SUMS-refresh-cost-attribution-2026-10-29.txt"
+
 DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
 DAG_V1_ROWS = STORM_V1 / "storm-campaign-dag-2026-09-rows.jsonl"
 DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
@@ -2540,6 +2556,228 @@ def compute_c8_f18(m: Macros) -> None:
           f"{relpath(FAULTS_POST)}: total_trials 3,102 + {relpath(FAULTS_F18)}: total_trials "
           "300, the deployed (post-D-160) gate's primary-arm trials with F1-8 included, of "
           "3,900 requested; recFaultTrials keeps the recorded 3,102")
+
+
+def _ms2(x: float) -> str:
+    """Two decimals, round-half-up on the float's shortest repr (the same
+    reason us_to_ms_str uses Decimal)."""
+    return str(Decimal(repr(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def _shrink_committed_batches() -> tuple[list[dict], list[dict], list[dict]]:
+    """Per-batch figures straight from the committed storm-v3 records: the
+    N = 1,000 seed-0 synth c1 age-none cell (tarball task-0), every batch of
+    the 18 synth-iv-60k cells, and the N = 10,000 probe. Each is
+    ``{batch_index, per_artifact_ms, speedup}`` with the refreshed count
+    being ``candidate_survivors`` (equal to ``e2e_refresh_calls`` wherever
+    that is recorded)."""
+    eq(sha256_file(STORM_V3_RECORDS_TARBALL), STORM_V3_RECORDS_TARBALL_SHA256,
+       f"{relpath(STORM_V3_RECORDS_TARBALL)}: sha256 matches the frozen value")
+
+    def figures(b: dict) -> dict:
+        l1 = b["arms"]["tgms-L1"]
+        return {"batch_index": b["batch_index"],
+                "per_artifact_ms": l1["refresh_wall_ms"] / b["candidate_survivors"],
+                "speedup": b["arms"]["global-recompute"]["ttf_ms"] / l1["ttf_ms"]}
+
+    cell: list[dict] = []
+    synth: list[dict] = []
+    with tarfile.open(STORM_V3_RECORDS_TARBALL, "r:gz") as tf:
+        names = tf.getnames()
+        for tid in range(36):
+            members = [n for n in names if n.startswith(f"task-{tid}/")]
+            man = json.loads(tf.extractfile(
+                next(n for n in members if n.endswith(".json"))).read().decode("utf-8"))
+            cfg = man["config"]
+            if cfg["store"] != "synth-iv-60k":
+                continue
+            batch_rows = sorted(
+                (json.loads(line) for line in tf.extractfile(
+                    next(n for n in members if n.endswith("-rows.jsonl"))
+                ).read().decode("utf-8").splitlines() if line.strip()),
+                key=lambda b: b["batch_index"])
+            figs = [figures(b) for b in batch_rows]
+            synth += figs
+            if (cfg["mix"], cfg["age"], man["seed"]["value"], cfg["n_artifacts"]) == \
+                    ("c1", None, 0, 1000):
+                eq(tid, 0, "refresh-cost attribution: the c1 age-none seed-0 N=1,000 synth "
+                   "cell is tarball task-0")
+                cell = figs
+    eq(len(cell), 20, "refresh-cost attribution: the N = 1,000 cell has 20 batches")
+    eq(len(synth), 360, "refresh-cost attribution: 18 synth-iv-60k cells x 20 batches")
+
+    probe_manifest = json.loads(STORM_V3_R18_PROBE.read_text(encoding="utf-8"))
+    probe_rows = sorted(load_jsonl(STORM_V3_R18_PROBE_ROWS), key=lambda b: b["batch_index"])
+    eq(hashlib.sha256(json.dumps(probe_rows, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8")).hexdigest(), probe_manifest["result_digest"],
+       f"{relpath(STORM_V3_R18_PROBE_ROWS)}: result_digest recomputed from the rows")
+    eq(len(probe_rows), 5, "refresh-cost attribution: the probe has 5 batches")
+    return cell, synth, [figures(b) for b in probe_rows]
+
+
+def compute_refresh_cost_attribution(m: Macros) -> None:
+    """P-SHRINK (lane SHRINK, 2026-10-29): refresh cost per artifact does not
+    grow with N. The profile rows (same 50 artifacts at both sizes), the
+    kind-label maps and the profile-process info are sha256-gated against the
+    record's checksum file; every macro is recomputed from them and from the
+    committed storm-v3 records, and cross-checked against the manifest."""
+    sums = _sha256sums_by_name(SHRINK_SHA256SUMS.read_text(encoding="utf-8"))
+    raw_names = ("profile-info-1000.json", "profile-info-10000.json", "ops-1000.json",
+                 "ops-10000.json")
+    for path in (SHRINK, SHRINK_ROWS, *(SHRINK_RAW / n for n in raw_names)):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(SHRINK_SHA256SUMS)}'s entry")
+
+    manifest = json.loads(SHRINK.read_text(encoding="utf-8"))
+    rows = load_jsonl(SHRINK_ROWS)
+    eq(hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8")).hexdigest(), manifest["result_digest"],
+       f"{relpath(SHRINK)}: result_digest recomputed from {relpath(SHRINK_ROWS)}")
+    prof = [r for r in rows if r["row_type"] == "profile_call"]
+    batch = [r for r in rows if r["row_type"] == "committed_batch"]
+    eq(len(prof) + len(batch), len(rows), "refresh-cost attribution: row types are exhaustive")
+    eq(manifest["record"], "benchmarks/storm-v1/" + SHRINK_ROWS.name,
+       f"{relpath(SHRINK)}: record names its rows")
+
+    # --- per-phase means on the same 50 artifacts, at both sizes ---
+    means: dict[int, dict[str, float]] = {}
+    for n in (1000, 10000):
+        sel = [r for r in prof if r["n_target"] == n and r["sample"] == "same50"]
+        eq(len(sel), 150, f"refresh-cost attribution N={n}: 50 artifacts x 3 rounds")
+        eq(len({r["name"] for r in sel}), 50, f"refresh-cost attribution N={n}: 50 names")
+        means[n] = {
+            "total": statistics.fmean(r["total_ms"] for r in sel),
+            "exec": statistics.fmean(r["phases_ms"]["exec"] for r in sel),
+            "publish": statistics.fmean(r["phases_ms"]["publish"] for r in sel),
+        }
+        table = manifest["summary"]["phase_means_ms"]["same50"][f"n{n}"]
+        close(means[n]["total"], table["total"]["mean"], 1e-9,
+              f"{relpath(SHRINK)}: same50 total mean at N={n}")
+        close(means[n]["exec"], table["execution"]["mean"], 1e-9,
+              f"{relpath(SHRINK)}: same50 execution mean at N={n}")
+        close(means[n]["publish"], table["publication"]["mean"], 1e-9,
+              f"{relpath(SHRINK)}: same50 publication mean at N={n}")
+    eq({r["name"] for r in prof if r["n_target"] == 1000 and r["sample"] == "same50"},
+       {r["name"] for r in prof if r["n_target"] == 10000 and r["sample"] == "same50"},
+       "refresh-cost attribution: the same 50 artifacts at both sizes")
+    for phase, label in (("total", "total"), ("exec", "execution"), ("publish", "publication")):
+        require(abs(means[10000][phase] / means[1000][phase] - 1.0) < 0.05,
+                f"refresh-cost attribution: {label} per artifact is within 5% across sizes "
+                f"(the P-SHRINK outcome: no growth in N); got "
+                f"{means[1000][phase]:.3f} vs {means[10000][phase]:.3f}")
+    eq((_ms2(means[1000]["total"]), _ms2(means[10000]["total"])), ("13.32", "13.75"),
+       "refresh-cost attribution frozen: total ms per artifact, N=1,000 / N=10,000")
+    eq((_ms2(means[1000]["exec"]), _ms2(means[10000]["exec"])), ("10.40", "10.81"),
+       "refresh-cost attribution frozen: execution ms per artifact")
+    eq((_ms2(means[1000]["publish"]), _ms2(means[10000]["publish"])), ("2.88", "2.91"),
+       "refresh-cost attribution frozen: publication ms per artifact")
+
+    # --- registry entries held in memory when the profile process opened ---
+    entries: dict[int, int] = {}
+    for n in (1000, 10000):
+        info = json.loads((SHRINK_RAW / f"profile-info-{n}.json").read_text(encoding="utf-8"))
+        entries[n] = info["n_entries"]
+        eq(info["n_entries"], manifest["summary"]["registry"][f"n{n}"]["n_entries"],
+           f"{relpath(SHRINK)}: registry n_entries at N={n}")
+        eq(info["n_entries"], 3 * info["n_names"],
+           f"refresh-cost attribution N={n}: three generations per name")
+    eq((entries[1000], entries[10000]), (2652, 26766),
+       "refresh-cost attribution frozen: registry entries, N=1,000 / N=10,000")
+
+    # --- per-kind means (20 artifacts per kind, both sizes) ---
+    by_kind: dict[str, list[float]] = {}
+    per_size: dict[tuple[str, int], float] = {}
+    for kind in sorted({r["op"] for r in prof}):
+        for n in (1000, 10000):
+            sel = [r["total_ms"] for r in prof if r["n_target"] == n
+                   and r["sample"] == "stratified" and r["op"] == kind]
+            eq(len(sel), 20, f"refresh-cost attribution: 20 {kind} artifacts at N={n}")
+            per_size[(kind, n)] = statistics.fmean(sel)
+            by_kind.setdefault(kind, []).extend(sel)
+    kind_mean = {k: statistics.fmean(v) for k, v in by_kind.items()}
+    cheap = [k for k, v in kind_mean.items() if v < 10.0]
+    eq(len(cheap), 8, "refresh-cost attribution frozen: eight kinds cost under 10 ms per refresh")
+    cheap_max = max(per_size[(k, n)] for k in cheap for n in (1000, 10000))
+    close(cheap_max, manifest["summary"]["cheap_kinds"]["max_mean_ms"], 1e-9,
+          f"{relpath(SHRINK)}: cheap kinds' maximum mean")
+    eq(round(cheap_max), 7,
+       "refresh-cost attribution frozen: the eight cheap kinds top out near 7 ms")
+    eq(round(kind_mean["temporal_paths"]), 189,
+       "refresh-cost attribution frozen: temporal_paths ms per refresh")
+    eq(max(kind_mean, key=kind_mean.get), "temporal_paths",
+       "refresh-cost attribution: temporal_paths is the costliest kind")
+
+    # --- kind labels: every N=1,000 name has the same operator at N=10,000 ---
+    ops_1k = json.loads((SHRINK_RAW / "ops-1000.json").read_text(encoding="utf-8"))
+    ops_10k = json.loads((SHRINK_RAW / "ops-10000.json").read_text(encoding="utf-8"))
+    require(all(ops_10k.get(k) == v for k, v in ops_1k.items()),
+            "refresh-cost attribution: the N=1,000 population is a prefix of the N=10,000 one")
+    eq(all(ops_10k[r["name"]] == r["op"] for r in prof), True,
+       "refresh-cost attribution: each profile row's op is its name's registered operator")
+
+    # --- per-batch figures from the committed storm-v3 records ---
+    cell, synth, probe = _shrink_committed_batches()
+    by_cell = [r for r in batch if r["cell"] == "synth-iv-60k-c1-none-n1000-s0"]
+    by_probe = [r for r in batch if r["cell"].endswith("-probe")]
+    eq([r["speedup"] for r in by_cell], [f["speedup"] for f in cell],
+       f"{relpath(SHRINK_ROWS)}: N=1,000 cell speedups are the committed rows'")
+    eq([r["speedup"] for r in by_probe], [f["speedup"] for f in probe],
+       f"{relpath(SHRINK_ROWS)}: probe speedups are the committed rows'")
+    eq(len(batch), 365, f"{relpath(SHRINK_ROWS)}: 360 synth batches and 5 probe batches")
+
+    expensive_ms = 15.0
+    cell_sp = [f["speedup"] for f in cell]
+    probe_sp = [f["speedup"] for f in probe]
+    probe_expensive = sum(f["per_artifact_ms"] > expensive_ms for f in probe)
+    synth_expensive = sum(f["per_artifact_ms"] > expensive_ms for f in synth)
+    eq((_ms2(min(cell_sp)), _ms2(max(cell_sp))), ("1.19", "7.46"),
+       "refresh-cost attribution frozen: per-batch speedup range, N=1,000 cell")
+    eq((_ms2(min(probe_sp)), _ms2(max(probe_sp))), ("1.40", "7.25"),
+       "refresh-cost attribution frozen: per-batch speedup range, N=10,000 probe")
+    eq(probe_expensive, 3, "refresh-cost attribution frozen: probe batches above 15 ms")
+    eq(synth_expensive, 91, "refresh-cost attribution frozen: synth batches above 15 ms")
+    committed = manifest["summary"]["committed"]
+    eq(committed["probe_n10000"]["expensive_batches"], probe_expensive,
+       f"{relpath(SHRINK)}: probe expensive batches")
+    eq(committed["storm_v3_synth_all_cells"]["expensive_batches"], synth_expensive,
+       f"{relpath(SHRINK)}: synth expensive batches")
+    share = synth_expensive / len(synth)
+
+    for label, key, what in (
+            ("Total", "total", "refresh() wall"),
+            ("Exec", "exec", "plan execution, _run_operator"),
+            ("Publish", "publish", "publication, _publish")):
+        for suffix, n in (("N1k", 1000), ("N10k", 10000)):
+            m.add(f"recShrink{label}Ms{suffix}", _ms2(means[n][key]),
+                  f"{relpath(SHRINK_ROWS)}: mean ms per artifact of {what}, the same 50 "
+                  f"artifacts x 3 rounds at N = {n:,}")
+    for suffix, n in (("N1k", 1000), ("N10k", 10000)):
+        m.add(f"recShrinkRegistryEntries{suffix}", tex_num(entries[n], 4),
+              f"{relpath(SHRINK_RAW)}/profile-info-{n}.json: n_entries, registry entries "
+              f"(three generations per name) when the profile process opened it, N = {n:,}")
+    m.add("recShrinkTemporalPathsMs", round(kind_mean["temporal_paths"]),
+          f"{relpath(SHRINK_ROWS)}: mean ms per refresh() of temporal_paths artifacts (20 at "
+          "each size)")
+    m.add("recShrinkCheapKindsMsMax", round(cheap_max),
+          f"{relpath(SHRINK_ROWS)}: largest per-size mean ms per refresh() over the eight kinds "
+          "under 10 ms")
+    m.add("recProbeSpeedupPerBatchMin", _ms2(min(probe_sp)),
+          f"{relpath(STORM_V3_R18_PROBE_ROWS)}: min over the 5 batches of global-recompute "
+          "ttf_ms / tgms-L1 ttf_ms (sum mode)")
+    m.add("recProbeSpeedupPerBatchMax", _ms2(max(probe_sp)),
+          f"{relpath(STORM_V3_R18_PROBE_ROWS)}: max over the 5 batches of the same ratio")
+    m.add("recStormV3N1kSpeedupPerBatchMin", _ms2(min(cell_sp)),
+          f"{relpath(STORM_V3_RECORDS_TARBALL)}: task-0 (synth-iv-60k, c1, age none, seed 0, "
+          "N = 1,000), min over 20 batches of global-recompute ttf_ms / tgms-L1 ttf_ms")
+    m.add("recStormV3N1kSpeedupPerBatchMax", _ms2(max(cell_sp)),
+          f"{relpath(STORM_V3_RECORDS_TARBALL)}: task-0, max over 20 batches of the same ratio")
+    m.add("recProbeExpensiveBatches", probe_expensive,
+          f"{relpath(STORM_V3_R18_PROBE_ROWS)}: batches of the 5 whose "
+          "tgms-L1 refresh_wall_ms / candidate_survivors exceeds 15 ms")
+    m.add("recStormV3N1kExpensiveBatchShare", f"{share:.2f}",
+          f"{relpath(STORM_V3_RECORDS_TARBALL)}: share of the 360 synth-iv-60k batches "
+          f"({synth_expensive}) whose tgms-L1 refresh_wall_ms / candidate_survivors exceeds "
+          "15 ms")
 
 
 # --------------------------------------------------------------------------
@@ -10810,6 +11048,7 @@ def main() -> int:
     compute_external_rerun_n1b(m)
     compute_external_withheld_hold(m)
     compute_c8_f18(m)
+    compute_refresh_cost_attribution(m)
     add_pending_stubs(m)
 
     if FAILURES:
