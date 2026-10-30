@@ -1652,7 +1652,7 @@ FIG_SIZES = {               # W x H in inches, == the exact PDF page size
     "f_correction_load": (COL_W, 1.75),
     "f_durability": (COL_W, 2.30),
     "f_external": (TEXT_W, 1.65),
-    "f_regime": (COL_W, 1.80),
+    "f_regime": (COL_W, 1.70),
 }
 
 # Text no figure may carry: host names, campaign codenames, paths, commit
@@ -2047,8 +2047,8 @@ def plot_arcs(data: dict) -> None:
                   va="bottom" if yoff > 1 else "top")
         ax.set_xticks([0, 1], ["before", "after"])
         ax.set_ylabel("speedup (×)")
-        _fix_label(ax, "lineage narrowing,\n3 $\\rightarrow$ 13 of 14 operators")
-        _panel_tag(ax, "a", "refresh vs recompute")
+        _fix_label(ax, "operators narrowing lineage:\n3 $\\rightarrow$ 13 of 14")
+        _panel_tag(ax, "a", "lineage precision")
 
         # (b) writer memory per life
         ax = axes[1]
@@ -2070,10 +2070,10 @@ def plot_arcs(data: dict) -> None:
             _point(ax, i, med, color, MARKER_INCR, hollow=(i == 0))
         _arrow(ax, (0, meds[0]), (1, meds[1]))
         ax.plot([1, 2, 3], meds[1:], color=C_INCR, lw=0.6, zorder=2)
-        ax.set_xticks(range(4), ["soak 1", "2", "3", "4"])
+        ax.set_xticks(range(4), ["run 1", "2", "3", "4"])
         ax.set_ylabel("RSS growth (kB/s)")
-        _fix_label(ax, "postings drop unreachable\nsegments")
-        _panel_tag(ax, "b", "writer memory per life")
+        _fix_label(ax, "index entries dropped\nwith evicted segments")
+        _panel_tag(ax, "b", "writer memory")
 
         # (c) overlapping believed versions
         ax = axes[2]
@@ -2092,9 +2092,9 @@ def plot_arcs(data: dict) -> None:
         ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(3, integer=True))
         ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(
             lambda y, _p: _thousands(y)))
-        ax.set_xticks(range(4), ["soak 1", "2", "3", "4"])
+        ax.set_xticks(range(4), ["run 1", "2", "3", "4"])
         ax.set_ylabel("full-verify findings")
-        _fix_label(ax, "workload generator fix")
+        _fix_label(ax, "generator fixed; a check\non an overlap: undecidable")
         _panel_tag(ax, "c", "overlapping versions")
 
         # (d) reader errors: log axis with a broken-axis "0" slot
@@ -2123,12 +2123,12 @@ def plot_arcs(data: dict) -> None:
         _point(ax, 2, ys[2], C_INCR, MARKER_INCR)
         _arrow(ax, (1, ys[1]), (2, ys[2]))
         _note(ax, -0.4, 10 ** 5.3,
-              f"soak 3: {v['recSoakReaderErrorEpisodesThree']:.0f}\nepisodes, each\nhealed at reopen",
+              f"run 3: {v['recSoakReaderErrorEpisodesThree']:.0f}\nepisodes, each\nhealed at reopen",
               ha="left", va="top", linespacing=0.95)
-        ax.set_xticks(range(3), ["soak 2", "3", "4"])
+        ax.set_xticks(range(3), ["run 2", "3", "4"])
         ax.set_ylabel("reader errors")
-        _fix_label(ax, "pin segments at open")
-        _panel_tag(ax, "d", "reader errors")
+        _fix_label(ax, "snapshot pins its\nsegments at open")
+        _panel_tag(ax, "d", "reader snapshots")
 
         # (e) per-artifact cost
         ax = axes[4]
@@ -2154,8 +2154,8 @@ def plot_arcs(data: dict) -> None:
         ax.legend(handles=handles, loc="lower right", handletextpad=0.1, borderaxespad=0.1)
         ax.set_xticks([0, 1], ["refresh", "check"])
         ax.set_ylabel("time per artifact (ms)")
-        _fix_label(ax, "store identity cached;\ncheck walk on chain cache")
-        _panel_tag(ax, "e", "per-artifact cost")
+        _fix_label(ax, "store identity derived once;\nlog walk cached")
+        _panel_tag(ax, "e", "check path")
 
         _savefig_paper(fig, OUT_DIR / "f_arcs")
 
@@ -3194,70 +3194,90 @@ def plot_external(data: dict) -> None:
 
 # --------------------------------------------------------------------------
 # Fig. f_regime: when each design is cheaper. Per-burst cost against the
-# number of artifacts read per burst: TGMS on demand (one check per read, a
-# refresh when flagged) against the maintained view's per-burst cost, which
-# does not depend on reads (single column).
+# number of artifacts read per burst, k, for three designs on the synthetic
+# store at 10^3 and 10^4 artifacts: recompute on read (every read artifact
+# re-run and republished, no check), TGMS on demand (one check per read, a
+# refresh only when flagged) and the maintained view (a per-burst cost that
+# does not depend on k); then standing memory (single column).
 #
-# The per-k medians are read from the on-demand record (sha-gated; no macro
-# carries every grid point); every value a macro also carries -- the view's
-# per-burst medians, the cost at k = N, the crossovers -- is asserted
-# against it.
+# The per-k medians are read from the on-demand and recompute-on-read
+# records (sha-gated; no macro carries every grid point); every value a
+# macro also carries -- the view's per-burst medians, the costs at k = 1 and
+# k = N, both crossovers -- is asserted against it.
 # --------------------------------------------------------------------------
 
 EXTERNAL_AXES_ON_DEMAND = EXTERNAL_V1 / "axes-on-demand-2026-10-30.json"
-_REGIME_CELLS = (("collegemsg-c1-none-n1000-s0", "CollegeMsg $10^3$", "CollegeMsg", "o",
-                  (0, (1, 1.2))),
-                 ("synth-iv-60k-c1-none-n1000-s0", "synth $10^3$", "N1k", "s", (0, (4, 1.5))),
-                 ("synth-iv-60k-c1-none-n10000-s0", "synth $10^4$", "N10k", "^", "-"))
-REGIME_MACROS = [f"recAxes{kind}{tok}" for _c, _l, tok, _m, _s in _REGIME_CELLS
-                 for kind in ("CrossoverK", "OnDemandAllMs", "Registered")] + [
-    "recAxesViewPerBurstMsCollegeMsg", "recAxesViewPerBurstMsN1k", "recAxesViewPerBurstMsN10k",
-    # (b) standing memory, from the axis-A macros (no record read)
+EXTERNAL_AXES_ROR = EXTERNAL_V1 / "axes-recompute-on-read-2026-10-30.json"
+_REGIME_CELLS = (("synth-iv-60k-c1-none-n1000-s0", "synth, $10^3$ artifacts", "N1k", "a"),
+                 ("synth-iv-60k-c1-none-n10000-s0", "synth, $10^4$ artifacts", "N10k", "b"))
+REGIME_MACROS = [f"recAxes{kind}{tok}" for _c, _l, tok, _p in _REGIME_CELLS
+                 for kind in ("CrossoverK", "OnDemandAllMs", "Registered", "ViewPerBurstMs")] + [
+    f"recRor{kind}{tok}" for _c, _l, tok, _p in _REGIME_CELLS
+    for kind in ("CrossoverK", "PerBurstMsK1", "PerBurstMsKN")] + [
+    # (c) standing memory, from the axis-A macros (no record read)
     "recAxesViewRssMbN1k", "recAxesViewRssMbN10k", "recAxesTgmsRssMbN1k", "recAxesTgmsRssMbN10k",
     "recAxesRatioN10k"]
 
 
+def _regime_points(per_k: dict, pick, bursts: int) -> list[tuple[int, float]]:
+    pts = []
+    for k_text, q in sorted(per_k.items(), key=lambda kv: int(kv[0])):
+        reads, ms = pick(q)
+        assert reads / bursts == int(reads / bursts), f"f_regime: k={k_text} reads per burst"
+        pts.append((int(reads / bursts), ms))
+    return pts
+
+
 def build_regime_data() -> dict:
-    _sha256sums_gate([EXTERNAL_AXES_ON_DEMAND], EXTERNAL_SHA256SUMS)
+    _sha256sums_gate([EXTERNAL_AXES_ON_DEMAND, EXTERNAL_AXES_ROR], EXTERNAL_SHA256SUMS)
     v = load_macro_values(REGIME_MACROS)
-    record = json.loads(EXTERNAL_AXES_ON_DEMAND.read_text(encoding="utf-8"))
-    pc = record["summary"]["per_cell"]
-    rows, series = [], []
-    for cell, label, tok, marker, style in _REGIME_CELLS:
-        c = pc[cell]
+    axes = json.loads(EXTERNAL_AXES_ON_DEMAND.read_text(encoding="utf-8"))["summary"]["per_cell"]
+    ror = json.loads(EXTERNAL_AXES_ROR.read_text(encoding="utf-8"))["summary"]["per_cell"]
+    rows, panels = [], []
+    for cell, label, tok, tag in _REGIME_CELLS:
+        c, r = axes[cell], ror[cell]
         bursts = c["view_per_burst"]["bursts"]
-        pts = []
-        for k_text, q in sorted(c["per_k"].items(), key=lambda kv: int(kv[0])):
-            reads = q["reads"] / bursts
-            assert reads == int(reads), f"f_regime: {cell} k={k_text} reads per burst"
-            pts.append((int(reads), q["median_ms"]))
+        tgms = _regime_points(c["per_k"], lambda q: (q["reads"], q["median_ms"]), bursts)
+        always = _regime_points(
+            r["per_k"], lambda q: (q["always"]["reads"], q["always"]["reads_only"]["median_ms"]),
+            bursts)
+        assert [k for k, _ in tgms] == [k for k, _ in always], f"f_regime: {cell} k grids"
         view = c["view_per_burst"]["median_ms"]
-        kstar = c["crossover_median"]["k_star"]
+        assert abs(r["view_per_burst"]["median_ms"] - view) <= 1e-9 * view
+        k_tgms = c["crossover_median"]["k_star"]
+        k_ror = r["crossover"]["reads_only"]["recompute_on_read"]["median"]["k_star"]
         assert c["crossover_median"]["kind"] == "interpolated"
-        assert_matches_macro(f"recAxesCrossoverK{tok}", kstar)
-        assert_matches_macro(f"recAxesOnDemandAllMs{tok}", pts[-1][1])
-        assert_matches_macro(f"recAxesRegistered{tok}", pts[-1][0])
-        view_macro = "recAxesViewPerBurstMs" + {"N1k": "N1k", "N10k": "N10k"}.get(tok, tok)
-        assert_matches_macro(view_macro, view)
-        lo, hi = c["crossover_median"]["between"]
-        assert any(k == lo for k, _ms in pts) and any(k == hi for k, _ms in pts)
-        for k, ms in pts:
-            rows.append(_row("a", f"{label} | TGMS on demand", k, round(ms, 6), "ms",
-                             f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: per_cell.{cell}.per_k "
-                             "median_ms (per-burst on_demand_ms)"))
-        rows.append(_row("a", f"{label} | view", "any k", round(view, 6), "ms",
+        assert r["crossover"]["reads_only"]["recompute_on_read"]["median"]["kind"] == "interpolated"
+        assert_matches_macro(f"recAxesCrossoverK{tok}", k_tgms)
+        assert_matches_macro(f"recRorCrossoverK{tok}", k_ror)
+        assert_matches_macro(f"recAxesOnDemandAllMs{tok}", tgms[-1][1])
+        assert_matches_macro(f"recAxesRegistered{tok}", tgms[-1][0])
+        assert_matches_macro(f"recRorPerBurstMsK1{tok}", always[0][1])
+        assert_matches_macro(f"recRorPerBurstMsKN{tok}", always[-1][1])
+        assert_matches_macro(f"recAxesViewPerBurstMs{tok}", view)
+        for series, pts, src in (("TGMS on demand", tgms, f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: "
+                                  f"per_cell.{cell}.per_k median_ms (per-burst on_demand_ms)"),
+                                 ("recompute on read", always, f"{relpath(EXTERNAL_AXES_ROR)}: "
+                                  f"per_cell.{cell}.per_k.always.reads_only.median_ms")):
+            for k, ms in pts:
+                rows.append(_row(tag, f"{label} | {series}", k, round(ms, 6), "ms", src))
+        rows.append(_row(tag, f"{label} | view", "any k", round(view, 6), "ms",
                          f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: per_cell.{cell}.view_per_burst."
                          "median_ms (refresh plus publish)"))
-        rows.append(_row("a", f"{label} | crossover", "k*", round(kstar, 6), "reads",
-                         f"recAxesCrossoverK{tok}"))
-        series.append({"label": label, "marker": marker, "style": style, "pts": pts,
-                       "view": view, "kstar": kstar, "kstar_text": v[f"recAxesCrossoverK{tok}"]})
+        rows.append(_row(tag, f"{label} | crossover, TGMS on demand", "k*", round(k_tgms, 6),
+                         "reads", f"recAxesCrossoverK{tok}"))
+        rows.append(_row(tag, f"{label} | crossover, recompute on read", "k*", round(k_ror, 6),
+                         "reads", f"recRorCrossoverK{tok}"))
+        panels.append({"label": label, "tag": tag, "tgms": tgms, "always": always, "view": view,
+                       "k_tgms": k_tgms, "k_ror": k_ror,
+                       "k_tgms_text": v[f"recAxesCrossoverK{tok}"],
+                       "k_ror_text": v[f"recRorCrossoverK{tok}"]})
     assert abs(v["recAxesViewRssMbN10k"] / v["recAxesTgmsRssMbN10k"] - v["recAxesRatioN10k"]) < 1.0
     for n, tok in (("$10^3$", "N1k"), ("$10^4$", "N10k")):
         for side, name in (("view", f"recAxesViewRssMb{tok}"),
                            ("TGMS check process", f"recAxesTgmsRssMb{tok}")):
-            rows.append(_row("b", f"synth {n} | {side}", "resident memory", v[name], "MiB", name))
-    return {"rows": rows, "series": series, "v": v}
+            rows.append(_row("c", f"synth {n} | {side}", "resident memory", v[name], "MiB", name))
+    return {"rows": rows, "panels": panels, "v": v}
 
 
 def write_regime_csv(data: dict) -> str:
@@ -3268,64 +3288,71 @@ def plot_regime(data: dict) -> None:
     _require_mpl()
     with plt.rc_context(PAPER_RC):
         fig = _new_fig("f_regime")
-        gs = fig.add_gridspec(1, 2, width_ratios=[2.7, 1.0])
-        ax = fig.add_subplot(gs[0])
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        ax.set_xlim(0.7, 3.2e4)
-        ax.set_ylim(1.5, 4e5)
-        for axis in (ax.xaxis, ax.yaxis):
-            axis.set_major_formatter(matplotlib.ticker.FuncFormatter(_decade_formatter))
-            axis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([1, 10, 100, 1e3, 1e4]))
-        ax.yaxis.set_major_locator(matplotlib.ticker.FixedLocator([1, 10, 100, 1e3, 1e4, 1e5]))
-        ax.grid(axis="y")
-        for sr in data["series"]:
-            ks = [k for k, _ms in sr["pts"]]
-            ms = [m for _k, m in sr["pts"]]
-            ax.plot(ks, ms, color=C_INCR, lw=0.9, ls=sr["style"], zorder=3)
-            for k, m in sr["pts"]:
-                _point(ax, k, m, C_INCR, sr["marker"], zorder=4)
-            ax.plot([0.7, ks[-1]], [sr["view"], sr["view"]], color=C_DD, lw=0.9,
-                    ls=sr["style"], zorder=2)
-            _point(ax, sr["kstar"], sr["view"], "#000000", "o", hollow=True, ms=4.2, zorder=5)
-            first = sr is data["series"][0]
-            # the crossover's label prints the macro's value, as the text does
-            _note(ax, sr["kstar"] * (1.3 if first else 1 / 1.3),
-                  sr["view"] / 1.35 if first else sr["view"] * 1.4,
-                  f"$k^*$ = {sr['kstar_text']:g}", color="#000000",
-                  ha="left" if first else "right", va="top" if first else "bottom")
-            below = sr["label"].startswith("synth $10^3$")
-            _note(ax, ks[-1] * 1.25, ms[-1] / (1.7 if below else 1.0), sr["label"],
-                  color="#000000", ha="left", va="top" if below else "center")
-        handles = [matplotlib.lines.Line2D([], [], color=C_INCR, lw=0.9, marker="o", ms=MS,
-                                           label="TGMS, on demand"),
-                   matplotlib.lines.Line2D([], [], color=C_DD, lw=0.9,
-                                           label="maintained view, per burst")]
-        ax.legend(handles=handles, loc="upper left")
-        ax.set_xlabel("artifacts read per burst, $k$")
-        ax.set_ylabel("cost per burst (ms)")
-        _panel_tag(ax, "a", "work per burst")
+        gs = fig.add_gridspec(1, 3, width_ratios=[1.25, 1.25, 0.85], wspace=0.38)
+        first_ax = None
+        for i, pn in enumerate(data["panels"]):
+            ax = fig.add_subplot(gs[i], sharey=first_ax)
+            first_ax = first_ax or ax
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            n = pn["tgms"][-1][0]
+            ax.set_xlim(0.7, n * 1.6)
+            ax.set_ylim(2, 4e5)
+            for axis in (ax.xaxis, ax.yaxis):
+                axis.set_major_formatter(matplotlib.ticker.FuncFormatter(_decade_formatter))
+                axis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+            ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator(
+                [1, 10, 100, 1e3] if n < 5e3 else [1, 100, 1e4]))
+            ax.yaxis.set_major_locator(matplotlib.ticker.FixedLocator([10, 1e3, 1e5]))
+            ax.grid(axis="y")
+            for key, color, marker in (("always", C_GLOBAL, "D"), ("tgms", C_INCR, "o")):
+                ks = [k for k, _ms in pn[key]]
+                ms = [m for _k, m in pn[key]]
+                ax.plot(ks, ms, color=color, lw=0.9, zorder=3)
+                for k, m in pn[key]:
+                    _point(ax, k, m, color, marker, ms=MS * 0.8, zorder=4)
+            ax.axhline(pn["view"], color=C_DD, lw=0.9, zorder=2)
+            for kx, text, color, below in ((pn["k_ror"], pn["k_ror_text"], C_GLOBAL, False),
+                                           (pn["k_tgms"], pn["k_tgms_text"], C_INCR, True)):
+                _point(ax, kx, pn["view"], "#000000", "o", hollow=True, ms=3.6, zorder=5)
+                _note(ax, kx * (1.25 if below else 1 / 1.25),
+                      pn["view"] / 1.5 if below else pn["view"] * 1.5, f"{text:g}",
+                      color=color, ha="left" if below else "right",
+                      va="top" if below else "bottom")
+            if i == 0:
+                ax.set_ylabel("cost per burst (ms)")
+                handles = [matplotlib.lines.Line2D([], [], color=C_GLOBAL, lw=0.9, marker="D",
+                                                   ms=MS * 0.8, label="recompute on read"),
+                           matplotlib.lines.Line2D([], [], color=C_INCR, lw=0.9, marker="o",
+                                                   ms=MS * 0.8, label="TGMS on demand"),
+                           matplotlib.lines.Line2D([], [], color=C_DD, lw=0.9,
+                                                   label="maintained view")]
+                ax.legend(handles=handles, loc="upper left", handlelength=1.2,
+                          borderaxespad=0.2, labelspacing=0.2)
+            else:
+                plt.setp(ax.get_yticklabels(), visible=False)
+            ax.set_xlabel("reads per burst, $k$")
+            _panel_tag(ax, pn["tag"], ("$10^3$" if pn["tag"] == "a" else "$10^4$") + " artifacts")
 
-        # (b) standing memory, synth store
+        # (c) standing memory, synth store
         v = data["v"]
-        axb = fig.add_subplot(gs[1])
+        axb = fig.add_subplot(gs[2])
         axb.set_yscale("log")
         axb.set_ylim(10, 2e5)
-        axb.yaxis.set_major_locator(matplotlib.ticker.FixedLocator([10, 100, 1e3, 1e4, 1e5]))
+        axb.yaxis.set_major_locator(matplotlib.ticker.FixedLocator([10, 1e3, 1e5]))
         axb.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(_decade_formatter))
         axb.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         for i, tok in enumerate(("N1k", "N10k")):
             for dx, name, color in ((-0.18, f"recAxesViewRssMb{tok}", C_DD),
                                     (0.18, f"recAxesTgmsRssMb{tok}", C_INCR)):
                 axb.bar(i + dx, v[name], width=0.34, color=color, lw=0)
-        axb.set_xlim(-0.6, 1.6)
+        axb.set_xlim(-0.55, 1.55)
         axb.set_xticks([0, 1], ["$10^3$", "$10^4$"])
         _note(axb, 1.0, v["recAxesViewRssMbN10k"] * 1.6, f"{v['recAxesRatioN10k']:.0f}×",
               color="#000000", ha="center", va="bottom")
-        axb.set_xlabel("artifacts (synth)")
-        axb.set_ylabel("resident memory (MiB)")
-        _panel_tag(axb, "b", "memory")
+        axb.set_xlabel("artifacts")
+        axb.set_ylabel("memory (MiB)", labelpad=1)
+        _panel_tag(axb, "c")
         _savefig_paper(fig, OUT_DIR / "f_regime")
 
 
