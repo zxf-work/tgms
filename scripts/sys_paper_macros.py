@@ -10925,6 +10925,67 @@ def compute_external_r1c(m: Macros) -> None:
             statistics.median(b["global_recompute_wall_ms"] / prearc_nreg[c]
                               for b in prearc_by_cell[c]) for c in cells)
 
+        rows_by_cell = {r["cell_id"]: r for r in r1c_rows}
+        log0 = {rows_by_cell[c]["manifest"]["summary"]["check_cost_curve"][0]["log_bytes"]
+                for c in cells}
+        require(max(log0) - min(log0) < 1000, f"external-v1 R1c: {store} event-log size at "
+                "batch 0 within 1 kB across the store's 9 cells (one base store)")
+        templates = [rows_by_cell[c]["manifest"]["summary"]["narrowing_coverage"]
+                     ["per_template_counts"] for c in cells]
+        require(all(t == templates[0] for t in templates),
+                f"external-v1 R1c: {store} per-template artifact counts equal across its cells")
+        eq(sum(templates[0].values()), r1c_nreg[cells[0]],
+           f"external-v1 R1c: {store} per-template counts sum to n_registered")
+        m.add(f"recStoreLogMb{tok}", f"{min(log0) / 1e6:.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}: {store} "
+              "summary.check_cost_curve[0].log_bytes / 1e6 (the event log before the first "
+              "correction), MB")
+        m.add(f"recTemplatesArtifactsMin{tok}", str(min(templates[0].values())),
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}: {store} fewest registered artifacts "
+              "of any query template (summary.narrowing_coverage.per_template_counts)")
+        m.add(f"recTemplatesArtifactsMax{tok}", str(max(templates[0].values())),
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}: {store} most registered artifacts "
+              "of any query template")
+        if store == "synth-iv-60k":
+            m.add("recQueryTemplates", str(len(templates[0])),
+                  f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}: number of query templates "
+                  "the registered artifacts are drawn from (both stores)")
+        else:
+            eq(len(templates[0]), 13, f"external-v1 R1c: {store} template count")
+        store_speedups = [speedups[c] for c in cells]
+        check_phase = statistics.median(statistics.median(
+            b["arms"]["tgms-L1"]["check_wall_ms"] for b in r1c_by_cell[c]) for c in cells)
+        refresh_phase = statistics.median(statistics.median(
+            b["arms"]["tgms-L1"]["refresh_wall_ms"] for b in r1c_by_cell[c]) for c in cells)
+        arc5_by_cell: dict[str, list[dict]] = {}
+        for b in arc5_batches:
+            arc5_by_cell.setdefault(b["cell_id"], []).append(b)
+        arc5_check_phase = statistics.median(statistics.median(
+            b["arms"]["tgms-L1"]["check_wall_ms"] for b in arc5_by_cell[c]) for c in cells)
+        frozen_phase = {"synth-iv-60k": (50.9, 5201.2, 2680.7),
+                        "collegemsg": (54.3, 514.1, 2963.7)}[store]
+        close(check_phase, frozen_phase[0], 0.051, f"external-v1 R1c README: {store} check phase")
+        close(refresh_phase, frozen_phase[1], 0.051,
+              f"external-v1 R1c README: {store} refresh phase")
+        close(arc5_check_phase, frozen_phase[2], 0.051,
+              f"external-v1 R1c README: {store} fifth-arc check phase")
+        m.add(f"recExt1ControlROneC{tok}SpeedupMin", f"{min(store_speedups):.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: smallest of the {store} grid's 9 N=1,000 "
+              "per-cell speedups (global-recompute / tgms-L1 ttf_p50_ms)")
+        m.add(f"recExt1ControlROneC{tok}SpeedupMax", f"{max(store_speedups):.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: largest of the {store} grid's 9 N=1,000 "
+              "per-cell speedups")
+        m.add(f"recExt1ControlROneCCheckPhaseMs{tok}", f"{check_phase:.0f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)}: median over the {store} grid's 9 "
+              "N=1,000 cells of each cell's median-over-batches tgms-L1 check_wall_ms (the "
+              "check phase of one batch)")
+        m.add(f"recExt1ControlROneCRefreshPhaseMs{tok}", tex_num(round(refresh_phase), 4),
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)}: median over the {store} grid's 9 "
+              "N=1,000 cells of each cell's median-over-batches tgms-L1 refresh_wall_ms (the "
+              "refresh phase of one batch)")
+        m.add(f"recExt1ControlROneCArcFiveCheckPhaseMs{tok}", tex_num(round(arc5_check_phase), 4),
+              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)}: the same check-phase quantity "
+              "in the fifth-arc control -- the \"before\" number")
         m.add(f"recExt1ControlROneC{tok}SpeedupMedian", f"{store_speedup_median:.2f}",
               f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: median over the {store} grid's 9 "
               "N=1,000 cells of arms.global-recompute.ttf_p50_ms / arms.tgms-L1.ttf_p50_ms")
@@ -10962,6 +11023,13 @@ def compute_external_r1c(m: Macros) -> None:
 
     r1c_probe_wall_s = r1c_pc[_ARC5_PROBE_CID]["wall_s"]
     close(r1c_probe_wall_s, 1029.1189031600952, 1e-3, "external-v1 R1c frozen: probe cell wall_s")
+    r1c_probe_speedup = (r1c_pc[_ARC5_PROBE_CID]["arms"]["global-recompute"]["ttf_p50_ms"]
+                         / r1c_pc[_ARC5_PROBE_CID]["arms"]["tgms-L1"]["ttf_p50_ms"])
+    close(r1c_probe_speedup, 139653.9 / 91599.9, 1e-4,
+          "external-v1 R1c README: probe speedup (global-recompute / tgms-L1 p50)")
+    m.add("recExt1ControlROneCProbeSpeedup", f"{r1c_probe_speedup:.2f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: probe cell ({_ARC5_PROBE_CID}) "
+          "arms.global-recompute.ttf_p50_ms / arms.tgms-L1.ttf_p50_ms, sum mode, N=10,000")
     m.add("recExt1ControlROneCProbeWallS", str(round(r1c_probe_wall_s)),
           f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: summary.per_cell[{_ARC5_PROBE_CID!r}].wall_s")
 
@@ -11338,7 +11406,27 @@ def compute_external_withheld_symmetric(m: Macros) -> None:
     require(s["fidelity"]["all_match"] is True,
             f"{where}: the in-order replay reproduces the control run's per-burst counts")
 
+    # the whole registry after arrival: how conservative the check is (flagged
+    # vs changed), equal to the in-order schedule's on-time count for burst 10
+    reg_after = s["registry"]["R11-after-arrival"]
+    flagged_after = reg_after["possibly_stale"]
+    eq(reg_after["false_fresh_log"], 0, f"{where}: registry R11-after-arrival false-fresh")
+    eq(reg_after["fresh"] + flagged_after, reg_after["n"],
+       f"{where}: registry R11-after-arrival fresh + possibly stale == registered")
+    on_time = [b for b in s["fidelity"]["per_burst"] if b["epoch"] == s["held_epoch"]]
+    eq(len(on_time), 1, f"{where}: fidelity has one row for the held epoch")
+    if on_time:
+        eq(on_time[0]["invalidated_l0"], flagged_after,
+           f"{where}: flagged after late arrival == flagged when the same burst arrives on time")
+    require(flagged_after >= affected, f"{where}: the check flags at least every changed artifact")
+
     m.add("recWithheldSymAffected", affected, f"{where}: summary.affected")
+    m.add("recWithheldSymFlaggedAfterArrival", flagged_after,
+          f"{where}: summary.registry.R11-after-arrival.possibly_stale -- artifacts of the whole "
+          "registry flagged at the first check after the late correction lands (the "
+          "conservative check: flagged, against recWithheldSymAffected changed)")
+    m.add("recWithheldSymRegistered", reg_after["n"],
+          f"{where}: summary.registry.R11-after-arrival.n -- registered artifacts on the cell")
     m.add("recWithheldSymTgmsFreshBeforeArrival", fresh_before,
           f"{where}: summary.tgms_fresh_before_arrival -- affected artifacts reported FRESH at "
           "the burst-10 read point, the correction not yet in the log")
@@ -11443,6 +11531,13 @@ def compute_axes_standing_state(m: Macros) -> None:
           "imports, / registered, KiB")
     m.add("recAxesRatioN10k", str(round(ratio10k)),
           f"{where}: {AXES_N10K_CELL} view VmRSS / TGMS check-process VmRSS, after burst 1")
+    # the process that also holds the storage engine (refresh needs it), for context
+    harness_kb = by[("tgms", AXES_N10K_CELL)]["harness_process"]["after_burst_1"]["vm_rss_kb"]
+    harness_ratio = hi["view_kb_b1"] / harness_kb
+    close(harness_ratio, 194.0, 0.5, f"{where}: README's view / TGMS harness process at 10^4")
+    m.add("recAxesHarnessRatioN10k", str(round(harness_ratio)),
+          f"{where}: {AXES_N10K_CELL} view VmRSS / TGMS harness-process VmRSS (which also holds "
+          "the storage engine), after burst 1")
     m.add("recAxesViewArrangedRecordsN1k", tex_num(lo["view_arranged_b1"], 4),
           f"{where}: {AXES_N1K_CELL} records in the view's arrangements after burst 1")
     m.add("recAxesViewArrangedRecordsN10k", tex_num(hi["view_arranged_b1"], 4),
@@ -11527,8 +11622,12 @@ def compute_axes_on_demand(m: Macros) -> None:
         if kind_mean == "interpolated":
             close_rel(pc[cell_id]["crossover_mean"]["k_star"], kstar_mean, 1e-12,
                       f"{w}: k* (mean basis)")
+        n_reg = {r["n_registered"] for r in rows if r["cell_id"] == cell_id}
+        eq(len(n_reg), 1, f"{w}: one registered count across the cell's runs")
         out[cell_id] = {"kind": kind, "k": kstar, "per_read_at_n": per_read_at_n,
-                        "view_median": v_med}
+                        "view_median": v_med, "all_median": med[-1], "k1_median": med[0],
+                        "n_registered": min(n_reg) if n_reg else 0}
+        require(grid[0] == 1, f"{w}: the k grid starts at 1")
 
     first = [r["on_demand_ms"] for r in rows if r["k"] == 1 and r["on_demand_refreshes"] == 0]
     require(len(first) > 0, f"{where}: k = 1 batches without a refresh exist")
@@ -11558,6 +11657,23 @@ def compute_axes_on_demand(m: Macros) -> None:
           f"{relpath(EXTERNAL_IVM_ROWS)}: {AXES_N1K_CELL} median refresh_plus_publish_ms")
     m.add("recAxesViewPerBurstMsN10k", tex_num(round(hi["view_median"]), 4),
           f"{relpath(EXTERNAL_IVM_ROWS)}: {AXES_N10K_CELL} median refresh_plus_publish_ms")
+    m.add("recAxesViewPerBurstMsCollegeMsg", f"{col['view_median']:.1f}",
+          f"{relpath(EXTERNAL_IVM_ROWS)}: {AXES_COLLEGEMSG_CELL} median refresh_plus_publish_ms")
+    for tok, cell, d in (("CollegeMsg", AXES_COLLEGEMSG_CELL, col), ("N1k", AXES_N1K_CELL, lo),
+                         ("N10k", AXES_N10K_CELL, hi)):
+        m.add(f"recAxesOnDemandAllMs{tok}", tex_num(round(d["all_median"]), 4),
+              f"{where}: {cell} at k = N (every registered artifact read), median over "
+              "bursts of on_demand_ms")
+        m.add(f"recAxesAllReadRatio{tok}", str(round(d["all_median"] / d["view_median"])),
+              f"{where}: {cell} at k = N, median on_demand_ms / the view's median "
+              f"refresh_plus_publish_ms ({relpath(EXTERNAL_IVM_ROWS)})")
+        m.add(f"recAxesRegistered{tok}", tex_num(d["n_registered"], 4),
+              f"{where}: {cell} n_registered (the artifacts both systems hold)")
+    k1 = [d["k1_median"] for d in (col, lo, hi)]
+    m.add("recAxesOnDemandKOneMsMin", f"{min(k1):.1f}",
+          f"{where}: smallest of the three cells' median on_demand_ms at k = 1")
+    m.add("recAxesOnDemandKOneMsMax", f"{max(k1):.1f}",
+          f"{where}: largest of the three cells' median on_demand_ms at k = 1")
 
 
 # --------------------------------------------------------------------------
