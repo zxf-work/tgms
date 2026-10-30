@@ -78,6 +78,11 @@ skeleton --
       check-path changes (P-ENG2); recExt1ControlROneC* mirror the recExt1ControlArcFive*
       names, plus recExt1RatioGrROneC*, recExt1SpeedupLOneROneC*; no verdict macro
       except that recFaultTrials now prints its thousands separator (3{,}102)
+  C7-COARSE  benchmarks/external-v1/tgms-control-2026-10-30-coarse.json (+ rows, batches,
+      checks), compute_external_coarse: the R1c loop's 18 N = 10^3 cells replayed with
+      --leaf-scopes storm-v1 (P-COARSE); recExt1ControlCoarse{Synth,CollegeMsg}Speedup
+      {Median,Min,Max}, recExt1ControlCoarseNominatedShare*, recCoarseNarrowingOps; the
+      built-in control against R1c is asserted; no verdict macro
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
       benchmarks/d160-collegemsg-v1/{manifest,rows}-2026-09-14.json, the
@@ -678,6 +683,22 @@ EXTERNAL_TGMS_CONTROL_R1C_BATCHES_SOURCES = (
 EXTERNAL_TGMS_CONTROL_R1C_CHECKS = EXTERNAL_V1 / "tgms-control-checks-2026-10-30-r1c.jsonl"
 EXTERNAL_TGMS_CONTROL_R1C_CHECKS_SOURCES = (
     EXTERNAL_V1 / "tgms-control-checks-2026-10-30-r1c.SOURCES.txt")
+
+# Lane COARSE (2026-10-30, pre-registration P-COARSE): the R1c loop (18 N = 10^3
+# cells, no probe) replayed with `--leaf-scopes storm-v1`, the lineage the first
+# storm campaign ran on (three derived scopes, ten operators on the coarse
+# scope). See benchmarks/external-v1/README.md's "Control re-measurement with the
+# coarse lineage (COARSE, 2026-10-30)" section.
+EXTERNAL_TGMS_CONTROL_COARSE = EXTERNAL_V1 / "tgms-control-2026-10-30-coarse.json"
+EXTERNAL_TGMS_CONTROL_COARSE_ROWS = EXTERNAL_V1 / "tgms-control-2026-10-30-coarse-rows.jsonl"
+EXTERNAL_TGMS_CONTROL_COARSE_BATCHES = (
+    EXTERNAL_V1 / "tgms-control-2026-10-30-coarse-batches.jsonl")
+EXTERNAL_TGMS_CONTROL_COARSE_BATCHES_SOURCES = (
+    EXTERNAL_V1 / "tgms-control-2026-10-30-coarse-batches.SOURCES.txt")
+EXTERNAL_TGMS_CONTROL_COARSE_CHECKS = (
+    EXTERNAL_V1 / "tgms-control-checks-2026-10-30-coarse.jsonl")
+EXTERNAL_TGMS_CONTROL_COARSE_CHECKS_SOURCES = (
+    EXTERNAL_V1 / "tgms-control-checks-2026-10-30-coarse.SOURCES.txt")
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -11174,6 +11195,162 @@ def compute_external_r1c(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane COARSE (2026-10-30, pre-registration P-COARSE, frozen
+# 2026-10-30T12:03:28Z) -- the R1c loop's 18 N = 10^3 cells replayed with
+# `--leaf-scopes storm-v1` on the same final build. The built-in control is
+# asserted here, not assumed: the oracle's `changed` counts (the TGMS arms'
+# false-fresh and false-stale sums are tied to them) and the configurations that
+# do not read the lineage (global-recompute, entity-touch, row-touch,
+# window-overlap) must equal R1c's on every batch; only the TGMS arms'
+# nominated counts and timings may move. No verdict macro.
+# --------------------------------------------------------------------------
+
+
+def compute_external_coarse(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_TGMS_CONTROL_COARSE, EXTERNAL_TGMS_CONTROL_COARSE_ROWS,
+                 EXTERNAL_TGMS_CONTROL_COARSE_BATCHES,
+                 EXTERNAL_TGMS_CONTROL_COARSE_BATCHES_SOURCES,
+                 EXTERNAL_TGMS_CONTROL_COARSE_CHECKS,
+                 EXTERNAL_TGMS_CONTROL_COARSE_CHECKS_SOURCES,
+                 EXTERNAL_TGMS_CONTROL_R1C, EXTERNAL_TGMS_CONTROL_R1C_ROWS,
+                 EXTERNAL_TGMS_CONTROL_R1C_BATCHES):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for "
+           f"{path.name}")
+
+    coarse = json.loads(EXTERNAL_TGMS_CONTROL_COARSE.read_text(encoding="utf-8"))
+    coarse_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_COARSE_ROWS)
+    coarse_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_COARSE_BATCHES)
+    coarse_checks = load_jsonl(EXTERNAL_TGMS_CONTROL_COARSE_CHECKS)
+    r1c = json.loads(EXTERNAL_TGMS_CONTROL_R1C.read_text(encoding="utf-8"))
+    r1c_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_R1C_ROWS)
+    r1c_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)
+
+    eq(coarse["n_cells"], 18, f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: n_cells")
+    eq(len(coarse["summary"]["per_cell"]), 18,
+       f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: len(summary.per_cell)")
+    eq(len(coarse_rows), 18, f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}: line count")
+    eq(len(coarse_batches), 360, f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_BATCHES)}: line count "
+       "(18 end-to-end cells x 20 batches)")
+    eq(len(coarse_checks), 360, f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_CHECKS)}: line count")
+    eq({r["control"] for r in coarse_checks}, {"2026-10-30-coarse"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_CHECKS)}: control field value")
+    eq({c["check_cache"] for c in coarse["summary"]["per_cell"]}, {"chain"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: every cell ran --check-cache chain")
+    eq({r["t1_equality"]["verdict"] for r in coarse_rows}, {"L2"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}: every cell's equality verdict is L2")
+    eq({b["ttf_mode"] for b in coarse_batches}, {"end-to-end"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_BATCHES)}: ttf_mode values")
+
+    # the lineage the cells ran on: storm-v1, ten later entries removed, the
+    # three kept; the manifest of every cell says so
+    kept = ["aggregate_events", "entity_history", "neighborhood_evolution"]
+    for r in coarse_rows:
+        cfg = r["manifest"]["config"]
+        eq((cfg.get("leaf_scopes"), cfg.get("leaf_scopes_removed"),
+            sorted(cfg.get("leaf_scopes_kept_ops", []))), ("storm-v1", 10, kept),
+           f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}: {r['cell_id']} manifest "
+           "config.leaf_scopes / leaf_scopes_removed / leaf_scopes_kept_ops")
+    narrowing_ops = len(coarse_rows[0]["manifest"]["config"]["leaf_scopes_kept_ops"])
+
+    coarse_pc = {c["cell_id"]: c for c in coarse["summary"]["per_cell"]}
+    r1c_pc = {c["cell_id"]: c for c in r1c["summary"]["per_cell"]}
+    cells_all = sorted(coarse_pc)
+    eq(cells_all, sorted(c for c in r1c_pc if c != _ARC5_PROBE_CID),
+       f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: cell_id set is R1c's 18 N=1,000 cells")
+
+    # built-in control, 1: per batch, every field that does not move with the
+    # lineage is equal to R1c's (counts of the four baselines; the batch's
+    # correction identity is in the raw rows and compared in the README)
+    r1c_key = {(b["cell_id"], b["batch_index"]): b for b in r1c_batches}
+    coarse_key = {(b["cell_id"], b["batch_index"]): b for b in coarse_batches}
+    eq(set(coarse_key), {k for k in r1c_key if k[0] != _ARC5_PROBE_CID},
+       "external-v1 COARSE: (cell_id, batch_index) set equals R1c's over the 18 cells")
+    count_fields = ("false_fresh_count", "false_stale_count", "invalidated_count")
+    fixed_arms = ("global-recompute", "entity-touch", "row-touch", "window-overlap")
+    fixed_mismatches = sum(
+        1 for k, b in coarse_key.items() for arm in fixed_arms for f in count_fields
+        if b["arms"][arm][f] != r1c_key[k]["arms"][arm][f])
+    eq(fixed_mismatches, 0, "external-v1 COARSE: per-batch counts of the global-recompute, "
+       "entity-touch, row-touch and window-overlap arms differing from R1c's, over 360 batches")
+    # the oracle's changed set is common to every arm: false-fresh + (nominated
+    # and changed) is the changed count, and the L0 and L1 arms nominate alike
+    for k, b in coarse_key.items():
+        eq(b["arms"]["tgms-L0"]["false_fresh_count"], 0,
+           f"external-v1 COARSE {k}: tgms-L0 false-fresh count (soundness)")
+        eq(b["arms"]["tgms-L1"]["false_fresh_count"], 0,
+           f"external-v1 COARSE {k}: tgms-L1 false-fresh count (soundness)")
+        require(b["arms"]["tgms-L1"]["invalidated_count"]
+                >= r1c_key[k]["arms"]["tgms-L1"]["invalidated_count"],
+                f"external-v1 COARSE {k}: the coarse lineage nominates at least R1c's set "
+                "(widening only)")
+    eq(sorted((r["cell_id"], r["t1_equality"]["n_batches_all_match"],
+               r["t1_equality"]["n_batches_compared"]) for r in coarse_rows),
+       sorted((r["cell_id"], r["t1_equality"]["n_batches_all_match"],
+               r["t1_equality"]["n_batches_compared"]) for r in r1c_rows
+              if r["cell_id"] != _ARC5_PROBE_CID),
+       "external-v1 COARSE: per-cell equality batch-match counts (class, generator, "
+       "placement and changed against the export bundle) equal R1c's")
+    eq(sorted((r["cell_id"], r["t1_equality"]["t1_eventlog_sha256"]) for r in coarse_rows),
+       sorted((r["cell_id"], r["t1_equality"]["t1_eventlog_sha256"]) for r in r1c_rows
+              if r["cell_id"] != _ARC5_PROBE_CID),
+       "external-v1 COARSE: each cell's final event-log sha256 equals R1c's (same corrections "
+       "applied)")
+
+    def by_cell(rows):
+        out: dict[str, list[dict]] = {}
+        for r in rows:
+            out.setdefault(r["cell_id"], []).append(r)
+        return out
+
+    coarse_check_by_cell = by_cell(coarse_checks)
+    coarse_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in coarse_rows}
+    r1c_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in r1c_rows}
+    eq(coarse_nreg, {c: r1c_nreg[c] for c in cells_all},
+       "external-v1 COARSE: n_registered per cell equals R1c's")
+
+    speedups = {c: coarse_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+                / coarse_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells_all}
+    for store in ("synth-iv-60k", "collegemsg"):
+        tok = _STORM_V2_STORE_TOKEN[store]
+        cells = [c for c in cells_all if coarse_pc[c]["store"] == store]
+        eq(len(cells), 9, f"external-v1 COARSE: {store} cell count")
+        sp = [speedups[c] for c in cells]
+        share = statistics.median(
+            statistics.median(r["candidate_survivors"] / coarse_nreg[c]
+                              for r in coarse_check_by_cell[c]) for c in cells)
+        frozen = {"synth-iv-60k": (1.0609349452748098, 1.0515151672271268,
+                                    1.0720864952201028, 0.6708144796380091),
+                  "collegemsg": (1.1763244265562067, 1.1660505410607473,
+                                  1.2084904362623725, 0.6948608137044968)}[store]
+        for got, want, what in zip((statistics.median(sp), min(sp), max(sp), share), frozen,
+                                   ("median speedup", "min speedup", "max speedup",
+                                    "median nominated share")):
+            close(got, want, 1e-9, f"external-v1 COARSE frozen: {store} {what}")
+        m.add(f"recExt1ControlCoarse{tok}SpeedupMedian", f"{statistics.median(sp):.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: median over the {store} grid's 9 "
+              "N=1,000 cells of arms.global-recompute.ttf_p50_ms / arms.tgms-L1.ttf_p50_ms, "
+              "storm-v1 lineage (--leaf-scopes storm-v1)")
+        m.add(f"recExt1ControlCoarse{tok}SpeedupMin", f"{min(sp):.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: smallest of the {store} grid's 9 "
+              "per-cell speedups, storm-v1 lineage")
+        m.add(f"recExt1ControlCoarse{tok}SpeedupMax", f"{max(sp):.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE)}: largest of the {store} grid's 9 "
+              "per-cell speedups, storm-v1 lineage")
+        m.add(f"recExt1ControlCoarseNominatedShare{tok}", f"{share:.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_CHECKS)} / "
+              f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}: median over the {store} grid's 9 "
+              "N=1,000 cells of that cell's median-over-batches (candidate_survivors / "
+              "manifest.config.n_registered), the share of the registered population the "
+              "lineage nominates for a check, as a fraction")
+    m.add("recCoarseNarrowingOps", str(narrowing_ops),
+          f"{relpath(EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}: len(manifest.config."
+          "leaf_scopes_kept_ops), the operators that keep a derived scope under "
+          "--leaf-scopes storm-v1 (of the 14 query templates)")
+
+
+# --------------------------------------------------------------------------
 # Lane C3-records (2026-10-09) -- re-run of the ten Neo4j-recompute cells
 # affected by the single-artifact temporal_paths defect (storm-000911: a
 # generated path with src == dst, cycling back through the source node;
@@ -12072,6 +12249,7 @@ def main() -> int:
     compute_ext_sum_mode(m)
     compute_external_arc5(m)
     compute_external_r1c(m)
+    compute_external_coarse(m)
     compute_external_rerun_n1b(m)
     compute_external_withheld_hold(m)
     compute_external_withheld_symmetric(m)
