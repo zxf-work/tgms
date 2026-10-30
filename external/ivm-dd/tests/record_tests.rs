@@ -45,6 +45,7 @@ fn empty_outcome(epoch0_digests: HashMap<String, String>, bursts: Vec<BurstMeasu
         n_unmapped: HashMap::new(),
         process_rss_kb_end: None,
         valid_time_extent: (0, 1),
+        state_checkpoints: Vec::new(),
     }
 }
 

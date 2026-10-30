@@ -22,6 +22,12 @@ enum Cmd {
         cell_dir: PathBuf,
         #[arg(long)]
         out: PathBuf,
+        /// Also write `state-report.json`: resident memory (VmRSS/VmHWM) and
+        /// the dataflow's arrangement record counts after the bundle load,
+        /// after epoch 0 + registration, after burst 1 and at the end. Adds
+        /// logging work to every batch: never use it for a timed run.
+        #[arg(long)]
+        state_report: bool,
     },
     /// Epoch-0 shape test: this crate's digest vs the export's own oracle digest, per family.
     ShapeTest { cell_dir: PathBuf },
@@ -101,7 +107,7 @@ const DEVIATIONS: &[&str] = &[
 fn main() {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Run { cell_dir, out } => cmd_run(&cell_dir, &out),
+        Cmd::Run { cell_dir, out, state_report } => cmd_run(&cell_dir, &out, state_report),
         Cmd::ShapeTest { cell_dir } => cmd_shape_test(&cell_dir),
         Cmd::Withheld { cell_dir, out } => cmd_withheld(&cell_dir, &out),
     }
@@ -114,7 +120,7 @@ fn load_bundle(cell_dir: &Path) -> CellBundle {
     })
 }
 
-fn cmd_run(cell_dir: &Path, out: &Path) {
+fn cmd_run(cell_dir: &Path, out: &Path, state_report: bool) {
     let mut log = Vec::new();
     log.push(format!("[{}] loading {}", now_utc(), cell_dir.display()));
     let bundle = load_bundle(cell_dir);
@@ -127,9 +133,19 @@ fn cmd_run(cell_dir: &Path, out: &Path) {
         bundle.artifacts.len()
     ));
 
+    let cp_loaded = state_report.then(|| {
+        let cp = dataflow::memory_checkpoint("after_bundle_load");
+        eprintln!("STATE {}", serde_json::to_string(&cp).unwrap_or_default());
+        cp
+    });
+
     let host_start = host_snapshot("start");
     let t0 = Instant::now();
-    let outcome = dataflow::run(cl, bundle.artifacts.clone());
+    let outcome = if state_report {
+        dataflow::run_with_state_report(cl, bundle.artifacts.clone())
+    } else {
+        dataflow::run(cl, bundle.artifacts.clone())
+    };
     let wall_s = t0.elapsed().as_secs_f64();
     let host_end = host_snapshot("end");
     log.push(format!(
@@ -157,6 +173,29 @@ fn cmd_run(cell_dir: &Path, out: &Path) {
         std::process::exit(2);
     });
     println!("wrote {}", out.join("result.json").display());
+
+    if let Some(cp_loaded) = cp_loaded {
+        let mut checkpoints = vec![cp_loaded];
+        checkpoints.extend(outcome.state_checkpoints.iter().cloned());
+        let report = serde_json::json!({
+            "cell_id": bundle.cell_id,
+            "artifacts": bundle.artifacts.len(),
+            "bursts": outcome.bursts.len(),
+            "workers": 1,
+            "load_ms": outcome.load_ms,
+            "checkpoints": checkpoints,
+            "note": "arranged_records: live records in every trace spine, from differential's \
+                     differential/arrange log (batch, completed merge and drop events); \
+                     batcher_*: the merge batchers' own signed accounting; VmRSS/VmHWM from \
+                     /proc/self/status. Logging adds work per batch: not a timed run.",
+        });
+        let path = out.join("state-report.json");
+        std::fs::write(&path, serde_json::to_string_pretty(&report).unwrap() + "\n").unwrap_or_else(|e| {
+            eprintln!("failed to write {}: {e}", path.display());
+            std::process::exit(2);
+        });
+        println!("wrote {}", path.display());
+    }
 }
 
 fn crate_root() -> PathBuf {

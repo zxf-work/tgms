@@ -56,6 +56,109 @@ pub struct RunOutcome {
     pub process_rss_kb_end: Option<u64>,
     /// The valid-time extent `[lo, hi)` the 256 routing buckets divide.
     pub valid_time_extent: (i64, i64),
+    /// `--state-report` only (empty otherwise, and never written into
+    /// `result.json`): resident memory and the dataflow's own arrangement
+    /// accounting at fixed points of the run (`StateCheckpoint`).
+    pub state_checkpoints: Vec<StateCheckpoint>,
+}
+
+/// One `--state-report` reading: the process's resident memory
+/// (`/proc/self/status` `VmRSS`/`VmHWM`) and the dataflow's own state
+/// accounting, from differential's `differential/arrange` log: records
+/// held in every arrangement (trace spines) and in the merge batchers
+/// in front of them.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct StateCheckpoint {
+    pub label: String,
+    pub vm_rss_kb: Option<u64>,
+    pub vm_hwm_kb: Option<u64>,
+    /// `None` at checkpoints taken before the dataflow exists.
+    pub arranged_records: Option<i64>,
+    /// Operators (spines) holding a non-zero record count.
+    pub arrangements_nonempty: Option<usize>,
+    /// Operators that ever logged a batch.
+    pub arrangements_seen: Option<usize>,
+    pub batcher_records: Option<i64>,
+    pub batcher_size_bytes: Option<i64>,
+    pub batcher_capacity_bytes: Option<i64>,
+}
+
+/// Live-record accounting over differential's arrangement log events, the
+/// same bookkeeping differential's own logging is designed for: a batch
+/// adds its length to its operator, a completed merge replaces its two
+/// inputs' lengths with the merged length, a drop removes a batch;
+/// batcher events carry signed record/size/capacity changes directly.
+#[derive(Default)]
+struct ArrangementAccount {
+    records: HashMap<usize, i64>,
+    batcher_records: HashMap<usize, i64>,
+    batcher_size: HashMap<usize, i64>,
+    batcher_capacity: HashMap<usize, i64>,
+}
+
+impl ArrangementAccount {
+    fn apply(&mut self, ev: &differential_dataflow::logging::DifferentialEvent) {
+        use differential_dataflow::logging::DifferentialEvent as E;
+        match ev {
+            E::Batch(b) => *self.records.entry(b.operator).or_insert(0) += b.length as i64,
+            E::Merge(m) => {
+                if let Some(merged) = m.complete {
+                    let e = self.records.entry(m.operator).or_insert(0);
+                    *e -= (m.length1 + m.length2) as i64;
+                    *e += merged as i64;
+                }
+            }
+            E::Drop(d) => *self.records.entry(d.operator).or_insert(0) -= d.length as i64,
+            E::Batcher(b) => {
+                *self.batcher_records.entry(b.operator).or_insert(0) += b.records_diff as i64;
+                *self.batcher_size.entry(b.operator).or_insert(0) += b.size_diff as i64;
+                *self.batcher_capacity.entry(b.operator).or_insert(0) += b.capacity_diff as i64;
+            }
+            _ => {}
+        }
+    }
+}
+
+/// `VmRSS`/`VmHWM` (kB) of this process.
+pub fn read_rss_hwm_kb() -> (Option<u64>, Option<u64>) {
+    let Ok(status) = std::fs::read_to_string("/proc/self/status") else { return (None, None) };
+    let field = |name: &str| {
+        status.lines().find_map(|l| l.strip_prefix(name).and_then(|r| r.split_whitespace().next()?.parse().ok()))
+    };
+    (field("VmRSS:"), field("VmHWM:"))
+}
+
+/// A checkpoint with resident memory only (before the dataflow exists).
+pub fn memory_checkpoint(label: &str) -> StateCheckpoint {
+    let (vm_rss_kb, vm_hwm_kb) = read_rss_hwm_kb();
+    StateCheckpoint {
+        label: label.to_string(), vm_rss_kb, vm_hwm_kb, arranged_records: None,
+        arrangements_nonempty: None, arrangements_seen: None, batcher_records: None,
+        batcher_size_bytes: None, batcher_capacity_bytes: None,
+    }
+}
+
+fn state_checkpoint(
+    label: &str,
+    worker: &timely::worker::Worker,
+    acct: &Rc<RefCell<ArrangementAccount>>,
+) -> StateCheckpoint {
+    // Flush the shared log buffer so every event logged so far is counted.
+    if let Some(logger) = worker
+        .logger_for::<differential_dataflow::logging::DifferentialEventBuilder>("differential/arrange")
+    {
+        logger.flush();
+    }
+    let a = acct.borrow();
+    let mut cp = memory_checkpoint(label);
+    cp.arranged_records = Some(a.records.values().sum());
+    cp.arrangements_nonempty = Some(a.records.values().filter(|v| **v != 0).count());
+    cp.arrangements_seen = Some(a.records.len());
+    cp.batcher_records = Some(a.batcher_records.values().sum());
+    cp.batcher_size_bytes = Some(a.batcher_size.values().sum());
+    cp.batcher_capacity_bytes = Some(a.batcher_capacity.values().sum());
+    eprintln!("STATE {}", serde_json::to_string(&cp).unwrap_or_default());
+    cp
 }
 
 fn read_rss_kb() -> Option<u64> {
@@ -72,7 +175,43 @@ fn read_rss_kb() -> Option<u64> {
 /// returning the per-burst measurements. Runs on a single timely worker
 /// (`timely::Config::thread()`), the scored configuration.
 pub fn run(changelog: Changelog, artifacts: Vec<ArtifactSpec>) -> RunOutcome {
+    run_opts(changelog, artifacts, false)
+}
+
+/// `run`, plus `--state-report`'s checkpoints (`RunOutcome::state_checkpoints`):
+/// after epoch 0 is loaded and every artifact registered, after burst 1,
+/// and at the end. Registering the arrangement logger adds work to every
+/// batch, so a state-report run is never a timed run.
+pub fn run_with_state_report(changelog: Changelog, artifacts: Vec<ArtifactSpec>) -> RunOutcome {
+    run_opts(changelog, artifacts, true)
+}
+
+fn run_opts(changelog: Changelog, artifacts: Vec<ArtifactSpec>, state_report: bool) -> RunOutcome {
     let guards = timely::execute(timely::Config::thread(), move |worker| -> RunOutcome {
+        // Must be registered before any arrangement is built: each operator
+        // fetches the logger once, at construction.
+        let acct: Option<Rc<RefCell<ArrangementAccount>>> = if state_report {
+            let acct = Rc::new(RefCell::new(ArrangementAccount::default()));
+            let sink = Rc::clone(&acct);
+            if let Some(mut reg) = worker.log_register() {
+                reg.insert::<differential_dataflow::logging::DifferentialEventBuilder, _>(
+                    "differential/arrange",
+                    move |_time, data| {
+                        if let Some(events) = data {
+                            let mut a = sink.borrow_mut();
+                            for (_t, ev) in events.iter() {
+                                a.apply(ev);
+                            }
+                            events.clear();
+                        }
+                    },
+                );
+            }
+            Some(acct)
+        } else {
+            None
+        };
+        let mut state_checkpoints: Vec<StateCheckpoint> = Vec::new();
         let mut arts: Vec<Art> = Vec::new();
         let mut families_present: HashSet<Family> = HashSet::new();
         let mut n_unmapped: HashMap<String, usize> = HashMap::new();
@@ -160,6 +299,9 @@ pub fn run(changelog: Changelog, artifacts: Vec<ArtifactSpec>) -> RunOutcome {
             .map(|(k, v)| (k.clone(), crate::digest::sha256_hex(v)))
             .collect();
         changed.borrow_mut().clear();
+        if let Some(a) = &acct {
+            state_checkpoints.push(state_checkpoint("after_load_and_registration", worker, a));
+        }
 
         // ---- bursts 1..N ---------------------------------------------------
         let mut bursts = Vec::with_capacity(changelog.updates.len());
@@ -219,6 +361,14 @@ pub fn run(changelog: Changelog, artifacts: Vec<ArtifactSpec>) -> RunOutcome {
                 artifacts_refreshed: changed_names,
                 digests,
             });
+            if bursts.len() == 1 {
+                if let Some(a) = &acct {
+                    state_checkpoints.push(state_checkpoint("after_burst_1", worker, a));
+                }
+            }
+        }
+        if let Some(a) = &acct {
+            state_checkpoints.push(state_checkpoint("end", worker, a));
         }
 
         RunOutcome {
@@ -229,6 +379,7 @@ pub fn run(changelog: Changelog, artifacts: Vec<ArtifactSpec>) -> RunOutcome {
             n_unmapped,
             process_rss_kb_end: read_rss_kb(),
             valid_time_extent: (bk.lo, bk.hi),
+            state_checkpoints,
         }
     })
     .expect("timely execution failed");
