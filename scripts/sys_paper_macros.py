@@ -53,6 +53,11 @@ skeleton --
       (prediction not supported, falsifier not triggered; a batch-composition artifact);
       recShrink*, recProbeSpeedupPerBatch*, recProbeExpensiveBatches,
       recStormV3N1kSpeedupPerBatch*, recStormV3N1kExpensiveBatchShare
+  C7-AXES  benchmarks/external-v1/axes-standing-state-2026-10-30.json (+ rows),
+      compute_axes_standing_state: P-AXES axis A, the maintained view's resident
+      memory vs TGMS's registry and check process for the same artifacts;
+      recAxesViewRssMb*, recAxesTgmsRssMb*, recAxesTgmsRegistry{,Mem}KbPerArtifact,
+      recAxesRatioN10k, recAxesViewArrangedRecords*
       except that recFaultTrials now prints its thousands separator (3{,}102)
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
@@ -566,6 +571,14 @@ EXTERNAL_IVM_WITHHELD_HOLD = EXTERNAL_V1 / "ivm-differential-2026-10-09-withheld
 # "Symmetric withheld correction (2026-10-29)" section.
 EXTERNAL_WITHHELD_SYM = EXTERNAL_V1 / "withheld-symmetric-2026-10-29.json"
 EXTERNAL_WITHHELD_SYM_ROWS = EXTERNAL_V1 / "withheld-symmetric-2026-10-29-rows.jsonl"
+# P-AXES axis A (2026-10-30, frozen 2026-10-30T00:50:31Z): the standing state of
+# the maintained view (ivm-dd --state-report) vs TGMS's registry and check
+# process for the same registered artifacts (scripts/axes_standing_state.py;
+# assembled by scripts/axes_standing_state_record.py). See
+# benchmarks/external-v1/README.md's "Standing state: the maintained view vs
+# the registry (P-AXES axis A, 2026-10-30)" section.
+EXTERNAL_AXES_STANDING = EXTERNAL_V1 / "axes-standing-state-2026-10-30.json"
+EXTERNAL_AXES_STANDING_ROWS = EXTERNAL_V1 / "axes-standing-state-2026-10-30-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 # Lane W2af: the per-cell equality-manifest sidecar (never read by any
 # function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
@@ -11021,6 +11034,105 @@ def compute_external_withheld_symmetric(m: Macros) -> None:
           "although recomputing over the log gives another answer")
 
 
+AXES_N1K_CELL = "synth-iv-60k-c1-none-n1000-s0"
+AXES_N10K_CELL = "synth-iv-60k-c1-none-n10000-s0"
+
+
+def _axes_cell_from_rows(view: dict, tgms: dict) -> dict:
+    """Recompute one cell's standing-state readings from its two rows."""
+    cps = {c["label"]: c for c in view["checkpoints"]}
+    chk = tgms["check_process"]
+    n = tgms["n_registered"]
+    reg_kb = chk["after_registry_load"]["vm_rss_kb"]
+    return {
+        "n": n, "view_n": view["n_registered"], "workers": view["workers"],
+        "view_kb_reg": cps["after_load_and_registration"]["vm_rss_kb"],
+        "view_kb_b1": cps["after_burst_1"]["vm_rss_kb"],
+        "view_arranged_b1": cps["after_burst_1"]["arranged_records"],
+        "tgms_kb_reg": reg_kb,
+        "tgms_kb_chk": chk["after_check_pass"]["vm_rss_kb"],
+        "tgms_kb_peak": chk["after_check_pass"]["vm_hwm_kb"],
+        "tgms_kb_imports": chk["after_imports"]["vm_rss_kb"],
+        "registry_bytes": tgms["registration"]["registry_bytes"],
+        "fold_entries": tgms["registration"]["fold"]["entries"],
+        "check_fold": chk["fold"],
+        "mem_kb": reg_kb - chk["after_imports"]["vm_rss_kb"],
+    }
+
+
+def compute_axes_standing_state(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_AXES_STANDING, EXTERNAL_AXES_STANDING_ROWS):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry")
+    record = json.loads(EXTERNAL_AXES_STANDING.read_text(encoding="utf-8"))
+    where = relpath(EXTERNAL_AXES_STANDING)
+    eq(record["config"]["campaign"], "axes-standing-state", f"{where}: config.campaign")
+    rows = load_jsonl(EXTERNAL_AXES_STANDING_ROWS)
+    eq(record["result_digest"],
+       hashlib.sha256(json.dumps(rows, sort_keys=True).encode("utf-8")).hexdigest(),
+       f"{where}: result_digest == sha256 of the rows")
+    by = {(r["configuration"], r["cell_id"]): r for r in rows}
+    per_cell = record["summary"]["per_cell"]
+    cells: dict[str, dict] = {}
+    for cell_id, stated in per_cell.items():
+        c = _axes_cell_from_rows(by[("ivm-dd", cell_id)], by[("tgms", cell_id)])
+        cells[cell_id] = c
+        w = f"{where}: {cell_id}"
+        # the same population on both sides, and the fold is one entry per artifact
+        eq(c["view_n"], c["n"], f"{w}: the view holds TGMS's registered artifacts")
+        eq(c["workers"], 1, f"{w}: single-worker view")
+        eq(c["fold_entries"], c["n"], f"{w}: one registry entry per artifact")
+        eq(c["check_fold"], {"names": c["n"], "entries": c["n"]},
+           f"{w}: the check process folds the post-registration registry")
+        eq(stated["view_rss_kb_after_burst_1"], c["view_kb_b1"], f"{w}: view RSS after burst 1")
+        eq(stated["view_arranged_records_after_burst_1"], c["view_arranged_b1"],
+           f"{w}: view arranged records after burst 1")
+        eq(stated["tgms_check_rss_kb_after_check_pass"], c["tgms_kb_chk"],
+           f"{w}: TGMS check-process RSS after the check pass")
+        eq(stated["tgms_registry_bytes"], c["registry_bytes"], f"{w}: registry bytes")
+        eq(stated["tgms_registry_mem_kb"], c["mem_kb"], f"{w}: registry memory")
+        close_rel(stated["ratio_view_over_tgms_after_burst_1"],
+                  c["view_kb_b1"] / c["tgms_kb_chk"], 1e-12, f"{w}: view / TGMS ratio")
+        require(c["tgms_kb_peak"] >= c["tgms_kb_chk"] >= c["tgms_kb_reg"] > c["tgms_kb_imports"],
+                f"{w}: check-process readings ordered imports < registry < check pass <= peak")
+
+    lo, hi = cells[AXES_N1K_CELL], cells[AXES_N10K_CELL]
+    ratio10k = hi["view_kb_b1"] / hi["tgms_kb_chk"]
+    s = record["summary"]
+    close_rel(s["ratio_view_over_tgms_n10k_after_burst_1"], ratio10k, 1e-12,
+              f"{where}: summary ratio at N = 10^4")
+    eq(s["falsifier"]["triggered"], ratio10k < 2, f"{where}: falsifier flag")
+    require(ratio10k >= 2, f"{where}: P-AXES axis A falsifier (ratio at 10^4 < 2) not triggered")
+    eq(s["predictions"]["view_grows_at_least_linearly"]["holds"],
+       hi["view_kb_b1"] / lo["view_kb_b1"] >= hi["n"] / lo["n"],
+       f"{where}: the linear-growth reading matches the rows")
+
+    def mb(kb: int, nd: int) -> str:
+        v = kb / 1024
+        return tex_num(round(v), 4) if nd == 0 else f"{v:.{nd}f}"
+
+    m.add("recAxesViewRssMbN1k", mb(lo["view_kb_b1"], 0),
+          f"{where}: {AXES_N1K_CELL} ivm-dd VmRSS after burst 1, MiB")
+    m.add("recAxesViewRssMbN10k", mb(hi["view_kb_b1"], 0),
+          f"{where}: {AXES_N10K_CELL} ivm-dd VmRSS after burst 1, MiB")
+    m.add("recAxesTgmsRssMbN1k", mb(lo["tgms_kb_chk"], 1),
+          f"{where}: {AXES_N1K_CELL} TGMS check-process VmRSS after the burst-1 check pass, MiB")
+    m.add("recAxesTgmsRssMbN10k", mb(hi["tgms_kb_chk"], 1),
+          f"{where}: {AXES_N10K_CELL} TGMS check-process VmRSS after the burst-1 check pass, MiB")
+    m.add("recAxesTgmsRegistryKbPerArtifact", f"{hi['registry_bytes'] / hi['n'] / 1024:.2f}",
+          f"{where}: {AXES_N10K_CELL} registry file bytes after registration / registered, KiB")
+    m.add("recAxesTgmsRegistryMemKbPerArtifact", f"{hi['mem_kb'] / hi['n']:.2f}",
+          f"{where}: {AXES_N10K_CELL} check-process VmRSS after the registry load minus after "
+          "imports, / registered, KiB")
+    m.add("recAxesRatioN10k", str(round(ratio10k)),
+          f"{where}: {AXES_N10K_CELL} view VmRSS / TGMS check-process VmRSS, after burst 1")
+    m.add("recAxesViewArrangedRecordsN1k", tex_num(lo["view_arranged_b1"], 4),
+          f"{where}: {AXES_N1K_CELL} records in the view's arrangements after burst 1")
+    m.add("recAxesViewArrangedRecordsN10k", tex_num(hi["view_arranged_b1"], 4),
+          f"{where}: {AXES_N10K_CELL} records in the view's arrangements after burst 1")
+
+
 # --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
@@ -11131,6 +11243,7 @@ def main() -> int:
     compute_external_rerun_n1b(m)
     compute_external_withheld_hold(m)
     compute_external_withheld_symmetric(m)
+    compute_axes_standing_state(m)
     compute_c8_f18(m)
     compute_refresh_cost_attribution(m)
     add_pending_stubs(m)
