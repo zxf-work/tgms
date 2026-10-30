@@ -5301,3 +5301,87 @@ def test_axes_population_mismatch_fails(tmp_path):
     m = mod.Macros()
     mod.compute_axes_standing_state(m)
     assert any("the view holds TGMS's registered artifacts" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# P-AXES axis B, on-demand reads (2026-10-30) -- compute_axes_on_demand,
+# outside _run_all_landed/FROZEN_LANDED_VALUES, same convention as above.
+# --------------------------------------------------------------------------
+
+AXES_B_FROZEN = {
+    "recAxesCrossoverKN1k": "25",
+    "recAxesCrossoverKN10k": "542",
+    "recAxesCrossoverKCollegeMsg": "2.3",
+    "recAxesOnDemandMsPerReadN1k": "6.30",
+    "recAxesOnDemandMsPerReadN10k": "10.56",
+    "recAxesOnDemandFirstCheckMs": "4.3",
+    "recAxesViewPerBurstMsN1k": "113",
+    "recAxesViewPerBurstMsN10k": "5{,}359",
+}
+
+
+def test_axes_on_demand_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_axes_on_demand(m)
+    assert mod.FAILURES == []
+    assert {name: value for name, value, _ in m.items} == AXES_B_FROZEN
+
+
+def test_axes_crossover_edges():
+    mod = _load("sys_paper_macros")
+    assert mod._axes_crossover([1, 10], [7.0, 70.0], 6.0) == ("none", None)
+    assert mod._axes_crossover([1, 10], [1.0, 2.0], 6.0) == ("above_grid", None)
+    kind, k = mod._axes_crossover([1, 10, 100], [5.0, 50.0, 500.0], 95.0)
+    assert kind == "interpolated" and k == pytest.approx(19.0)
+    assert mod._axes_k_text("none", None) == "none"
+    assert mod._axes_k_text("interpolated", 2.2522) == "2.3"
+    assert mod._axes_k_text("interpolated", 1542.0) == "1{,}542"
+
+
+def _axes_b_tampered(mod, tmp_path, edit) -> None:
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_AXES_ON_DEMAND_ROWS.read_text(encoding="utf-8").splitlines() if line]
+    edit(rows)
+    data = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows).encode()
+    tampered = tmp_path / mod.EXTERNAL_AXES_ON_DEMAND_ROWS.name
+    tampered.write_bytes(data)
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    patched = re.sub(r"^[0-9a-f]{64}(\s+\S*axes-on-demand-2026-10-30-rows\.jsonl)$",
+                     hashlib.sha256(data).hexdigest() + r"\1", sums_text, flags=re.MULTILINE)
+    assert patched != sums_text, "fixture did not find the row to patch"
+    sums_path = tmp_path / "SHA256SUMS.txt"
+    sums_path.write_text(patched, encoding="utf-8")
+    mod.EXTERNAL_AXES_ON_DEMAND_ROWS = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = sums_path
+
+
+def test_tampered_axes_on_demand_rows_fail_even_with_a_patched_digest(tmp_path):
+    """Inflating the probe's k = 1 cost above the view's (the pre-registered
+    falsifier's shape) must fail even with the sha256 gate patched."""
+    mod = _load("sys_paper_macros")
+
+    def inflate(rows):
+        for r in rows:
+            if r["cell_id"].endswith("n10000-s0") and r["k"] == 1:
+                r["on_demand_ms"] = 9000.0
+
+    _axes_b_tampered(mod, tmp_path, inflate)
+    m = mod.Macros()
+    mod.compute_axes_on_demand(m)
+    assert any("result_digest" in f for f in mod.FAILURES)
+    assert any("median per-burst cost" in f for f in mod.FAILURES)
+    assert any("crossover kind" in f for f in mod.FAILURES)
+    assert any("falsifier flag" in f for f in mod.FAILURES)
+
+
+def test_axes_on_demand_short_reads_fail(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def short(rows):
+        rows[0]["on_demand_reads"] = 0
+
+    _axes_b_tampered(mod, tmp_path, short)
+    m = mod.Macros()
+    mod.compute_axes_on_demand(m)
+    assert any("reads == min(k, registered)" in f for f in mod.FAILURES)
