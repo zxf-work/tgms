@@ -5385,3 +5385,204 @@ def test_axes_on_demand_short_reads_fail(tmp_path):
     m = mod.Macros()
     mod.compute_axes_on_demand(m)
     assert any("reads == min(k, registered)" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# Lane R1c (2026-10-30, P-ENG2): the 19-cell same-host control re-run at
+# ed4a83d6 -- compute_external_r1c.
+# --------------------------------------------------------------------------
+
+R1C_FROZEN = {
+    "recExt1ControlROneCSynthSpeedupMedian": "2.54",
+    "recExt1ControlROneCCollegeMsgSpeedupMedian": "5.20",
+    "recExt1ControlROneCSpeedupMedian": "4.39",
+    "recExt1ControlROneCGlobalP50SSynth": "13.5",
+    "recExt1ControlROneCGlobalP50SCollegeMsg": "3.1",
+    "recExt1ControlROneCPerArtifactPublishMsSynth": "15.3",
+    "recExt1ControlROneCPerArtifactPublishMsCollegeMsg": "3.4",
+    "recExt1ControlROneCPerCheckMsSynth": "0.24",
+    "recExt1ControlROneCPerCheckMsCollegeMsg": "0.24",
+    "recExt1ControlROneCPreArcPublishMsSynth": "266.2",
+    "recExt1ControlROneCPreArcPublishMsCollegeMsg": "228.1",
+    "recExt1ControlROneCWallRatio": "0.040",
+    "recExt1ControlROneCProbeWallS": "1029",
+    "recExt1ControlROneCProbePerCheckMs": "0.21",
+    "recExt1RatioGrROneCMedianSynth": "7.95",
+    "recExt1RatioGrROneCMedianCollegeMsg": "2.19",
+    "recExt1SpeedupLOneROneCMedianSynth": "20.12",
+    "recExt1SpeedupLOneROneCMedianCollegeMsg": "11.60",
+    "recExt1SpeedupLOneROneCMinSynth": "19.15",
+    "recExt1SpeedupLOneROneCMinCollegeMsg": "9.38",
+    "recExt1RatioGrROneCProbe": "7.66",
+    "recExt1SpeedupLOneROneCProbe": "11.67",
+}
+
+
+def _r1c_values(mod=None):
+    mod = mod or _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_r1c(m)
+    return mod, {name: value for name, value, _ in m.items}
+
+
+def test_external_r1c_recomputes_to_frozen_values_without_failure():
+    mod, values = _r1c_values()
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 50
+    assert values == R1C_FROZEN
+
+
+def test_external_r1c_mirrors_every_arcfive_control_name():
+    mod = _load("sys_paper_macros")
+    m5 = mod.Macros()
+    mod.compute_external_arc5(m5)
+    arc5_control = sorted(name for name, _, _ in m5.items
+                          if name.startswith("recExt1ControlArcFive"))
+    assert len(arc5_control) == 14
+    _, values = _r1c_values()
+    missing = [n for n in arc5_control if n.replace("ArcFive", "ROneC") not in values]
+    assert missing == []
+    arc5_ratio = sorted(name for name, _, _ in m5.items
+                        if name.startswith(("recExt1RatioGrArcFive", "recExt1SpeedupLOneArcFive")))
+    missing = [n for n in arc5_ratio if n.replace("ArcFive", "ROneC") not in values]
+    assert missing == []
+
+
+def test_external_r1c_speedups_independently_recomputed_from_the_record():
+    """Per-store and all-cell medians of global-recompute / tgms-L1
+    ttf_p50_ms straight from the committed record, and the fifth-arc
+    figures they are compared with (the pre-registration's 1.77 / 1.23)."""
+    mod, values = _r1c_values()
+    probe_cid = "synth-iv-60k-c1-none-n10000-s0"
+
+    def per_cell(path):
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        return {c["cell_id"]: c for c in rec["summary"]["per_cell"]}
+
+    def speedup(c):
+        return c["arms"]["global-recompute"]["ttf_p50_ms"] / c["arms"]["tgms-L1"]["ttf_p50_ms"]
+
+    r1c = per_cell(mod.EXTERNAL_TGMS_CONTROL_R1C)
+    arc5 = per_cell(mod.EXTERNAL_TGMS_CONTROL_ARC5)
+    assert len(r1c) == 19 and set(r1c) == set(arc5)
+    for store, tok in (("synth-iv-60k", "Synth"), ("collegemsg", "CollegeMsg")):
+        cells = [cid for cid, c in r1c.items() if cid != probe_cid and c["store"] == store]
+        assert len(cells) == 9
+        assert values[f"recExt1ControlROneC{tok}SpeedupMedian"] == \
+            f"{statistics.median(speedup(r1c[c]) for c in cells):.2f}"
+        # the fifth-arc medians the pre-registration quotes
+        want = {"Synth": "1.77", "CollegeMsg": "1.23"}[tok]
+        assert f"{statistics.median(speedup(arc5[c]) for c in cells):.2f}" == want
+    nonprobe = [cid for cid in r1c if cid != probe_cid]
+    assert values["recExt1ControlROneCSpeedupMedian"] == \
+        f"{statistics.median(speedup(r1c[c]) for c in nonprobe):.2f}"
+
+
+def test_external_r1c_rows_match_the_fifth_arc_rows_batch_for_batch():
+    """What is judged stale is unchanged: every arm's per-batch counts on all
+    365 batches equal the fifth-arc's (the generator asserts it; recomputed
+    here independently, with the batch count)."""
+    mod = _load("sys_paper_macros")
+    r1c = [json.loads(line) for line in
+           mod.EXTERNAL_TGMS_CONTROL_R1C_BATCHES.read_text(encoding="utf-8").splitlines() if line]
+    arc5 = {(b["cell_id"], b["batch_index"]): b for b in (
+        json.loads(line) for line in
+        mod.EXTERNAL_TGMS_CONTROL_ARC5_BATCHES.read_text(encoding="utf-8").splitlines() if line)}
+    assert len(r1c) == 365 and len(arc5) == 365
+    for b in r1c:
+        other = arc5[(b["cell_id"], b["batch_index"])]
+        assert b["ttf_mode"] == other["ttf_mode"]
+        for arm, got in b["arms"].items():
+            for f in ("invalidated_count", "false_fresh_count", "false_stale_count"):
+                assert got[f] == other["arms"][arm][f], (b["cell_id"], b["batch_index"], arm, f)
+
+
+def test_external_r1c_per_check_independently_recomputed_from_the_checks_file():
+    mod, values = _r1c_values()
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_TGMS_CONTROL_R1C_CHECKS.read_text(encoding="utf-8").splitlines() if line]
+    assert len(rows) == 365 and {r["control"] for r in rows} == {"2026-10-30-r1c"}
+    r1c = json.loads(mod.EXTERNAL_TGMS_CONTROL_R1C.read_text(encoding="utf-8"))
+    pc = {c["cell_id"]: c for c in r1c["summary"]["per_cell"]}
+    probe_cid = "synth-iv-60k-c1-none-n10000-s0"
+
+    def med(cell_id):
+        return statistics.median(r["tgms_l0_check_wall_ms"] / r["candidate_survivors"]
+                                 for r in rows if r["cell_id"] == cell_id)
+
+    for store, tok in (("synth-iv-60k", "Synth"), ("collegemsg", "CollegeMsg")):
+        cells = [c for c in pc if c != probe_cid and pc[c]["store"] == store]
+        assert values[f"recExt1ControlROneCPerCheckMs{tok}"] == \
+            f"{statistics.median(med(c) for c in cells):.2f}"
+    assert values["recExt1ControlROneCProbePerCheckMs"] == f"{med(probe_cid):.2f}"
+
+
+def test_external_r1c_neo4j_side_takes_the_rerun_on_the_synth_cells():
+    """The synth ratios use the 2026-10-09 rerun record's refresh_wall_ms
+    (it re-measured all ten synth cells); the collegemsg ratios keep the
+    2026-10-07 record's. Recomputed here from both records."""
+    mod, values = _r1c_values()
+
+    def per_cell(path):
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        return {c["cell_id"]: c for c in rec["summary"]["per_cell"]}
+
+    neo = per_cell(mod.EXTERNAL_NEO4J)
+    rerun = per_cell(mod.EXTERNAL_NEO4J_RERUN)
+    r1c = per_cell(mod.EXTERNAL_TGMS_CONTROL_R1C)
+    probe_cid = "synth-iv-60k-c1-none-n10000-s0"
+    assert set(rerun) <= set(r1c) and all(c.startswith("synth-iv-60k") for c in rerun)
+    for store, tok in (("synth-iv-60k", "Synth"), ("collegemsg", "CollegeMsg")):
+        cells = [c for c in r1c if c != probe_cid and r1c[c]["store"] == store]
+        best = [(rerun if c in rerun else neo)[c]["refresh_wall_ms"]["median"] for c in cells]
+        l1 = [b / r1c[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for b, c in zip(best, cells)]
+        gr = [b / r1c[c]["arms"]["global-recompute"]["ttf_p50_ms"] for b, c in zip(best, cells)]
+        assert values[f"recExt1SpeedupLOneROneCMedian{tok}"] == f"{statistics.median(l1):.2f}"
+        assert values[f"recExt1SpeedupLOneROneCMin{tok}"] == f"{min(l1):.2f}"
+        assert values[f"recExt1RatioGrROneCMedian{tok}"] == f"{statistics.median(gr):.2f}"
+    assert all(c not in rerun for c in r1c if r1c[c]["store"] == "collegemsg")
+    probe = rerun[probe_cid]["refresh_wall_ms"]["median"]
+    assert values["recExt1SpeedupLOneROneCProbe"] == \
+        f"{probe / r1c[probe_cid]['arms']['tgms-L1']['ttf_p50_ms']:.2f}"
+
+
+@pytest.mark.parametrize("attr", [
+    "EXTERNAL_TGMS_CONTROL_R1C", "EXTERNAL_TGMS_CONTROL_R1C_ROWS",
+    "EXTERNAL_TGMS_CONTROL_R1C_BATCHES", "EXTERNAL_TGMS_CONTROL_R1C_CHECKS"])
+def test_tampered_external_r1c_file_fails_the_sha256_gate(tmp_path, attr):
+    mod = _load("sys_paper_macros")
+    src = getattr(mod, attr)
+    text = src.read_text(encoding="utf-8")
+    tampered = tmp_path / src.name
+    tampered.write_text(text.replace("1", "2", 1), encoding="utf-8")
+    setattr(mod, attr, tampered)
+    m = mod.Macros()
+    try:
+        mod.compute_external_r1c(m)
+    except Exception:  # noqa: BLE001 - a malformed copy may also stop the read; the gate came first
+        pass
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_external_r1c_changed_arm_count_fails_even_with_a_patched_digest(tmp_path):
+    """One batch whose tgms-L1 invalidated_count differs from the fifth-arc's
+    must fail the like-for-like check, with the sha256 gate patched."""
+    mod = _load("sys_paper_macros")
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_TGMS_CONTROL_R1C_BATCHES.read_text(encoding="utf-8").splitlines() if line]
+    rows[0]["arms"]["tgms-L1"]["invalidated_count"] += 1
+    data = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows).encode()
+    tampered = tmp_path / mod.EXTERNAL_TGMS_CONTROL_R1C_BATCHES.name
+    tampered.write_bytes(data)
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    patched = re.sub(
+        r"^[0-9a-f]{64}(\s+\S*tgms-control-2026-10-30-r1c-batches\.jsonl)$",
+        hashlib.sha256(data).hexdigest() + r"\1", sums_text, flags=re.MULTILINE)
+    assert patched != sums_text, "fixture did not find the row to patch"
+    sums_path = tmp_path / "SHA256SUMS.txt"
+    sums_path.write_text(patched, encoding="utf-8")
+    mod.EXTERNAL_TGMS_CONTROL_R1C_BATCHES = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = sums_path
+    m = mod.Macros()
+    mod.compute_external_r1c(m)
+    assert any("per-batch arm counts" in f for f in mod.FAILURES)
