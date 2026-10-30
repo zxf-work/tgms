@@ -1871,3 +1871,31 @@ files each with its sha256 and xzgpu path; `control` = `2026-10-30-coarse`). The
 builder (a few lines, not committed) was checked first by regenerating R1c's
 four files from `external-v1/r1c/`: byte-identical to the committed ones. The
 sha256 of all six files is in `SHA256SUMS.txt`.
+
+## Builder for the batches and checks files
+
+`scripts/build_control_batches.py` builds the four per-batch files of a
+`tgms-control` loop from its per-cell row files
+(`<campaign-dir>/<cell_id>/storm-<store>-0-rows.jsonl`): the
+`tgms-control-<label>-batches.jsonl` and `tgms-control-checks-<label>.jsonl`
+files (one line per batch, values copied unchanged, sorted keys) and their
+`.SOURCES.txt` files (one line per cell with the row file's sha256 and path).
+The SOURCES files cite the absolute paths of the host the loop ran on, so a
+rebuild that must match them byte for byte is given the same `--campaign-dir`
+spelling.
+
+On 2026-10-30 (15:38 UTC) the eight files of the two loops
+`tgms-control-2026-10-30-r1c-*`, `tgms-control-checks-2026-10-30-r1c.*`,
+`tgms-control-2026-10-30-coarse-*` and `tgms-control-checks-2026-10-30-coarse.*`
+were regenerated from the cited per-cell rows with the committed script and
+each is byte-identical (`cmp`) to the file in this directory:
+
+```
+scripts/build_control_batches.py --campaign-dir /mnt/project/xzhang/tgms/external-v1/r1c \
+    --label 2026-10-30-r1c --out-dir <scratch>
+scripts/build_control_batches.py --campaign-dir /mnt/project/xzhang/tgms/external-v1/coarse \
+    --label 2026-10-30-coarse --out-dir <scratch>
+```
+
+`tests/test_build_control_batches.py` covers the output names, row counts,
+SOURCES line format and determinism on a small synthetic campaign.
