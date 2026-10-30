@@ -5521,6 +5521,132 @@ def test_axes_on_demand_short_reads_fail(tmp_path):
 
 
 # --------------------------------------------------------------------------
+# P-ROR, recompute on read (2026-10-30) -- compute_axes_recompute_on_read,
+# outside _run_all_landed/FROZEN_LANDED_VALUES, same convention as above.
+# --------------------------------------------------------------------------
+
+ROR_FROZEN = {
+    "recRorMsPerReadN1k": "15.29",
+    "recRorMsPerReadN10k": "15.88",
+    "recRorMsPerReadCollegeMsg": "3.27",
+    "recRorCrossoverKN1k": "9.4",
+    "recRorCrossoverKN10k": "337",
+    "recRorCrossoverKCollegeMsg": "2.3",
+    "recRorCrossoverKMeanN1k": "14",
+    "recRorCrossoverKMeanN10k": "335",
+    "recRorCrossoverKMeanCollegeMsg": "2.9",
+    "recRorPerBurstMsK1N1k": "5.9",
+    "recRorPerBurstMsK1N10k": "7.6",
+    "recRorPerBurstMsK1CollegeMsg": "3.2",
+    "recRorPerBurstMsKNN1k": "13{,}518",
+    "recRorPerBurstMsKNN10k": "141{,}649",
+    "recRorPerBurstMsKNCollegeMsg": "3{,}053",
+    "recAxesCrossoverKMeanN1k": "34",
+    "recAxesCrossoverKMeanN10k": "705",
+    "recAxesCrossoverKMeanCollegeMsg": "4.4",
+    "recAxesOnDemandWithAppendMsK1N1k": "7.8",
+    "recAxesOnDemandWithAppendMsK1CollegeMsg": "7.3",
+    "recAxesOnDemandWithAppendMsKNN1k": "5{,}682",
+    "recAxesOnDemandWithAppendMsKNCollegeMsg": "873",
+    "recRorRegimeGainN1k": "2.7",
+    "recRorRegimeGainN10k": "1.6",
+    "recRorRegimeGainCollegeMsg": "1.0",
+}
+
+
+def test_axes_recompute_on_read_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_axes_recompute_on_read(m)
+    assert mod.FAILURES == []
+    assert {name: value for name, value, _ in m.items} == ROR_FROZEN
+
+
+def test_axes_recompute_on_read_text_helpers():
+    mod = _load("sys_paper_macros")
+    assert mod._ror_ms_text(5.94) == "5.9"
+    assert mod._ror_ms_text(99.94) == "99.9"
+    assert mod._ror_ms_text(141649.28) == "141{,}649"
+    assert mod._ror_gain_text(("interpolated", 25.4), ("interpolated", 9.43)) == "2.7"
+    assert mod._ror_gain_text(("interpolated", 542.0), ("interpolated", 2.0)) == "271"
+    assert mod._ror_gain_text(("none", None), ("interpolated", 2.0)) == "undefined"
+    assert mod._ror_gain_text(("interpolated", 3.0), ("above_grid", None)) == "undefined"
+
+
+def _ror_tampered(mod, tmp_path, edit, *, patch_sums: bool = True) -> None:
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_AXES_ROR_ROWS.read_text(encoding="utf-8").splitlines() if line]
+    edit(rows)
+    data = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows).encode()
+    tampered = tmp_path / mod.EXTERNAL_AXES_ROR_ROWS.name
+    tampered.write_bytes(data)
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    if patch_sums:
+        sums_text = re.sub(r"^[0-9a-f]{64}(\s+\S*axes-recompute-on-read-2026-10-30-rows\.jsonl)$",
+                           hashlib.sha256(data).hexdigest() + r"\1", sums_text,
+                           flags=re.MULTILINE)
+    sums_path = tmp_path / "SHA256SUMS.txt"
+    sums_path.write_text(sums_text, encoding="utf-8")
+    mod.EXTERNAL_AXES_ROR_ROWS = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = sums_path
+
+
+def test_tampered_recompute_rows_fail_the_sha256_gate(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def bump(rows):
+        rows[0]["on_demand_ms"] += 1.0
+
+    _ror_tampered(mod, tmp_path, bump, patch_sums=False)
+    mod.compute_axes_recompute_on_read(mod.Macros())
+    assert any("sha256 matches" in f for f in mod.FAILURES)
+
+
+def test_tampered_recompute_rows_fail_even_with_a_patched_digest(tmp_path):
+    """Inflating the probe's recompute-on-read cost at k = 1 above the view's
+    must fail even with the sha256 gate patched: the record's own digest, its
+    stored per-k medians and the crossover kind no longer agree."""
+    mod = _load("sys_paper_macros")
+
+    def inflate(rows):
+        for r in rows:
+            if (r["policy"] == "always" and r["k"] == 1 and r["cell_id"].endswith("n10000-s0")):
+                r["on_demand_ms"] = 9000.0
+
+    _ror_tampered(mod, tmp_path, inflate)
+    mod.compute_axes_recompute_on_read(mod.Macros())
+    assert any("result_digest" in f for f in mod.FAILURES)
+    assert any("always k=1 median per-burst cost" in f for f in mod.FAILURES)
+    assert any("recompute-on-read crossover kind" in f for f in mod.FAILURES)
+
+
+def test_a_recompute_run_that_skips_a_refresh_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def skip(rows):
+        for r in rows:
+            if r["policy"] == "always":
+                r["on_demand_refreshes"] -= 1
+                break
+
+    _ror_tampered(mod, tmp_path, skip)
+    mod.compute_axes_recompute_on_read(mod.Macros())
+    assert any("every read refreshed" in f for f in mod.FAILURES)
+
+
+def test_a_missing_same_day_control_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def drop(rows):
+        rows[:] = [r for r in rows if not (r["policy"] == "check" and r["k"] == 1
+                                           and r["cell_id"].startswith("collegemsg"))]
+
+    _ror_tampered(mod, tmp_path, drop)
+    mod.compute_axes_recompute_on_read(mod.Macros())
+    assert any("check control rows for k=1" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
 # Lane R1c (2026-10-30, P-ENG2): the 19-cell same-host control re-run at
 # ed4a83d6 -- compute_external_r1c.
 # --------------------------------------------------------------------------
