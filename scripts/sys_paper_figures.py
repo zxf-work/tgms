@@ -54,8 +54,11 @@ or text width so each PDF is included at natural size; see PAPER_RC):
  19. f_external: time per burst against Neo4j and a dataflow view, and
      the withheld-correction outcome (double column; external-v1 records
      read only after their SHA256SUMS check)
+ 20. f_regime: per-burst cost against the number of artifacts read per
+     burst, TGMS on demand against the maintained view's fixed per-burst
+     cost, with the crossover marked (single column)
 
-Every number in 13-19 comes from a landed macro (asserted, never typed)
+Every number in 13-20 comes from a landed macro (asserted, never typed)
 or from a sha-gated record field; a pre-registered bar is either a record
 field or an entry of FROZEN_BARS, which carries its freeze citation.
 
@@ -1649,6 +1652,7 @@ FIG_SIZES = {               # W x H in inches, == the exact PDF page size
     "f_correction_load": (COL_W, 1.75),
     "f_durability": (COL_W, 2.30),
     "f_external": (TEXT_W, 1.65),
+    "f_regime": (COL_W, 1.80),
 }
 
 # Text no figure may carry: host names, campaign codenames, paths, commit
@@ -1938,9 +1942,10 @@ def _sha256sums_gate(paths: list[Path], sums_file: Path) -> None:
 SOAK2_RSS_SLOPES = ROOT / "benchmarks" / "longevity-v1" / "rss_slopes-2.json"
 
 ARCS_MACROS = [
-    # (a) incremental refresh vs global recompute, before / after lineage narrowing
+    # (a) incremental refresh vs global recompute, before / after lineage narrowing,
+    # both on one engine build and one timer (each batch's check plus refresh)
     "recStormV1CrossoverSpeedupSumN1k", "recStormV1CrossoverSpeedupSumN10k",
-    "recStormV3SpeedupN1kSeed0", "recStormV3ProbeSpeedup",
+    "recStormV2SpeedupSumN1kSeed0", "recStormV2SpeedupSumProbe",
     # (b) writer RSS growth per life
     "recSoakWriterWithinLifeSlopeMedianKBps", "recSoakWriterWithinLifeSlopeMinKBps",
     "recSoakWriterWithinLifeSlopeMaxKBps",
@@ -1978,8 +1983,8 @@ def build_arcs_data() -> dict:
 
     add("a", "N=10^3 before", "before", "recStormV1CrossoverSpeedupSumN1k", "x")
     add("a", "N=10^4 before", "before", "recStormV1CrossoverSpeedupSumN10k", "x")
-    add("a", "N=10^3 after", "after", "recStormV3SpeedupN1kSeed0", "x")
-    add("a", "N=10^4 after", "after", "recStormV3ProbeSpeedup", "x")
+    add("a", "N=10^3 after", "after", "recStormV2SpeedupSumN1kSeed0", "x")
+    add("a", "N=10^4 after", "after", "recStormV2SpeedupSumProbe", "x")
     rows.append(_row("a", "frozen bar", "", _bar("P5"), "x", FROZEN_BARS["P5"]["citation"]))
 
     for soak, suffix in zip(_SOAKS, ("", "Two", "Three", "Four")):
@@ -2031,10 +2036,10 @@ def plot_arcs(data: dict) -> None:
         _log2_speedup_axis(ax, 0.5, 8)
         ax.set_xlim(-0.55, 1.55)
         _frozen_bar(ax, _bar("P5"), pass_side="above")
-        _note(ax, 1.52, _bar("P5") * 0.82, "P5", color=C_PRED, ha="right", va="top")
-        pairs = (("recStormV1CrossoverSpeedupSumN1k", "recStormV3SpeedupN1kSeed0", -0.14,
+        _note(ax, 1.52, _bar("P5") * 0.82, "bar", color=C_PRED, ha="right", va="top")
+        pairs = (("recStormV1CrossoverSpeedupSumN1k", "recStormV2SpeedupSumN1kSeed0", -0.14,
                   "$10^3$", 1.32),
-                 ("recStormV1CrossoverSpeedupSumN10k", "recStormV3ProbeSpeedup", 0.14,
+                 ("recStormV1CrossoverSpeedupSumN10k", "recStormV2SpeedupSumProbe", 0.14,
                   "$10^4$", 1 / 1.4))
         for before, after, dx, label, yoff in pairs:
             _before_after(ax, 0 + dx, v[before], 1 + dx, v[after], C_INCR, MARKER_INCR)
@@ -2052,7 +2057,7 @@ def plot_arcs(data: dict) -> None:
         ax.set_xlim(-0.5, 3.5)
         ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(_decade_formatter))
         _frozen_bar(ax, data["writer_bound"], pass_side="below")
-        _note(ax, 3.45, data["writer_bound"] * 1.12, f"≤ {data['writer_bound']:g} (P-SOAK2)",
+        _note(ax, 3.45, data["writer_bound"] * 1.12, f"bar ≤ {data['writer_bound']:g}",
               color=C_PRED, ha="right", va="bottom")
         meds = [v["recSoakWriterWithinLifeSlopeMedianKBps" + s] for s in ("", "Two", "Three", "Four")]
         lows = [v["recSoakWriterWithinLifeSlopeMinKBps"], v["recSoakWriterWithinLifeSlopeMinKBpsTwo"],
@@ -2067,7 +2072,7 @@ def plot_arcs(data: dict) -> None:
         ax.plot([1, 2, 3], meds[1:], color=C_INCR, lw=0.6, zorder=2)
         ax.set_xticks(range(4), ["soak 1", "2", "3", "4"])
         ax.set_ylabel("RSS growth (kB/s)")
-        _fix_label(ax, "postings drop unreachable\nsegments (D-087)")
+        _fix_label(ax, "postings drop unreachable\nsegments")
         _panel_tag(ax, "b", "writer memory per life")
 
         # (c) overlapping believed versions
@@ -2089,7 +2094,7 @@ def plot_arcs(data: dict) -> None:
             lambda y, _p: _thousands(y)))
         ax.set_xticks(range(4), ["soak 1", "2", "3", "4"])
         ax.set_ylabel("full-verify findings")
-        _fix_label(ax, "generator fix (D-163)")
+        _fix_label(ax, "workload generator fix")
         _panel_tag(ax, "c", "overlapping versions")
 
         # (d) reader errors: log axis with a broken-axis "0" slot
@@ -2109,7 +2114,7 @@ def plot_arcs(data: dict) -> None:
         for yb in (10 ** -0.15, 10 ** 0.05):
             ax.plot([-0.03, 0.03], [yb / 1.25, yb * 1.25], **brk)
         _frozen_bar(ax, zero_y, pass_side="below", tint=False)
-        _note(ax, 2.45, zero_y * 2.2, "0 (P-SOAK4)", color=C_PRED, ha="right", va="bottom")
+        _note(ax, 2.45, zero_y * 2.2, "bar 0", color=C_PRED, ha="right", va="bottom")
         errs = [v["recSoakReaderErrorsTrueTwo"], v["recSoakReaderErrorsTrueThree"],
                 v["recSoakReaderErrorsTrueFour"]]
         ys = [e if e > 0 else zero_y for e in errs]
@@ -2122,7 +2127,7 @@ def plot_arcs(data: dict) -> None:
               ha="left", va="top", linespacing=0.95)
         ax.set_xticks(range(3), ["soak 2", "3", "4"])
         ax.set_ylabel("reader errors")
-        _fix_label(ax, "pin segments at open (D-088)")
+        _fix_label(ax, "pin segments at open")
         _panel_tag(ax, "d", "reader errors")
 
         # (e) per-artifact cost
@@ -2429,7 +2434,7 @@ def plot_ldbc(data: dict) -> None:
         _note(axa, v["recLdbcAgree"] / 2, yv, f"{v['recLdbcAgree']:.0f}", color="#FFFFFF",
               ha="center", va="center")
         _note(axa, left + 0.6, yv,
-              f"{t['recLdbcDefectId']}: {t['recLdbcDefectTemplates']}", color=C_REF,
+              f"defect: {t['recLdbcDefectTemplates']}", color=C_REF,
               va="center")
         axa.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.42, 0.0), ncol=2,
                    handlelength=0.9, columnspacing=0.6, handletextpad=0.3, labelspacing=0.1,
@@ -2942,6 +2947,9 @@ EXTERNAL_IVM = EXTERNAL_V1 / "ivm-differential-2026-10-07.json"
 EXTERNAL_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 EXTERNAL_CONTROL_BATCHES = EXTERNAL_V1 / "tgms-control-2026-10-05-batches.jsonl"
 EXTERNAL_CONTROL_ARC5 = EXTERNAL_V1 / "tgms-control-2026-10-08-arc5.json"
+EXTERNAL_CONTROL_R1C = EXTERNAL_V1 / "tgms-control-2026-10-30-r1c.json"
+EXTERNAL_NEO4J_RERUN = EXTERNAL_V1 / "neo4j-recompute-2026-10-09-rerun.json"
+EXTERNAL_WITHHELD_SYM = EXTERNAL_V1 / "withheld-symmetric-2026-10-29.json"
 EXTERNAL_WITHHELD_HOLD = EXTERNAL_V1 / "ivm-differential-2026-10-09-withheld-hold.json"
 _EXT_PROBE = "synth-iv-60k-c1-none-n10000-s0"
 _EXT_FACETS = (("collegemsg", 1_000, "CollegeMsg, $N=10^3$", "CollegeMsg"),
@@ -2953,10 +2961,12 @@ _EXT_CONFIGS = (("incr", "incremental refresh", C_INCR, MARKER_INCR),
                 ("dd", "dataflow view", C_DD, MARKER_DD))
 EXTERNAL_MACROS = [
     "recExt1RecomputeMedianS", "recExt2RefreshMedianMs",
-    "recExt1SpeedupLOneArcFiveMedianCollegeMsg", "recExt1SpeedupLOneArcFiveMedianSynth",
-    "recExt1SpeedupLOneArcFiveProbe",
+    "recExt1SpeedupLOneROneCMedianCollegeMsg", "recExt1SpeedupLOneROneCMedianSynth",
+    "recExt1SpeedupLOneROneCProbe",
     "recExt2WithheldFalseFreshIvm", "recExt2WithheldFalseFreshWatermark",
-    "recExt2WithheldFalseFreshTgms", "recExt2UnanswerableMs", "recExt2UnanswerableBursts",
+    "recExt2UnanswerableMs", "recExt2UnanswerableBursts",
+    "recWithheldSymAffected", "recWithheldSymTgmsFreshBeforeArrival",
+    "recWithheldSymTgmsStaleAfterArrival", "recWithheldSymTgmsFalseFreshAfterArrival",
 ]
 
 
@@ -2969,7 +2979,8 @@ def _nearest_rank_p50(values: list[float]) -> float:
 
 def build_external_data() -> dict:
     _sha256sums_gate([EXTERNAL_NEO4J, EXTERNAL_IVM, EXTERNAL_CONTROL, EXTERNAL_CONTROL_BATCHES,
-                      EXTERNAL_CONTROL_ARC5, EXTERNAL_WITHHELD_HOLD], EXTERNAL_SHA256SUMS)
+                      EXTERNAL_CONTROL_R1C, EXTERNAL_NEO4J_RERUN, EXTERNAL_WITHHELD_HOLD,
+                      EXTERNAL_WITHHELD_SYM], EXTERNAL_SHA256SUMS)
     v = load_macro_values(EXTERNAL_MACROS)
 
     def per_cell(path):
@@ -2977,7 +2988,13 @@ def build_external_data() -> dict:
                 json.loads(path.read_text(encoding="utf-8"))["summary"]["per_cell"]}
 
     neo, ivm = per_cell(EXTERNAL_NEO4J), per_cell(EXTERNAL_IVM)
-    pre, arc5 = per_cell(EXTERNAL_CONTROL), per_cell(EXTERNAL_CONTROL_ARC5)
+    # the fixed-translation rerun supersedes the first Neo4j record on the
+    # (synth) cells it re-measured, as the recExt1*ROneC* macros do
+    rerun = per_cell(EXTERNAL_NEO4J_RERUN)
+    assert len(rerun) == 10 and all(c.startswith("synth-iv-60k") for c in rerun)
+    neo_best = {**neo, **rerun}
+    # "after" is the shipped engine: the same-host control re-measured on it
+    pre, arc5 = per_cell(EXTERNAL_CONTROL), per_cell(EXTERNAL_CONTROL_R1C)
     assert set(pre) == set(arc5) and len(arc5) == 19
     batches: dict[str, list[dict]] = {}
     for b in load_jsonl(EXTERNAL_CONTROL_BATCHES):
@@ -3010,17 +3027,6 @@ def build_external_data() -> dict:
     assert_matches_macro("recExt1SpeedupLOneSumMedian",
                          statistics.median(neo[c]["refresh_wall_ms"]["median"] / sum_mode_l1[c]
                                            for c in nonprobe))
-    bands = {"Recent": "c3-recent", "Hours": "c3-hours", "Days": "c3-days"}
-    band_cells = {k: [c for c in nonprobe if tail in c] for k, tail in bands.items()}
-    band_cells["Deep"] = [c for c in nonprobe if c.split("-")[-3] == "deep"]
-    band_cells["None"] = [c for c in nonprobe if c.split("-")[-3] == "none"]
-    for band, cells in band_cells.items():
-        assert_matches_macro(f"recExt2RatioArcFive{band}", statistics.median(
-            ivm[c]["refresh_wall_ms"]["median"] / arc5[c]["arms"]["tgms-L1"]["ttf_p50_ms"]
-            for c in cells))
-    assert_matches_macro("recExt2RatioArcFiveProbe",
-                         ivm[_EXT_PROBE]["refresh_wall_ms"]["median"]
-                         / arc5[_EXT_PROBE]["arms"]["tgms-L1"]["ttf_p50_ms"])
 
     rows, facets = [], []
     for store, n, title, tok in _EXT_FACETS:
@@ -3033,33 +3039,34 @@ def build_external_data() -> dict:
                                    for c in cells],
             ("global", "after"): [arc5[c]["arms"]["global-recompute"]["ttf_p50_ms"] / 1000
                                   for c in cells],
-            ("neo", "after"): [neo[c]["refresh_wall_ms"]["median"] / 1000 for c in cells],
+            ("neo", "after"): [neo_best[c]["refresh_wall_ms"]["median"] / 1000 for c in cells],
             ("dd", "after"): [ivm[c]["refresh_wall_ms"]["median"] / 1000 for c in cells],
         }
         sources = {
             ("incr", "before"): f"{relpath(EXTERNAL_CONTROL_BATCHES)}: p50(check_wall_ms + "
                                 "refresh_wall_ms), tgms-L1",
-            ("incr", "after"): f"{relpath(EXTERNAL_CONTROL_ARC5)}: arms.tgms-L1.ttf_p50_ms",
+            ("incr", "after"): f"{relpath(EXTERNAL_CONTROL_R1C)}: arms.tgms-L1.ttf_p50_ms",
             ("global", "before"): f"{relpath(EXTERNAL_CONTROL)}: arms.global-recompute.ttf_p50_ms",
-            ("global", "after"): f"{relpath(EXTERNAL_CONTROL_ARC5)}: "
+            ("global", "after"): f"{relpath(EXTERNAL_CONTROL_R1C)}: "
                                  "arms.global-recompute.ttf_p50_ms",
-            ("neo", "after"): f"{relpath(EXTERNAL_NEO4J)}: refresh_wall_ms.median",
+            ("neo", "after"): (f"{relpath(EXTERNAL_NEO4J_RERUN)} (synth cells) or "
+                               f"{relpath(EXTERNAL_NEO4J)}: refresh_wall_ms.median"),
             ("dd", "after"): f"{relpath(EXTERNAL_IVM)}: refresh_wall_ms.median "
                              "(refresh plus publish)",
         }
         medians = {k: statistics.median(vals) for k, vals in series.items()}
         if tok in ("CollegeMsg", "Synth"):
-            assert_matches_macro(f"recExt1ControlArcFiveGlobalP50S{tok}",
+            assert_matches_macro(f"recExt1ControlROneCGlobalP50S{tok}",
                                  medians[("global", "after")])
-            assert_matches_macro(f"recExt1RatioGrArcFiveMedian{tok}", statistics.median(
+            assert_matches_macro(f"recExt1RatioGrROneCMedian{tok}", statistics.median(
                 a / b for a, b in zip(series[("neo", "after")], series[("global", "after")])))
-            ratio_name = f"recExt1SpeedupLOneArcFiveMedian{tok}"
+            ratio_name = f"recExt1SpeedupLOneROneCMedian{tok}"
             ratio = statistics.median(
                 a / b for a, b in zip(series[("neo", "after")], series[("incr", "after")]))
         else:
-            assert_matches_macro("recExt1RatioGrArcFiveProbe",
+            assert_matches_macro("recExt1RatioGrROneCProbe",
                                  medians[("neo", "after")] / medians[("global", "after")])
-            ratio_name = "recExt1SpeedupLOneArcFiveProbe"
+            ratio_name = "recExt1SpeedupLOneROneCProbe"
             ratio = medians[("neo", "after")] / medians[("incr", "after")]
         assert_matches_macro(ratio_name, ratio)
         for (cfg, state), vals in series.items():
@@ -3078,11 +3085,18 @@ def build_external_data() -> dict:
     assert_matches_macro("recExt2UnanswerableBursts", hold["ivm_f_watermark_hold_bursts_median"])
     assert hold["ivm_f_epoch_false_fresh"] == v["recExt2WithheldFalseFreshIvm"]
     assert hold["ivm_f_watermark_false_fresh"] == v["recExt2WithheldFalseFreshWatermark"]
+    sym = json.loads(EXTERNAL_WITHHELD_SYM.read_text(encoding="utf-8"))["summary"]
+    assert sym["affected"] == hold["ivm_f_epoch_false_fresh"] == v["recWithheldSymAffected"]
+    assert sym["tgms_stale_vs_eventual_before_arrival"] == v["recWithheldSymTgmsFreshBeforeArrival"]
+    assert sym["tgms_possibly_stale_after_arrival"] == v["recWithheldSymTgmsStaleAfterArrival"]
+    assert sym["tgms_false_fresh_log_after_arrival"] == v["recWithheldSymTgmsFalseFreshAfterArrival"]
     for name in ("recExt2WithheldFalseFreshIvm", "recExt2WithheldFalseFreshWatermark",
-                 "recExt2WithheldFalseFreshTgms", "recExt2UnanswerableMs",
+                 "recWithheldSymTgmsFreshBeforeArrival", "recWithheldSymTgmsStaleAfterArrival",
+                 "recWithheldSymTgmsFalseFreshAfterArrival", "recExt2UnanswerableMs",
                  "recExt2UnanswerableBursts"):
-        rows.append(_row("b", name, "", v[name], "answers" if "FalseFresh" in name else
-                         ("ms" if name.endswith("Ms") else "bursts"), name))
+        unit = "ms" if name.endswith("Ms") else ("bursts" if name.endswith("Bursts")
+                                                  else "artifacts")
+        rows.append(_row("b", name, "", v[name], unit, name))
     return {"rows": rows, "facets": facets, "v": v}
 
 
@@ -3147,16 +3161,16 @@ def plot_external(data: dict) -> None:
                     _note(ax, 1.3e-4, rows_y[cfg] + 0.3, scope, ha="left", va="center",
                           fontsize=6.0)
 
-        # (b) one correction withheld
+        # (b) one correction delivered a burst late, to both systems
         axb = fig.add_subplot(outer[1])
-        rows = (("dataflow view", v["recExt2WithheldFalseFreshIvm"], C_REF, None,
-                 "old value, no signal"),
+        rows = (("dataflow view", v["recExt2WithheldFalseFreshIvm"], C_DD, None,
+                 "old value, no signal;\nexact once it arrives"),
                 ("dataflow +\nwatermark", v["recExt2WithheldFalseFreshWatermark"], C_DD, "/////",
-                 "no answer until the watermark\npasses: hold "
-                 f"{v['recExt2UnanswerableMs']:.0f} ms = {v['recExt2UnanswerableBursts']:g} "
-                 "burst"),
-                ("TGMS", v["recExt2WithheldFalseFreshTgms"], C_INCR, None,
-                 "last verified value,\nmarked possibly stale"))
+                 "no answer until the\nwatermark passes: "
+                 f"{v['recExt2UnanswerableMs']:.0f} ms"),
+                ("TGMS", v["recWithheldSymTgmsFreshBeforeArrival"], C_INCR, None,
+                 "fresh by its log; next check\nafter arrival flags all "
+                 f"{v['recWithheldSymTgmsStaleAfterArrival']:.0f}"))
         top = v["recExt2WithheldFalseFreshIvm"]
         for i, (label, val, color, hatch, what) in enumerate(rows):
             y = 2 - i
@@ -3172,10 +3186,147 @@ def plot_external(data: dict) -> None:
         axb.set_yticks([2, 1, 0], [r[0] for r in rows])
         axb.tick_params(axis="y", length=0)
         axb.spines["left"].set_visible(False)
-        axb.set_xlabel("stale answers served without a signal", loc="left", labelpad=1.0)
-        _panel_tag(axb, "b", "one correction withheld")
+        axb.set_xlabel("stale answers, no signal, before arrival", loc="left", labelpad=1.0)
+        _panel_tag(axb, "b", "one correction a burst late")
 
         _savefig_paper(fig, OUT_DIR / "f_external")
+
+
+# --------------------------------------------------------------------------
+# Fig. f_regime: when each design is cheaper. Per-burst cost against the
+# number of artifacts read per burst: TGMS on demand (one check per read, a
+# refresh when flagged) against the maintained view's per-burst cost, which
+# does not depend on reads (single column).
+#
+# The per-k medians are read from the on-demand record (sha-gated; no macro
+# carries every grid point); every value a macro also carries -- the view's
+# per-burst medians, the cost at k = N, the crossovers -- is asserted
+# against it.
+# --------------------------------------------------------------------------
+
+EXTERNAL_AXES_ON_DEMAND = EXTERNAL_V1 / "axes-on-demand-2026-10-30.json"
+_REGIME_CELLS = (("collegemsg-c1-none-n1000-s0", "CollegeMsg $10^3$", "CollegeMsg", "o",
+                  (0, (1, 1.2))),
+                 ("synth-iv-60k-c1-none-n1000-s0", "synth $10^3$", "N1k", "s", (0, (4, 1.5))),
+                 ("synth-iv-60k-c1-none-n10000-s0", "synth $10^4$", "N10k", "^", "-"))
+REGIME_MACROS = [f"recAxes{kind}{tok}" for _c, _l, tok, _m, _s in _REGIME_CELLS
+                 for kind in ("CrossoverK", "OnDemandAllMs", "Registered")] + [
+    "recAxesViewPerBurstMsCollegeMsg", "recAxesViewPerBurstMsN1k", "recAxesViewPerBurstMsN10k",
+    # (b) standing memory, from the axis-A macros (no record read)
+    "recAxesViewRssMbN1k", "recAxesViewRssMbN10k", "recAxesTgmsRssMbN1k", "recAxesTgmsRssMbN10k",
+    "recAxesRatioN10k"]
+
+
+def build_regime_data() -> dict:
+    _sha256sums_gate([EXTERNAL_AXES_ON_DEMAND], EXTERNAL_SHA256SUMS)
+    v = load_macro_values(REGIME_MACROS)
+    record = json.loads(EXTERNAL_AXES_ON_DEMAND.read_text(encoding="utf-8"))
+    pc = record["summary"]["per_cell"]
+    rows, series = [], []
+    for cell, label, tok, marker, style in _REGIME_CELLS:
+        c = pc[cell]
+        bursts = c["view_per_burst"]["bursts"]
+        pts = []
+        for k_text, q in sorted(c["per_k"].items(), key=lambda kv: int(kv[0])):
+            reads = q["reads"] / bursts
+            assert reads == int(reads), f"f_regime: {cell} k={k_text} reads per burst"
+            pts.append((int(reads), q["median_ms"]))
+        view = c["view_per_burst"]["median_ms"]
+        kstar = c["crossover_median"]["k_star"]
+        assert c["crossover_median"]["kind"] == "interpolated"
+        assert_matches_macro(f"recAxesCrossoverK{tok}", kstar)
+        assert_matches_macro(f"recAxesOnDemandAllMs{tok}", pts[-1][1])
+        assert_matches_macro(f"recAxesRegistered{tok}", pts[-1][0])
+        view_macro = "recAxesViewPerBurstMs" + {"N1k": "N1k", "N10k": "N10k"}.get(tok, tok)
+        assert_matches_macro(view_macro, view)
+        lo, hi = c["crossover_median"]["between"]
+        assert any(k == lo for k, _ms in pts) and any(k == hi for k, _ms in pts)
+        for k, ms in pts:
+            rows.append(_row("a", f"{label} | TGMS on demand", k, round(ms, 6), "ms",
+                             f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: per_cell.{cell}.per_k "
+                             "median_ms (per-burst on_demand_ms)"))
+        rows.append(_row("a", f"{label} | view", "any k", round(view, 6), "ms",
+                         f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: per_cell.{cell}.view_per_burst."
+                         "median_ms (refresh plus publish)"))
+        rows.append(_row("a", f"{label} | crossover", "k*", round(kstar, 6), "reads",
+                         f"recAxesCrossoverK{tok}"))
+        series.append({"label": label, "marker": marker, "style": style, "pts": pts,
+                       "view": view, "kstar": kstar, "kstar_text": v[f"recAxesCrossoverK{tok}"]})
+    assert abs(v["recAxesViewRssMbN10k"] / v["recAxesTgmsRssMbN10k"] - v["recAxesRatioN10k"]) < 1.0
+    for n, tok in (("$10^3$", "N1k"), ("$10^4$", "N10k")):
+        for side, name in (("view", f"recAxesViewRssMb{tok}"),
+                           ("TGMS check process", f"recAxesTgmsRssMb{tok}")):
+            rows.append(_row("b", f"synth {n} | {side}", "resident memory", v[name], "MiB", name))
+    return {"rows": rows, "series": series, "v": v}
+
+
+def write_regime_csv(data: dict) -> str:
+    return _write_figure_csv("f_regime", data["rows"])
+
+
+def plot_regime(data: dict) -> None:
+    _require_mpl()
+    with plt.rc_context(PAPER_RC):
+        fig = _new_fig("f_regime")
+        gs = fig.add_gridspec(1, 2, width_ratios=[2.7, 1.0])
+        ax = fig.add_subplot(gs[0])
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(0.7, 3.2e4)
+        ax.set_ylim(1.5, 4e5)
+        for axis in (ax.xaxis, ax.yaxis):
+            axis.set_major_formatter(matplotlib.ticker.FuncFormatter(_decade_formatter))
+            axis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([1, 10, 100, 1e3, 1e4]))
+        ax.yaxis.set_major_locator(matplotlib.ticker.FixedLocator([1, 10, 100, 1e3, 1e4, 1e5]))
+        ax.grid(axis="y")
+        for sr in data["series"]:
+            ks = [k for k, _ms in sr["pts"]]
+            ms = [m for _k, m in sr["pts"]]
+            ax.plot(ks, ms, color=C_INCR, lw=0.9, ls=sr["style"], zorder=3)
+            for k, m in sr["pts"]:
+                _point(ax, k, m, C_INCR, sr["marker"], zorder=4)
+            ax.plot([0.7, ks[-1]], [sr["view"], sr["view"]], color=C_DD, lw=0.9,
+                    ls=sr["style"], zorder=2)
+            _point(ax, sr["kstar"], sr["view"], "#000000", "o", hollow=True, ms=4.2, zorder=5)
+            first = sr is data["series"][0]
+            # the crossover's label prints the macro's value, as the text does
+            _note(ax, sr["kstar"] * (1.3 if first else 1 / 1.3),
+                  sr["view"] / 1.35 if first else sr["view"] * 1.4,
+                  f"$k^*$ = {sr['kstar_text']:g}", color="#000000",
+                  ha="left" if first else "right", va="top" if first else "bottom")
+            below = sr["label"].startswith("synth $10^3$")
+            _note(ax, ks[-1] * 1.25, ms[-1] / (1.7 if below else 1.0), sr["label"],
+                  color="#000000", ha="left", va="top" if below else "center")
+        handles = [matplotlib.lines.Line2D([], [], color=C_INCR, lw=0.9, marker="o", ms=MS,
+                                           label="TGMS, on demand"),
+                   matplotlib.lines.Line2D([], [], color=C_DD, lw=0.9,
+                                           label="maintained view, per burst")]
+        ax.legend(handles=handles, loc="upper left")
+        ax.set_xlabel("artifacts read per burst, $k$")
+        ax.set_ylabel("cost per burst (ms)")
+        _panel_tag(ax, "a", "work per burst")
+
+        # (b) standing memory, synth store
+        v = data["v"]
+        axb = fig.add_subplot(gs[1])
+        axb.set_yscale("log")
+        axb.set_ylim(10, 2e5)
+        axb.yaxis.set_major_locator(matplotlib.ticker.FixedLocator([10, 100, 1e3, 1e4, 1e5]))
+        axb.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(_decade_formatter))
+        axb.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+        for i, tok in enumerate(("N1k", "N10k")):
+            for dx, name, color in ((-0.18, f"recAxesViewRssMb{tok}", C_DD),
+                                    (0.18, f"recAxesTgmsRssMb{tok}", C_INCR)):
+                axb.bar(i + dx, v[name], width=0.34, color=color, lw=0)
+        axb.set_xlim(-0.6, 1.6)
+        axb.set_xticks([0, 1], ["$10^3$", "$10^4$"])
+        _note(axb, 1.0, v["recAxesViewRssMbN10k"] * 1.6, f"{v['recAxesRatioN10k']:.0f}×",
+              color="#000000", ha="center", va="bottom")
+        axb.set_xlabel("artifacts (synth)")
+        axb.set_ylabel("resident memory (MiB)")
+        _panel_tag(axb, "b", "memory")
+        _savefig_paper(fig, OUT_DIR / "f_regime")
 
 
 # --------------------------------------------------------------------------
@@ -3213,6 +3364,7 @@ DELIVERABLES = [
     ("durability", build_durability_data, write_durability_csv, plot_durability,
      "f_durability.csv"),
     ("external", build_external_data, write_external_csv, plot_external, "f_external.csv"),
+    ("regime", build_regime_data, write_regime_csv, plot_regime, "f_regime.csv"),
 ]
 # `csv_filename` (not a precomputed path) so every consumer -- main() below,
 # and tests that monkeypatch module-level OUT_DIR -- resolves the path
