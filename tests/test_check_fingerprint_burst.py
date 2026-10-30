@@ -9,7 +9,7 @@ call per log state does the full validation and the rest of the block shares
 it, re-checking only the stat key (and, for the chain cache, the log's last
 bytes). This file pins:
 
-1. the sharing: one whole-prefix digest and two identity validations per log
+1. the sharing: one whole-prefix digest and one identity validation per log
    state per burst, however many checks; outside a burst, nothing changes;
 2. the invalidation: an append inside a burst, or a rewrite of the tail with
    every stat field frozen, sends the next check back to the full path;
@@ -124,9 +124,9 @@ def test_a_burst_shares_the_store_identity_from_the_second_check(monkeypatch):
     with cache.burst():
         for _ in range(6):
             check(scope, log, chain_cache=cache)
-    # the first check has no validated state yet; the second asks while the
-    # state holds and records the answer; the other four are served it
-    assert len(calls) == 2
+    # the first check computes it before its walk validates the state, and
+    # the walk adopts it (same stat key); the other five are served it
+    assert len(calls) == 1
     calls.clear()
     for _ in range(3):                      # outside the burst: every check asks
         check(scope, log, chain_cache=cache)
