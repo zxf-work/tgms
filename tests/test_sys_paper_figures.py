@@ -19,8 +19,10 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import json
 import re
 import shutil
+import statistics
 from pathlib import Path
 
 import pytest
@@ -28,7 +30,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 NEW_FIGURES = ("f_arcs", "f_scale", "f_ldbc", "f_open_cost", "f_correction_load",
-               "f_durability", "f_external")
+               "f_durability", "f_external", "f_regime")
 
 
 def _load():
@@ -255,6 +257,113 @@ def test_external_medians_are_asserted_against_the_macros(tmp_path, monkeypatch)
             mod.build_external_data()
 
 
+def _jsonl(path):
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def _raw_regime_series(mod, cell):
+    """Per-k median cost per burst of each design, straight from the two
+    rows files: reads per burst is min(k, registered)."""
+    ror = [r for r in _jsonl(mod.EXTERNAL_V1 / "axes-recompute-on-read-2026-10-30-rows.jsonl")
+           if r["cell_id"] == cell and r["policy"] == "always"]
+    axis_b = [r for r in _jsonl(mod.EXTERNAL_V1 / "axes-on-demand-2026-10-30-rows.jsonl")
+              if r["cell_id"] == cell]
+    series = {}
+    for name, rows in (("always", ror), ("tgms", axis_b)):
+        by_k = {}
+        for r in rows:
+            by_k.setdefault(r["k"], []).append(r)
+        series[name] = [(by_k[k][0]["on_demand_reads"],
+                         statistics.median(r["on_demand_ms"] for r in by_k[k]))
+                        for k in sorted(by_k)]
+    return series
+
+
+def test_regime_has_three_series_per_panel_equal_to_the_raw_per_k_medians():
+    mod = _load()
+    _require_macros(mod)
+    data = mod.build_regime_data()
+    assert [p["tag"] for p in data["panels"]] == ["a", "b"]
+    for (cell, _label, _tok, tag), pn in zip(mod._REGIME_CELLS, data["panels"]):
+        raw = _raw_regime_series(mod, cell)
+        assert pn["tag"] == tag
+        for key in ("always", "tgms"):
+            assert len(pn[key]) == len(raw[key]) >= 3
+            for (reads, ms), (raw_reads, raw_ms) in zip(pn[key], raw[key]):
+                assert reads == raw_reads
+                assert ms == pytest.approx(raw_ms, rel=1e-9)
+        # the maintained view is one number per burst, the same for every k
+        view_rows = next(r for r in _jsonl(mod.EXTERNAL_V1 / "ivm-differential-2026-10-07-rows.jsonl")
+                         if r["cell_id"] == cell)
+        view = statistics.median(b["refresh_plus_publish_ms"]
+                                 for b in view_rows["result"]["per_burst"])
+        assert pn["view"] == pytest.approx(view, rel=1e-9)
+        # both designs read every registered artifact at the top of the grid
+        assert pn["always"][-1][0] == pn["tgms"][-1][0]
+
+
+def test_regime_marks_both_crossovers_with_the_landed_macro_values():
+    mod = _load()
+    _require_macros(mod)
+    data = mod.build_regime_data()
+    values = mod.load_macro_values(["recAxesCrossoverKN1k", "recAxesCrossoverKN10k",
+                                    "recRorCrossoverKN1k", "recRorCrossoverKN10k"])
+    for pn, tok in zip(data["panels"], ("N1k", "N10k")):
+        assert pn["k_tgms"] == pytest.approx(values[f"recAxesCrossoverK{tok}"], abs=0.5)
+        assert pn["k_ror"] == pytest.approx(values[f"recRorCrossoverK{tok}"], abs=0.5)
+        # recompute on read reaches the view's cost at fewer reads than TGMS
+        assert pn["k_ror"] < pn["k_tgms"]
+    rows = {(r["panel"], r["series"], r["x"]): r for r in data["rows"]}
+    crossings = [r for r in data["rows"] if r["x"] == "k*"]
+    assert len(crossings) == 4
+    assert {r["source"] for r in crossings} == {
+        "recAxesCrossoverKN1k", "recAxesCrossoverKN10k",
+        "recRorCrossoverKN1k", "recRorCrossoverKN10k"}
+    assert len(rows) == len(data["rows"]), "(panel, series, x) must key the rows uniquely"
+
+
+def test_regime_memory_panel_carries_the_axis_a_macros():
+    mod = _load()
+    _require_macros(mod)
+    data = mod.build_regime_data()
+    memory = {(r["series"], r["source"]): r["value"] for r in data["rows"] if r["panel"] == "c"}
+    assert len(memory) == 4
+    for (series, source), value in memory.items():
+        assert source.startswith("recAxes") and source.endswith(("N1k", "N10k"))
+        assert value == data["v"][source]
+        assert series.startswith("synth")
+    ratio = data["v"]["recAxesViewRssMbN10k"] / data["v"]["recAxesTgmsRssMbN10k"]
+    assert ratio == pytest.approx(data["v"]["recAxesRatioN10k"], abs=1.0)
+
+
+def test_regime_gate_refuses_a_tampered_recompute_on_read_record(tmp_path, monkeypatch):
+    mod = _load()
+    _require_macros(mod)
+    tampered = tmp_path / mod.EXTERNAL_AXES_ROR.name
+    shutil.copy(mod.EXTERNAL_AXES_ROR, tampered)
+    tampered.write_text(tampered.read_text(encoding="utf-8").replace('"kind": ', '"kind":  ', 1),
+                        encoding="utf-8")
+    monkeypatch.setattr(mod, "EXTERNAL_AXES_ROR", tampered)
+    with pytest.raises(AssertionError, match="sha256"):
+        mod.build_regime_data()
+
+
+def test_regime_crossovers_are_asserted_against_the_macros(tmp_path, monkeypatch):
+    mod = _load()
+    _require_macros(mod)
+    bad = tmp_path / "macros.tex"
+    text = mod.SYS_PAPER_MACROS.read_text(encoding="utf-8")
+    for name, landed, tampered in (("recRorCrossoverKN1k", "9.4", "9.9"),
+                                   ("recAxesCrossoverKN10k", "542", "560")):
+        old = f"csname {name}\\endcsname{{{landed}}}"
+        assert old in text, f"{name} is not landed as {landed} in the generated macros"
+        bad.write_text(text.replace(old, f"csname {name}\\endcsname{{{tampered}}}"),
+                       encoding="utf-8")
+        monkeypatch.setattr(mod, "SYS_PAPER_MACROS", bad)
+        with pytest.raises(AssertionError, match=name):
+            mod.build_regime_data()
+
+
 def test_durability_strip_places_every_crash_boundary_once():
     mod = _load()
     _require_macros(mod)
@@ -323,6 +432,42 @@ def test_figure_text_carries_no_title_host_codename_or_sha(monkeypatch, stem):
         assert texts
         for s in texts:
             assert not re.search(r"storm|tgms-L|\bB7\b|xzgpu|itiger", s, re.IGNORECASE), s
+    finally:
+        mod.plt.close(fig)
+
+
+def test_regime_renders_two_cost_panels_with_three_designs_and_a_memory_panel(monkeypatch):
+    mod = _load()
+    _require_mpl(mod)
+    _require_macros(mod)
+    captured = {}
+    monkeypatch.setattr(mod, "_savefig_paper",
+                        lambda fig, path: captured.setdefault("fig", fig))
+    data = mod.build_regime_data()
+    mod.plot_regime(data)
+    fig = captured["fig"]
+    try:
+        axes = fig.axes
+        assert len(axes) == 3
+        # the two cost panels share the cost axis and a log-log grid
+        assert all(a.get_xscale() == "log" and a.get_yscale() == "log" for a in axes[:2])
+        legend = axes[0].get_legend()
+        assert [t.get_text() for t in legend.get_texts()] == [
+            "recompute on read", "TGMS on demand", "maintained view"]
+        assert axes[1].get_legend() is None
+        for ax, pn in zip(axes[:2], data["panels"]):
+            # both crossovers are printed with the macro's own number
+            texts = {t.get_text() for t in ax.texts}
+            assert f"{pn['k_ror_text']:g}" in texts and f"{pn['k_tgms_text']:g}" in texts
+            # the view's cost is one horizontal line across the panel
+            assert any(len(set(line.get_ydata())) == 1
+                       and line.get_ydata()[0] == pytest.approx(pn["view"])
+                       for line in ax.get_lines())
+        # memory panel: view and TGMS bars at 10^3 and 10^4 artifacts
+        assert len(axes[2].patches) == 4
+        heights = sorted(p.get_height() for p in axes[2].patches)
+        assert heights[-1] == pytest.approx(data["v"]["recAxesViewRssMbN10k"])
+        assert heights[0] == pytest.approx(data["v"]["recAxesTgmsRssMbN1k"])
     finally:
         mod.plt.close(fig)
 

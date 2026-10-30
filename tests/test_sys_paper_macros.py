@@ -777,6 +777,17 @@ FROZEN_LANDED_VALUES = {
     "recExt2WithheldFalseFreshIvm": "39",
     "recExt2WithheldFalseFreshWatermark": "0",
     "recExt2WithheldFalseFreshTgms": "0",
+    # Counts of the earlier populations the paper now quotes (compute_c3,
+    # compute_c6): the manifest run's length, the freshness trials whose
+    # answer changed and how many of them were called fresh, the round-2
+    # carve trials, and the round-2 propagation decisions and how many were
+    # false-safe.
+    "recManifestOpsMillions": "2.5",
+    "recFreshChangedTrials": "447",
+    "recFreshFalseFresh": "0",
+    "recCarveTwoTrials": "28{,}044",
+    "recPropTwoDecisions": "5{,}867",
+    "recPropTwoFalseSafe": "0",
     # recExt2UnanswerableMs used to land here as "not measured" (produced
     # by compute_external_baselines). Lane D-W (2026-10-09) measured it
     # for real; compute_external_baselines no longer defines this macro
@@ -5551,6 +5562,27 @@ ROR_FROZEN = {
     "recRorRegimeGainN1k": "2.7",
     "recRorRegimeGainN10k": "1.6",
     "recRorRegimeGainCollegeMsg": "1.0",
+    # reads plus applying the correction: both designs' crossovers, median
+    # and mean basis (TGMS's is an estimate: axis B's reads plus the same
+    # burst's apply from the reference run)
+    "recAxesCrossoverKApplyN1k": "25",
+    "recAxesCrossoverKApplyN10k": "538",
+    "recAxesCrossoverKApplyCollegeMsg": "none",
+    "recAxesCrossoverKApplyMeanN1k": "33",
+    "recAxesCrossoverKApplyMeanN10k": "703",
+    "recAxesCrossoverKApplyMeanCollegeMsg": "none",
+    "recRorCrossoverKApplyN1k": "8.8",
+    "recRorCrossoverKApplyN10k": "335",
+    "recRorCrossoverKApplyCollegeMsg": "1.0",
+    "recRorCrossoverKApplyMeanN1k": "14",
+    "recRorCrossoverKApplyMeanN10k": "334",
+    "recRorCrossoverKApplyMeanCollegeMsg": "1.1",
+    "recRorPerReadRatioN1k": "2.43",
+    "recRorPerReadRatioN10k": "1.50",
+    "recRorPerReadRatioCollegeMsg": "3.53",
+    "recAxesOnDemandMsPerReadCollegeMsg": "0.93",
+    "recRorApplyMsMedianMin": "2.8",
+    "recRorApplyMsMedianMax": "3.5",
 }
 
 
@@ -5644,6 +5676,261 @@ def test_a_missing_same_day_control_fails(tmp_path):
     _ror_tampered(mod, tmp_path, drop)
     mod.compute_axes_recompute_on_read(mod.Macros())
     assert any("check control rows for k=1" in f for f in mod.FAILURES)
+
+
+def _jsonl(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def _first_crossing(reads, cost, view):
+    """Where a per-burst cost series first reaches the view's, by linear
+    interpolation between the two grid points that straddle it; written out
+    here, not borrowed from the generator."""
+    if cost[0] >= view:
+        return "none"
+    for i in range(len(reads) - 1):
+        if cost[i] < view <= cost[i + 1]:
+            return reads[i] + (view - cost[i]) * (reads[i + 1] - reads[i]) / (cost[i + 1] - cost[i])
+    return "above $N$"
+
+
+def _k_text(k) -> str:
+    if isinstance(k, str):
+        return k
+    return f"{k:.1f}" if k < 10 else f"{round(k):,}".replace(",", "{,}")
+
+
+_ROR_CELLS = (("N1k", "AXES_N1K_CELL"), ("N10k", "AXES_N10K_CELL"),
+              ("CollegeMsg", "AXES_COLLEGEMSG_CELL"))
+
+
+def _ror_macro_values(mod) -> dict[str, str]:
+    m = mod.Macros()
+    mod.compute_axes_recompute_on_read(m)
+    assert mod.FAILURES == []
+    return {name: value for name, value, _ in m.items}
+
+
+def test_recompute_on_read_reads_plus_apply_crossovers_independently_recomputed():
+    """The crossovers against the view's per-burst cost once the correction's
+    apply is counted, from the three record files alone. Recompute on read
+    adds each burst's own apply. TGMS's is an estimate: axis B's reads plus
+    the same burst's apply from the reference run (the same-day check run at
+    k = 1 on the 10^3 cells; recompute on read at k = 1 on the 10^4 probe,
+    where no check run was repeated)."""
+    mod = _load("sys_paper_macros")
+    values = _ror_macro_values(mod)
+    ror = _jsonl(mod.EXTERNAL_AXES_ROR_ROWS)
+    axis_b = _jsonl(mod.EXTERNAL_AXES_ON_DEMAND_ROWS)
+    view_rows = {r["cell_id"]: r for r in _jsonl(mod.EXTERNAL_IVM_ROWS)}
+    record = json.loads(mod.EXTERNAL_AXES_ROR.read_text(encoding="utf-8"))
+    for tok, attr in _ROR_CELLS:
+        cell = getattr(mod, attr)
+        view = [b["refresh_plus_publish_ms"] for b in view_rows[cell]["result"]["per_burst"]]
+        n_registered = {r["n_registered"] for r in ror if r["cell_id"] == cell}
+        assert len(n_registered) == 1
+        (n,) = n_registered
+        grid = sorted({r["k"] for r in axis_b if r["cell_id"] == cell})
+        assert grid[0] == 1
+        reads = [min(k, n) for k in grid]
+        ref_policy = "always" if tok == "N10k" else "check"
+        apply_ref = {r["batch_index"]: r["correction_apply_ms"] for r in ror
+                     if r["cell_id"] == cell and r["policy"] == ref_policy and r["k"] == 1}
+        assert apply_ref
+        ror_cost, tgms_cost = [], []
+        for k in grid:
+            mine = [r for r in ror if r["cell_id"] == cell and r["policy"] == "always"
+                    and r["k"] == k]
+            theirs = [r for r in axis_b if r["cell_id"] == cell and r["k"] == k]
+            ror_cost.append([r["on_demand_ms"] + r["correction_apply_ms"] for r in mine])
+            tgms_cost.append([r["on_demand_ms"] + apply_ref[r["batch_index"]] for r in theirs])
+        sw = record["summary"]["per_cell"][cell]["crossover"]["with_apply"]
+        for name, costs, side, basis in (
+                ("recAxesCrossoverKApply", tgms_cost, "tgms_check", "median"),
+                ("recAxesCrossoverKApplyMean", tgms_cost, "tgms_check", "mean"),
+                ("recRorCrossoverKApply", ror_cost, "recompute_on_read", "median"),
+                ("recRorCrossoverKApplyMean", ror_cost, "recompute_on_read", "mean")):
+            stat = statistics.median if basis == "median" else statistics.fmean
+            crossing = _first_crossing(reads, [stat(c) for c in costs], stat(view))
+            assert values[f"{name}{tok}"] == _k_text(crossing), f"{name}{tok}"
+            # the record's own summary says the same
+            stored = sw[side][basis]
+            if isinstance(crossing, str):
+                assert stored["k_star"] is None
+            else:
+                assert stored["k_star"] == pytest.approx(crossing, rel=1e-9)
+
+
+def test_recompute_on_read_apply_never_moves_a_crossover_later_than_reads_only():
+    """Counting the apply adds cost to recompute on read, so it can only reach
+    the view earlier (or at the same grid interval); a macro that moved the
+    other way would not be the same series plus a non-negative term."""
+    mod = _load("sys_paper_macros")
+    values = _ror_macro_values(mod)
+    for tok, _attr in _ROR_CELLS:
+        for reads_only, with_apply in ((f"recRorCrossoverK{tok}", f"recRorCrossoverKApply{tok}"),
+                                       (f"recRorCrossoverKMean{tok}",
+                                        f"recRorCrossoverKApplyMean{tok}")):
+            lo = float(values[with_apply].replace("{,}", ""))
+            hi = float(values[reads_only].replace("{,}", ""))
+            assert lo <= hi, f"{with_apply} {lo} is later than {reads_only} {hi}"
+
+
+def test_recompute_on_read_per_read_ratio_and_apply_medians_independently_recomputed():
+    """The cost per read at k = N (recompute on read over TGMS on demand), the
+    TGMS per-read cost quoted for CollegeMsg, and the smallest and largest
+    per-run median apply time over all of the lane's runs."""
+    mod = _load("sys_paper_macros")
+    values = _ror_macro_values(mod)
+    ror = _jsonl(mod.EXTERNAL_AXES_ROR_ROWS)
+    axis_b = _jsonl(mod.EXTERNAL_AXES_ON_DEMAND_ROWS)
+    record = json.loads(mod.EXTERNAL_AXES_ROR.read_text(encoding="utf-8"))
+    for tok, attr in _ROR_CELLS:
+        cell = getattr(mod, attr)
+        k_top = max(r["k"] for r in axis_b if r["cell_id"] == cell)
+        a = statistics.median(r["on_demand_ms"] / r["on_demand_reads"] for r in ror
+                              if r["cell_id"] == cell and r["policy"] == "always"
+                              and r["k"] == k_top)
+        c = statistics.median(r["on_demand_ms"] / r["on_demand_reads"] for r in axis_b
+                              if r["cell_id"] == cell and r["k"] == k_top)
+        assert values[f"recRorPerReadRatio{tok}"] == f"{a / c:.2f}"
+        stored = record["summary"]["per_cell"][cell]["per_read_at_n"]
+        assert stored["ratio_recompute_to_tgms"] == pytest.approx(a / c, rel=1e-9)
+        if tok == "CollegeMsg":
+            assert values["recAxesOnDemandMsPerReadCollegeMsg"] == f"{c:.2f}"
+    runs: dict[tuple, list[float]] = {}
+    for r in ror:
+        runs.setdefault((r["cell_id"], r["policy"], r["k"]), []).append(r["correction_apply_ms"])
+    medians = [statistics.median(v) for v in runs.values()]
+    assert {policy for _cell, policy, _k in runs} == {"always", "check"}
+    assert values["recRorApplyMsMedianMin"] == f"{min(medians):.1f}"
+    assert values["recRorApplyMsMedianMax"] == f"{max(medians):.1f}"
+
+
+def test_inflating_recompute_on_reads_apply_fails_the_reads_plus_apply_crossover(tmp_path):
+    """A recompute-on-read apply time that no longer matches the record's
+    stored reads-plus-apply crossover must fail even with the sha256 gate
+    patched."""
+    mod = _load("sys_paper_macros")
+
+    def inflate(rows):
+        for r in rows:
+            if r["policy"] == "always" and r["cell_id"] == mod.AXES_N1K_CELL:
+                r["correction_apply_ms"] *= 40
+
+    _ror_tampered(mod, tmp_path, inflate)
+    mod.compute_axes_recompute_on_read(mod.Macros())
+    assert any("reads+apply recompute_on_read k*" in f for f in mod.FAILURES)
+
+
+def test_inflating_the_reference_apply_fails_the_tgms_reads_plus_apply_crossover(tmp_path):
+    """TGMS's reads-plus-apply cost borrows the reference run's apply for the
+    same burst; inflating the reference run's apply must disagree with the
+    record's stored estimate."""
+    mod = _load("sys_paper_macros")
+
+    def inflate(rows):
+        for r in rows:
+            if (r["policy"] == "check" and r["k"] == 1 and r["cell_id"] == mod.AXES_N1K_CELL):
+                r["correction_apply_ms"] *= 100
+
+    _ror_tampered(mod, tmp_path, inflate)
+    mod.compute_axes_recompute_on_read(mod.Macros())
+    assert any("reads+apply tgms_check k*" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# C2-DF, disk exhaustion (2026-10-30) -- compute_diskfull, outside
+# _run_all_landed/FROZEN_LANDED_VALUES, same convention as above.
+# --------------------------------------------------------------------------
+
+DISKFULL_FROZEN = {
+    "recDiskfullTrials": "2{,}000",
+    "recDiskfullProblems": "0",
+    "recDiskfullHangs": "0",
+    "recDiskfullFired": "798",
+}
+
+
+def _diskfull_values(mod) -> dict[str, str]:
+    m = mod.Macros()
+    mod.compute_diskfull(m)
+    assert mod.FAILURES == []
+    return {name: value for name, value, _ in m.items}
+
+
+def test_diskfull_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    assert _diskfull_values(mod) == DISKFULL_FROZEN
+
+
+def test_diskfull_counts_independently_recomputed_from_the_trials():
+    """Trials, trials with a problem, hangs and fired injections, counted
+    straight from the per-trial results (not from the record's stats block)."""
+    mod = _load("sys_paper_macros")
+    values = _diskfull_values(mod)
+    results = json.loads(mod.DISKFULL_V1.read_text(encoding="utf-8"))["results"]
+    assert values["recDiskfullTrials"] == f"{len(results):,}".replace(",", "{,}")
+    assert values["recDiskfullProblems"] == str(sum(1 for r in results if r["problems"]))
+    assert values["recDiskfullHangs"] == str(sum(1 for r in results if r["hang"] is True))
+    assert values["recDiskfullFired"] == str(sum(1 for r in results if r["fault_fired"] is True))
+    # every firing is ENOSPC at fsync and left a clean, recoverable store
+    fired = [r for r in results if r["fault_fired"]]
+    assert {r["fired_kind"] for r in fired} == {"enospc@os.fsync"}
+    assert all(r["clean_error"] and r["q1_acked_survive"] and r["q2_deterministic"]
+               and r["q3_single_generation"] and r["q4_orphans_reclaimed"] for r in fired)
+
+
+def _diskfull_tampered(mod, tmp_path, edit) -> None:
+    record = json.loads(mod.DISKFULL_V1.read_text(encoding="utf-8"))
+    edit(record)
+    tampered = tmp_path / mod.DISKFULL_V1.name
+    tampered.write_text(json.dumps(record), encoding="utf-8")
+    mod.DISKFULL_V1 = tampered
+
+
+def test_a_diskfull_trial_with_an_unreported_problem_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def add_problem(record):
+        record["results"][0]["problems"] = ["acked write lost"]
+
+    _diskfull_tampered(mod, tmp_path, add_problem)
+    mod.compute_diskfull(mod.Macros())
+    assert any("trials with problems == total_problems" in f for f in mod.FAILURES)
+
+
+def test_a_diskfull_firing_that_failed_a_recovery_check_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def break_q2(record):
+        next(r for r in record["results"] if r["fault_fired"])["q2_deterministic"] = False
+
+    _diskfull_tampered(mod, tmp_path, break_q2)
+    mod.compute_diskfull(mod.Macros())
+    assert any("fired and passed Q1-Q4" in f for f in mod.FAILURES)
+
+
+def test_a_diskfull_trial_count_that_disagrees_with_the_record_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def drop_one(record):
+        record["results"].pop()
+
+    _diskfull_tampered(mod, tmp_path, drop_one)
+    mod.compute_diskfull(mod.Macros())
+    assert any("len(results) == total_trials" in f for f in mod.FAILURES)
+
+
+def test_a_diskfull_hang_not_in_the_record_stats_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def hang(record):
+        record["results"][1]["hang"] = True
+
+    _diskfull_tampered(mod, tmp_path, hang)
+    mod.compute_diskfull(mod.Macros())
+    assert any("hangs == stats.total_hangs" in f for f in mod.FAILURES)
 
 
 # --------------------------------------------------------------------------
