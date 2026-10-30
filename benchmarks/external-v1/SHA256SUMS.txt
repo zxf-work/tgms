@@ -1,4 +1,4 @@
-042cb92e232a94094a3b2eaa1ed3176609b459bbebc372d180e6338ec61e98d2  benchmarks/external-v1/README.md
+c2bf0b7ae535414f2cc20516c0f3ded3c2484e4c37533a386df34b1e4497492a  benchmarks/external-v1/README.md
 a783e8cd29ce332e86c3b7fedda48d69ce300ba01fbf886a3e36939aa71dcf51  benchmarks/external-v1/neo4j-recompute-2026-10-07.json
 a9b6bfd21f4547ef3074516d9808e1fc7fc3a143cbc34c1c013f7a77d64e0be5  benchmarks/external-v1/neo4j-recompute-2026-10-07-rows.jsonl
 3dd39bbcf156277b7ff39363798f27ab9aee7fe7be70c5dc22c0365c845b564e  benchmarks/external-v1/ivm-differential-2026-10-07.json
@@ -22,3 +22,9 @@ aa6a41cb3fdce4a3ff24af9a0a488f6336cbc0ce2c461dbe68f5702e1597aedc  benchmarks/ext
 8740bbeb824730b66d27f01e7227a654986a2c893c8fa8c7bbb20203ec30d711  benchmarks/external-v1/axes-standing-state-2026-10-30-rows.jsonl
 23c2f3841d9924b15852a1e89230dbd40b1940ec7ceed124628635e628d6d02e  benchmarks/external-v1/axes-on-demand-2026-10-30.json
 c9746ada7a1d7160306071281d6ac3c3f4fc13dbacc836b486e4caa9586bc461  benchmarks/external-v1/axes-on-demand-2026-10-30-rows.jsonl
+1e7ad614611326aa13cc9e5e49c3af1c7c78e761d351561aecb176f4af56b9d4  benchmarks/external-v1/tgms-control-2026-10-30-r1c.json
+b6b0e670d7bbfad6d7f64fe48082c1c1880e220f49df75ba96e45421d203c2e8  benchmarks/external-v1/tgms-control-2026-10-30-r1c-rows.jsonl
+0e3f8b85a805e63d9a6b0f23251018e2beb2e56ee76ebb5047af2aef54d0ec77  benchmarks/external-v1/tgms-control-2026-10-30-r1c-batches.jsonl
+718ca05afc803f0adbe66d9575563142e4744c97b36d709fe66a40e29be835fa  benchmarks/external-v1/tgms-control-2026-10-30-r1c-batches.SOURCES.txt
+f37c842035fdac317b884d855aad081f64971b93948ce7c20216b2e8a02218ec  benchmarks/external-v1/tgms-control-checks-2026-10-30-r1c.jsonl
+b506c5482605199cb893ea7fc35bfc6a5b38a2d389107eb627d5a013cce760df  benchmarks/external-v1/tgms-control-checks-2026-10-30-r1c.SOURCES.txt

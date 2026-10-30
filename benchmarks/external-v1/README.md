@@ -1148,3 +1148,275 @@ and on the falsifier flag):
 | `recAxesOnDemandFirstCheckMs` | 4.3 | median `on_demand_ms` of the k = 1 bursts without a refresh, all three cells |
 | `recAxesViewPerBurstMsN1k` | 113 | synth 10³ view, median `refresh_plus_publish_ms` |
 | `recAxesViewPerBurstMsN10k` | 5,359 | probe view, the same |
+
+## Control re-measurement on the engine check-path changes (R1c, 2026-10-30)
+
+**Provenance.** Lane R1c replays the fifth-arc loop (above) on the code at
+public main `ed4a83d62b095e56faf8b9b24a87957b1841d10e`, which carries the
+three check-path engine changes (UNDECIDABLE on a known overlap; the
+whole-log fingerprint and store identity shared per burst of checks; the
+cached log walk extended over appended records instead of re-walked), the
+change Addendum ENG2-A calls (c), and the on-demand burst `ada93918`. The
+on-demand mode is off in this loop (no `--refresh-on-read`), so a row means
+what the fifth-arc row of the same cell means. Worktree
+`work/tgms-xz-ed4a83d6` on xzgpu; `crates/` is unchanged since `b6cdde0`
+(`git diff --stat b6cdde0 ed4a83d6 -- crates/` is empty), so the engine
+`.so` (sha256 `d48ae71caca80d9f3ea9f360b2e7a2f242f3e9e03ee223d69c4f8aff08b7faca`,
+checked after the copy) was copied in from `work/tgms-xz-93d4543a` rather
+than rebuilt. Outputs under a fresh `external-v1/r1c/`; the stores are fresh
+copies under `external-v1/r1c-stores/`, taken from the same read-only source
+the fifth-arc loop copied from (`external-v1/t1-stores/`, manifest format 3).
+Nothing under `external-v1/{export,t1,t1b,t1-stores,t1b-stores}/` was
+touched.
+
+**Pre-registration** (P-ENG2, frozen 2026-10-30T00:50:31Z), R1c verbatim:
+"**R1c:** re-measure the same-host control on the 12 seed-0 main-grid cells
+and the probe with both changes (`--check-cache chain`), Memgraph stopped,
+box quiet; prediction: internal speedup at N = 10³ ≥ 2.5× on synth and ≥
+1.5× on collegemsg (from `recExt1ControlArcFiveSynthSpeedupMedian` 1.77 /
+`…CollegeMsg` 1.23); falsifier: no improvement → the check cost was not the
+limiter and the paper says so."
+
+**Reading: 12 vs 19.** The fifth-arc control record has 19 cells: the 12
+seed-0 main-grid cells (2 stores × {`c1`, `c3`, `c4`} × {`none`, `deep`}),
+the six age-band cells (`c3` × {`recent`, `hours`, `days`} on each store),
+and the N = 10⁴ probe. The pre-registration's "12 seed-0 main-grid cells and
+the probe" names 13 of them and leaves the six age-band cells out; "12" is a
+miscount of the grid the fifth-arc control actually ran. R1c replays all 19
+so the comparison with the fifth-arc record is like for like. The per-store
+medians below are over the nine N = 10³ cells of each store (six main-grid
+cells and three age-band cells), the convention of
+`recExt1ControlArcFive{Synth,CollegeMsg}SpeedupMedian`; the probe is reported
+separately.
+
+**Driver.** `scripts/r1c_control.sh` is `external-v1/t1b_control.sh` (the
+fifth-arc driver, sha256 `187e568d…`, not in this repository) with paths and
+labels changed and nothing else: same 19 cells in the same order, same flags
+for every cell including `--check-cache chain`, the same `--measure-ttf` per
+cell (`end-to-end` on 18 cells, `sum` on the probe), the same probe placement
+and age-cells-last ordering, the same equality check against the same
+`external-v1/export/` bundles. The equality helper is `external-v1/
+r1c_equality_check.py`, a byte copy of the fifth-arc helper
+(`scripts/t1_equality_check.py` is the same code with a loop variable
+renamed for the linter). The diff of the code lines (the header comment is
+rewritten):
+
+```diff
+-WORKTREE="$ROOT/work/tgms-xz-93d4543a"
++WORKTREE="$ROOT/work/tgms-xz-ed4a83d6"
+-T1B="$EXT/t1b"
+-T1BSTORES="$EXT/t1b-stores"
+-EQCHECK="$EXT/t1b_equality_check.py"
++R1C="$EXT/r1c"
++R1CSTORES="$EXT/r1c-stores"
++EQCHECK="$EXT/r1c_equality_check.py"
+-HOSTLOG="$T1B/HOST-T1B.log"
+-PROGRESS="$T1B/PROGRESS.log"
++HOSTLOG="$EXT/HOST-R1C.log"
++PROGRESS="$R1C/PROGRESS.log"
+(every other changed line renames $T1B / $T1BSTORES to $R1C / $R1CSTORES, or
+ "T1B" to "R1C" in a log string)
+```
+
+**Host protocol.** xzgpu, one cell at a time, no `nice`. Pre-flight
+(`pgrep -fa 'bench_|pytest|cargo|ivm|neo4j'`, then the driver's own check for
+`bench_correction_storm`, `ext_export`, `export_storm_workload`, `ivm-dd` and
+`neo4j`) found no benchmark, test or build process; the 1-minute load average
+was 0.08 at the first look and 0.33 at the driver's start, the only other
+busy-looking processes being another user's idle interactive session (about
+0.5–0.7 % of one core). Memgraph was stopped for the window (`docker stop`
+issued `2026-10-30T04:55:11Z`) and restarted by the driver at completion
+(`docker start` at `2026-10-30T06:59:36Z`, up at `06:59:39Z`). Timed window:
+`2026-10-30T04:55:10Z` to `06:59:39Z` (2 h 04 min; the 19 cell walls sum to
+7,448.1 s, 2.07 h; the fifth-arc loop took 3.55 h). Per-cell 1-minute load
+averages in the host snapshots before and after each cell were 0.33–1.30
+(the harness is itself one busy process). An untimed smoke of one collegemsg
+cell with 2 batches ran first (`external-v1/r1c-smoke/`, 17 s): equality
+verdict present, `check_cache: chain`, `refused_count` 0, no error in its log.
+`HOST-R1C.log` is the host log; `external-v1/r1c/PROGRESS.log` has one line
+per cell.
+
+**Addendum ARC5-B carries over — the equality reading.** All 19 cells report
+`verdict: "L2"` against the export bundles (`l1_eventlog_sha_match: false`
+in all 19, for the reason ARC5-B states: the exported `digests.json` still
+carries the fixed-per-class `disc` values), 20/20 batches matching on
+correction class, generator, placement and `changed` (5/5 for the probe),
+and every `PROGRESS.log` line reads `equality=L2`. Against the fifth-arc
+rows the R1c rows are identical on all 365 batches in every field this
+check compares: the correction class, generator, placement, `disc`, valid
+time, entity and identities; `changed` and `changed_count`;
+`candidate_survivors`; `intersects_calls`; `n_registered`; `log_records` and
+`log_bytes`; `ttf_mode`; `check_cache_misses`; `refused_count`; and, for each
+of the six arms, `invalidated_count`, `false_fresh_count` and
+`false_stale_count` (and the `e2e_refresh_calls` of each arm). No refusal
+(`refused_count` is 0 in every batch) and no refresh error occurred. The
+engine changes alter what a check costs, not what is judged stale.
+
+| cell_id | verdict (vs. export) | batches (match / realized) | identical to the fifth-arc rows |
+|---|---|---:|---|
+| `collegemsg-c1-deep-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c1-none-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c3-days-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c3-deep-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c3-hours-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c3-none-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c3-recent-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c4-deep-n1000-s0` | L2 | 20/20 | yes |
+| `collegemsg-c4-none-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c1-deep-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c1-none-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c1-none-n10000-s0` (probe) | L2 | 5/5 | yes |
+| `synth-iv-60k-c3-days-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c3-deep-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c3-hours-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c3-none-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c3-recent-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c4-deep-n1000-s0` | L2 | 20/20 | yes |
+| `synth-iv-60k-c4-none-n1000-s0` | L2 | 20/20 | yes |
+
+**Internal speedup, per store.** Median over the nine N = 10³ cells of each
+store of `arms.global-recompute.ttf_p50_ms` ÷ `arms.tgms-L1.ttf_p50_ms` (the
+convention of `recExt1ControlArcFiveSpeedupMedian`'s per-store siblings), for
+the three controls on the same 19-cell loop (pre-arc: the 2026-10-05
+control, `fdd393c`, no `--check-cache`; fifth-arc: `93d4543a`, `--check-cache
+chain`; R1c: `ed4a83d6`, `--check-cache chain`):
+
+| store | pre-arc | fifth-arc | R1c | R1c range over the 9 cells |
+|---|---:|---:|---:|---|
+| synth-iv-60k | 5.05 | 1.77 | 2.54 | 2.42–7.76 |
+| collegemsg | 4.70 | 1.23 | 5.20 | 4.29–5.49 |
+
+Over all 18 N = 10³ cells the median is 4.84 (pre-arc), 1.53 (fifth-arc) and
+4.39 (R1c). Per cell (the speedup columns; the probe row is in the same table
+and is read separately below):
+
+| cell_id | speedup pre-arc | speedup fifth-arc | speedup R1c | `global-recompute` p50 fifth-arc / R1c (ms) | `tgms-L1` p50 fifth-arc / R1c (ms) | wall fifth-arc / R1c (s) |
+|---|---:|---:|---:|---:|---:|---:|
+| `collegemsg-c1-deep-n1000-s0` | 4.89 | 1.31 | 5.25 | 5036.5 / 3142.9 | 3844.1 / 599.1 | 374.8 / 102.7 |
+| `collegemsg-c1-none-n1000-s0` | 4.53 | 1.12 | 4.29 | 4898.8 / 2966.9 | 4375.9 / 691.2 | 396.1 / 103.1 |
+| `collegemsg-c3-days-n1000-s0` | 4.70 | 1.24 | 5.20 | 4999.0 / 2988.2 | 4037.5 / 574.5 | 384.8 / 98.6 |
+| `collegemsg-c3-deep-n1000-s0` | 4.47 | 1.20 | 4.67 | 4969.5 / 3150.4 | 4145.2 / 674.7 | 381.8 / 104.1 |
+| `collegemsg-c3-hours-n1000-s0` | 4.39 | 1.17 | 4.49 | 5050.3 / 3181.2 | 4317.1 / 708.7 | 385.9 / 106.6 |
+| `collegemsg-c3-none-n1000-s0` | 4.75 | 1.23 | 5.05 | 4849.2 / 3114.7 | 3938.8 / 616.7 | 369.2 / 104.3 |
+| `collegemsg-c3-recent-n1000-s0` | 5.05 | 1.35 | 5.49 | 5001.7 / 3013.4 | 3712.3 / 548.8 | 359.3 / 101.3 |
+| `collegemsg-c4-deep-n1000-s0` | 4.66 | 1.21 | 5.37 | 5092.5 / 3221.6 | 4198.4 / 600.0 | 693.4 / 373.7 |
+| `collegemsg-c4-none-n1000-s0` | 4.74 | 1.24 | 5.42 | 4973.8 / 3239.8 | 4026.9 / 598.2 | 669.6 / 373.8 |
+| `synth-iv-60k-c1-deep-n1000-s0` | 5.05 | 1.81 | 2.42 | 15484.7 / 13513.5 | 8568.7 / 5578.5 | 786.2 / 526.3 |
+| `synth-iv-60k-c1-none-n1000-s0` | 4.78 | 1.72 | 2.45 | 15625.5 / 13473.8 | 9083.8 / 5509.2 | 779.9 / 507.6 |
+| `synth-iv-60k-c1-none-n10000-s0` (probe) | 1.90 | 1.26 | 1.52 | 162369.6 / 139653.9 | 128435.7 / 91599.9 | 1399.7 / 1029.1 |
+| `synth-iv-60k-c3-days-n1000-s0` | 5.02 | 1.78 | 2.63 | 15644.3 / 13493.2 | 8788.9 / 5134.8 | 735.2 / 470.9 |
+| `synth-iv-60k-c3-deep-n1000-s0` | 4.81 | 1.75 | 2.51 | 15568.7 / 13389.4 | 8892.2 / 5335.1 | 754.4 / 487.0 |
+| `synth-iv-60k-c3-hours-n1000-s0` | 5.30 | 1.77 | 2.54 | 15456.1 / 13589.1 | 8728.9 / 5348.8 | 748.5 / 501.5 |
+| `synth-iv-60k-c3-none-n1000-s0` | 5.32 | 2.02 | 3.02 | 15603.3 / 13692.7 | 7727.3 / 4531.5 | 738.2 / 485.6 |
+| `synth-iv-60k-c3-recent-n1000-s0` | 4.88 | 1.72 | 2.52 | 15625.7 / 13527.3 | 9070.8 / 5365.3 | 779.3 / 509.7 |
+| `synth-iv-60k-c4-deep-n1000-s0` | 5.11 | 1.77 | 2.56 | 15811.6 / 13728.7 | 8952.9 / 5363.5 | 1040.5 / 746.2 |
+| `synth-iv-60k-c4-none-n1000-s0` | 6.28 | 3.18 | 7.76 | 15904.9 / 13802.6 | 5004.5 / 1778.6 | 990.1 / 716.0 |
+
+The R1c speedup is the ratio of two numbers that both moved. The
+`global-recompute` arm (a full republish of the registered artifacts; no
+check) is faster than in the fifth-arc loop on every cell: per-store median
+13.53 s against 15.63 s on synth (0.87×), 3.14 s against 5.00 s on collegemsg
+(0.63×); the `tgms-L1` arm's median `ttf_p50_ms` fell from 8.79 s to 5.35 s
+on synth (0.61×) and from 4.04 s to 0.60 s on collegemsg (0.15×). The code
+between `93d4543a` and `ed4a83d6` also touches the registry and the
+dependency-scope code the republish runs through, and this lane did not
+isolate which change moved the `global-recompute` arm; it is stated as a
+reading, with both columns above so either can be recomputed.
+
+**Where the time went (phases of `tgms-L1`, per batch).** Median over the
+nine cells of each store of that cell's median-over-batches `check_wall_ms`
+and `refresh_wall_ms` of the `tgms-L1` arm (`ttf_mode` end-to-end, so the
+time to fresh is the check plus the refresh, taken as one interval):
+
+| store | check, fifth-arc → R1c (ms) | refresh, fifth-arc → R1c (ms) |
+|---|---:|---:|
+| synth-iv-60k | 2,680.7 → 50.9 | 5,813.0 → 5,201.2 |
+| collegemsg | 2,963.7 → 54.3 | 988.9 → 514.1 |
+| probe, N = 10⁴ (sum mode) | 29,772.6 → 516.0 | 98,663.1 → 91,066.4 |
+
+**Per-check and per-artifact publish cost.** The same two-level-median
+conventions as the per-check addendum above and
+`recExt1ControlArcFivePerArtifactPublishMs{Synth,CollegeMsg}`: per-check is
+the median over the nine cells of each cell's median-over-batches
+`tgms-L0.check_wall_ms` ÷ `candidate_survivors`; per-artifact publish is the
+median over the nine cells of each cell's median-over-batches
+`global_recompute_wall_ms` ÷ `n_registered` (934 on collegemsg, 884 on synth,
+8,922 on the probe, equal across the three controls).
+
+| store | per-check (ms): pre-arc / fifth-arc / R1c | per-artifact publish (ms): pre-arc / fifth-arc / R1c |
+|---|---:|---:|
+| synth-iv-60k | 204.00 / 12.31 / 0.24 | 266.2 / 17.7 / 15.3 |
+| collegemsg | 185.95 / 12.26 / 0.24 | 228.1 / 5.3 / 3.4 |
+
+**The probe, separately** (`synth-iv-60k-c1-none-n10000-s0`, N = 10⁴, 5
+batches, `sum` mode): `global-recompute` p50 162,369.6 ms (fifth-arc) →
+139,653.9 ms (R1c); `tgms-L1` p50 128,435.7 → 91,599.9 ms; speedup 1.26
+(fifth-arc), 1.52 (R1c), 1.90 (pre-arc); per-check 11.86 → 0.21 ms; per-
+artifact publish 18.20 → 15.65 ms; wall 1,399.7 s → 1,029.1 s. Its check and
+refresh phases are in the table above: the check phase fell by 58×, the
+refresh phase by 8 %.
+
+**Reading, anomalies.**
+
+- *`synth-iv-60k-c4-none-n1000-s0`* is the one synth cell far from the rest
+  (R1c speedup 7.76, `tgms-L1` p50 1,778.6 ms against 4,531–5,578 ms on the
+  other eight); it is the same cell that stood apart in the fifth-arc
+  (3.18) and pre-arc (6.28) controls, and its `global-recompute` p50 is in
+  line with the others. The synth median is 2.54 with that cell included; its
+  lowest cells are 2.42 (`c1`, `deep`) and 2.45 (`c1`, `none`), and two of
+  the nine synth cells are below 2.5.
+- The `global-recompute` arm moved by 13 % (synth) and 37 % (collegemsg) as
+  stated above, so the speedup columns are not a measure of the `tgms-L1` arm
+  alone.
+- The R1c loop took 7,448 s against the fifth-arc's 12,767 s (0.58×) and the
+  pre-arc's 186,065 s (0.040×).
+- Memgraph was up (for about 12 minutes) when pre-flight began; it was
+  stopped for the whole window as in the earlier loops.
+- No cell failed, no cell was retried, and nothing in the loop was edited
+  while it ran.
+
+No verdict on the prediction is drawn here — the coordinator scores it.
+
+**Records.** `tgms-control-2026-10-30-r1c.json` + `-rows.jsonl`, assembled
+with `scripts/external_record.py --campaign tgms-control --date 2026-10-30-r1c`
+over the 19 cell directories, `--git-commit` the full `ed4a83d6…` sha (so the
+record's `git_commit` is the measured commit; `check_cache`,
+`check_cache_misses_median` and `e2e_refresh_calls_median` are carried as in
+the fifth-arc record). `scripts/check_result_manifest.py` passes on it.
+`tgms-control-2026-10-30-r1c-batches.jsonl` + `.SOURCES.txt` mirror the
+fifth-arc per-batch rows exactly (one line per batch, byte-exact values, no
+rounding; 365 lines, 19 source files, each source's sha256 and xzgpu path),
+and `tgms-control-checks-2026-10-30-r1c.jsonl` + `.SOURCES.txt` carry the
+per-batch `candidate_survivors`, `intersects_calls` and the two check walls
+for this control only (365 lines, `control` = `2026-10-30-r1c`; the pre-arc
+and fifth-arc lines stay in `tgms-control-checks-2026-10-08.jsonl`). The
+builders were checked first by regenerating the fifth-arc batches, checks
+and `.SOURCES.txt` lines from the fifth-arc cell directories (a read-only pull from
+xzgpu): all byte-identical to the committed files. sha256 of all six files is in
+`SHA256SUMS.txt`.
+
+**Macros** (`scripts/sys_paper_macros.py`'s `compute_external_r1c`, recomputed
+from the rows, gated on every input file's sha256, with the like-for-like
+check against the fifth-arc batches asserted): the `recExt1ControlROneC*`
+names mirror the `recExt1ControlArcFive*` ones; the Neo4j-side ratios use the
+2026-10-07 record for the collegemsg cells and the 2026-10-09 rerun record
+(the fixed translation) for the ten synth cells it re-measured, so the synth
+ratios are not directly comparable to `recExt1RatioGrArcFive*`, which used
+the 2026-10-07 record throughout.
+
+| macro | value | field |
+|---|---:|---|
+| `recExt1ControlROneCSynthSpeedupMedian` | 2.54 | synth, median of `global-recompute` ÷ `tgms-L1` `ttf_p50_ms` over the 9 cells |
+| `recExt1ControlROneCCollegeMsgSpeedupMedian` | 5.20 | collegemsg, the same |
+| `recExt1ControlROneCSpeedupMedian` | 4.39 | the same over all 18 N = 10³ cells |
+| `recExt1ControlROneCGlobalP50SSynth` / `…CollegeMsg` | 13.5 / 3.1 | median `global-recompute` `ttf_p50_ms`, s |
+| `recExt1ControlROneCPerArtifactPublishMsSynth` / `…CollegeMsg` | 15.3 / 3.4 | per-artifact publish, ms |
+| `recExt1ControlROneCPerCheckMsSynth` / `…CollegeMsg` | 0.24 / 0.24 | per-check, ms (two decimals; the fifth-arc names print one) |
+| `recExt1ControlROneCPreArcPublishMsSynth` / `…CollegeMsg` | 266.2 / 228.1 | the pre-arc per-artifact publish, ms |
+| `recExt1ControlROneCWallRatio` | 0.040 | summed wall, R1c ÷ pre-arc |
+| `recExt1ControlROneCProbeWallS` | 1029 | probe wall, s |
+| `recExt1ControlROneCProbePerCheckMs` | 0.21 | probe per-check, ms |
+| `recExt1RatioGrROneCMedianSynth` / `…CollegeMsg` | 7.95 / 2.19 | Neo4j `refresh_wall_ms.median` ÷ R1c `global-recompute` p50, median over the 9 cells |
+| `recExt1SpeedupLOneROneCMedianSynth` / `…CollegeMsg` | 20.12 / 11.60 | Neo4j ÷ R1c `tgms-L1` p50, median |
+| `recExt1SpeedupLOneROneCMinSynth` / `…CollegeMsg` | 19.15 / 9.38 | the same, minimum |
+| `recExt1RatioGrROneCProbe` / `recExt1SpeedupLOneROneCProbe` | 7.66 / 11.67 | the probe, against the rerun record |
