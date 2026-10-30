@@ -26,7 +26,7 @@ This file pins:
    and is never smaller than it;
 5. the replay runs once per log state and resumes over appended records with
    the same result as a replay from byte 0, refusing if the log changed under
-   it; the chain cache gives the same verdicts;
+   it; the chain cache, with or without a burst, gives the same verdicts;
 6. the artifact level: on a tiny store with an injected pair, every artifact
    whose lineage touches the identity is UNDECIDABLE and the rest are
    unchanged.
@@ -436,13 +436,14 @@ def test_a_log_rewritten_between_the_walk_and_the_replay_refuses():
         check_mod._overlaps_at(log, walked.chains, end)
 
 
-def test_the_chain_cache_agrees():
+def test_the_chain_cache_with_and_without_a_burst_agrees():
     log = _collided()
     scopes = [_scope(log, t) for t in (*TOUCHING.values(), *UNTOUCHED.values())]
     plain = [check(s, log).to_json() for s in scopes]
     cache = ChainCache()
     assert [check(s, log, chain_cache=cache).to_json() for s in scopes] == plain
-    assert [check(s, log, chain_cache=cache).to_json() for s in scopes] == plain
+    with cache.burst():
+        assert [check(s, log, chain_cache=cache).to_json() for s in scopes] == plain
     assert cache.misses == 1
 
 
