@@ -158,3 +158,18 @@ def test_reading_everything_refreshes_exactly_what_tgms_l1_invalidates(
 def test_k_below_one_is_refused(pristine_store: Path) -> None:
     with pytest.raises(ValueError, match="refresh_on_read"):
         Storm(_copy(pristine_store), n_artifacts=2, seed=0, backend=BACKEND, refresh_on_read=0)
+
+
+def test_the_reads_of_one_interval_share_one_validation_per_log_state(
+    pristine_store: Path,
+) -> None:
+    """The k reads run as one `ChainCache.burst` on the interval's own cache
+    (failure ledger `check-fingerprint-per-check`): the whole-log digest is
+    taken about once per batch, not once per read."""
+    rows, _, _, storm = _run(pristine_store, k=10_000, check_cache="chain")
+    reads = sum(r["on_demand_reads"] for r in rows)
+    cache = storm.on_demand_cache
+    assert cache is not None
+    assert reads >= 4 * N_BATCHES
+    assert cache.fingerprints <= 2 * N_BATCHES + 2
+    assert cache.hits >= reads - N_BATCHES
