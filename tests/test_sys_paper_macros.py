@@ -6228,3 +6228,136 @@ def test_external_r1c_changed_arm_count_fails_even_with_a_patched_digest(tmp_pat
     m = mod.Macros()
     mod.compute_external_r1c(m)
     assert any("per-batch arm counts" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# Lane COARSE (2026-10-30, P-COARSE): the R1c loop's 18 N = 10^3 cells
+# replayed with --leaf-scopes storm-v1 -- compute_external_coarse.
+# --------------------------------------------------------------------------
+
+COARSE_FROZEN = {
+    "recExt1ControlCoarseSynthSpeedupMedian": "1.06",
+    "recExt1ControlCoarseSynthSpeedupMin": "1.05",
+    "recExt1ControlCoarseSynthSpeedupMax": "1.07",
+    "recExt1ControlCoarseNominatedShareSynth": "0.67",
+    "recExt1ControlCoarseCollegeMsgSpeedupMedian": "1.18",
+    "recExt1ControlCoarseCollegeMsgSpeedupMin": "1.17",
+    "recExt1ControlCoarseCollegeMsgSpeedupMax": "1.21",
+    "recExt1ControlCoarseNominatedShareCollegeMsg": "0.69",
+    "recCoarseNarrowingOps": "3",
+}
+
+
+def _coarse_values(mod=None):
+    mod = mod or _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_coarse(m)
+    return mod, {name: value for name, value, _ in m.items}
+
+
+def _jsonl(path):
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def test_external_coarse_recomputes_to_frozen_values_without_failure():
+    mod, values = _coarse_values()
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert values == COARSE_FROZEN
+
+
+def test_external_coarse_speedups_and_share_independently_recomputed():
+    mod, values = _coarse_values()
+    rec = json.loads(mod.EXTERNAL_TGMS_CONTROL_COARSE.read_text(encoding="utf-8"))
+    pc = {c["cell_id"]: c for c in rec["summary"]["per_cell"]}
+    rows = {r["cell_id"]: r for r in _jsonl(mod.EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}
+    checks = _jsonl(mod.EXTERNAL_TGMS_CONTROL_COARSE_CHECKS)
+    assert len(pc) == 18 and not any(cid.endswith("n10000-s0") for cid in pc)
+    for store, tok in (("synth-iv-60k", "Synth"), ("collegemsg", "CollegeMsg")):
+        cells = [c for c in pc if pc[c]["store"] == store]
+        assert len(cells) == 9
+        sp = [pc[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+              / pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+        assert values[f"recExt1ControlCoarse{tok}SpeedupMedian"] == f"{statistics.median(sp):.2f}"
+        assert values[f"recExt1ControlCoarse{tok}SpeedupMin"] == f"{min(sp):.2f}"
+        assert values[f"recExt1ControlCoarse{tok}SpeedupMax"] == f"{max(sp):.2f}"
+        share = statistics.median(
+            statistics.median(r["candidate_survivors"]
+                              / rows[c]["manifest"]["config"]["n_registered"]
+                              for r in checks if r["cell_id"] == c) for c in cells)
+        assert values[f"recExt1ControlCoarseNominatedShare{tok}"] == f"{share:.2f}"
+        # the population nominated is about two thirds of the registered one
+        assert 0.6 < share < 0.75
+    kept = {tuple(sorted(r["manifest"]["config"]["leaf_scopes_kept_ops"])) for r in rows.values()}
+    assert kept == {("aggregate_events", "entity_history", "neighborhood_evolution")}
+    assert values["recCoarseNarrowingOps"] == "3"
+
+
+def test_external_coarse_built_in_control_against_r1c_recomputed():
+    """What must not move did not: on all 360 batches the four configurations
+    that do not read the lineage have R1c's counts, both TGMS configurations
+    are sound (no false-fresh) and nominate the same number as each other and
+    no fewer than R1c's; the nominated counts did move."""
+    mod = _load("sys_paper_macros")
+    coarse = {(b["cell_id"], b["batch_index"]): b
+              for b in _jsonl(mod.EXTERNAL_TGMS_CONTROL_COARSE_BATCHES)}
+    r1c = {(b["cell_id"], b["batch_index"]): b
+           for b in _jsonl(mod.EXTERNAL_TGMS_CONTROL_R1C_BATCHES)}
+    assert len(coarse) == 360 and set(coarse) <= set(r1c)
+    fields = ("invalidated_count", "false_fresh_count", "false_stale_count")
+    moved = 0
+    for k, b in coarse.items():
+        for arm in ("global-recompute", "entity-touch", "row-touch", "window-overlap"):
+            for f in fields:
+                assert b["arms"][arm][f] == r1c[k]["arms"][arm][f], (k, arm, f)
+        l0, l1 = b["arms"]["tgms-L0"], b["arms"]["tgms-L1"]
+        assert l0["false_fresh_count"] == l1["false_fresh_count"] == 0
+        assert l0["invalidated_count"] == l1["invalidated_count"]
+        assert l1["invalidated_count"] >= r1c[k]["arms"]["tgms-L1"]["invalidated_count"]
+        moved += l1["invalidated_count"] != r1c[k]["arms"]["tgms-L1"]["invalidated_count"]
+    assert moved == 360
+    # the oracle's changed set is the same: the final event-log sha of each cell
+    rows = {r["cell_id"]: r for r in _jsonl(mod.EXTERNAL_TGMS_CONTROL_COARSE_ROWS)}
+    r1c_rows = {r["cell_id"]: r for r in _jsonl(mod.EXTERNAL_TGMS_CONTROL_R1C_ROWS)}
+    for cid, r in rows.items():
+        assert r["t1_equality"]["t1_eventlog_sha256"] == r1c_rows[cid]["t1_equality"][
+            "t1_eventlog_sha256"]
+        assert r["t1_equality"]["n_batches_all_match"] == 20
+
+
+@pytest.mark.parametrize("attr", [
+    "EXTERNAL_TGMS_CONTROL_COARSE", "EXTERNAL_TGMS_CONTROL_COARSE_ROWS",
+    "EXTERNAL_TGMS_CONTROL_COARSE_BATCHES", "EXTERNAL_TGMS_CONTROL_COARSE_CHECKS"])
+def test_tampered_external_coarse_file_fails_the_sha256_gate(tmp_path, attr):
+    mod = _load("sys_paper_macros")
+    src = getattr(mod, attr)
+    tampered = tmp_path / src.name
+    tampered.write_text(src.read_text(encoding="utf-8").replace("1", "2", 1), encoding="utf-8")
+    setattr(mod, attr, tampered)
+    try:
+        mod.compute_external_coarse(mod.Macros())
+    except Exception:  # noqa: BLE001 - a malformed copy may also stop the read; the gate came first
+        pass
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_external_coarse_changed_baseline_count_fails_even_with_a_patched_digest(tmp_path):
+    """One batch whose global-recompute false-stale count differs from R1c's
+    must fail the built-in control, with the sha256 gate patched."""
+    mod = _load("sys_paper_macros")
+    rows = _jsonl(mod.EXTERNAL_TGMS_CONTROL_COARSE_BATCHES)
+    rows[0]["arms"]["global-recompute"]["false_stale_count"] += 1
+    data = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows).encode()
+    tampered = tmp_path / mod.EXTERNAL_TGMS_CONTROL_COARSE_BATCHES.name
+    tampered.write_bytes(data)
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    patched = re.sub(
+        r"^[0-9a-f]{64}(\s+\S*tgms-control-2026-10-30-coarse-batches\.jsonl)$",
+        hashlib.sha256(data).hexdigest() + r"\1", sums_text, flags=re.MULTILINE)
+    assert patched != sums_text, "fixture did not find the row to patch"
+    sums_path = tmp_path / "SHA256SUMS.txt"
+    sums_path.write_text(patched, encoding="utf-8")
+    mod.EXTERNAL_TGMS_CONTROL_COARSE_BATCHES = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = sums_path
+    mod.compute_external_coarse(mod.Macros())
+    assert any("global-recompute, entity-touch, row-touch and window-overlap" in f
+               for f in mod.FAILURES)
