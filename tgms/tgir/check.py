@@ -29,6 +29,15 @@ Three shapes govern this module:
   `batch.tt > as_of_tt` (T1's four-step proof restricted to one batch). Every
   batch is still enumerated and every other step still runs in full; this is
   what distinguishes it from FF-4's `if pinned: return FRESH`.
+- **Step 7b refuses on a known overlap** (failure ledger
+  `check-assumed-non-overlap-precondition`, pre-registered as P-ENG2). Every
+  footprint and every scope derivation assumes I1 — no two believed versions
+  of one identity overlap in valid time — and `ingest_events` is the one
+  applier that does not enforce it (it supersedes nothing, so an event whose
+  explicit `disc` names an existing edge sits beside it). When the log, replayed
+  over intervals alone, leaves such a pair believed for an identity the scope
+  could have read, the verdict is `UNDECIDABLE("known-overlap")`: the
+  precondition the other steps rest on is known to be false there.
 
 **This module reads a log and a scope. It never reads a store** — D13.20's
 restriction, enforced by `scripts/check_freshness_boundary.py`.
@@ -38,20 +47,23 @@ from __future__ import annotations
 
 import hashlib
 import os
+import threading
 import weakref
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Iterable, Literal, Sequence
 
 from tgms.core.errors import InvalidArgError, StateError
-from tgms.core.model import OPEN_END
+from tgms.core.model import OPEN_END, Interval, edge_eid
 from tgms.storage.eventlog import SEED_CHAIN, EventLog, extend_chain
 from tgms.tgir.depscope import (
     INCIDENT_ROLES, KINDS, PSEUDO_PROPS, TOP, TOP_JSON, UNANCHORED, VT_MODES,
     DependencyScope, EdgeKey, Incident, ScopeTerm, StoreIdentityMemo, Targets,
     store_identity,
 )
-from tgms.tgir.footprint import BatchFootprint, OpFootprint, footprints_of_batch
+from tgms.tgir.footprint import (
+    BatchFootprint, Identity, OpFootprint, footprints_of_batch,
+)
 
 # ---------------------------------------------------------------------------
 # the three-valued match
@@ -72,12 +84,14 @@ class Match(Enum):
 #: Evaluation order is different and is cheap-first — see `intersects`.
 CONJUNCTS: tuple[str, ...] = ("kinds", "targets", "rel_types", "vt", "props")
 
-#: The six reasons `check` can refuse with (D13.24). The list is closed: a
-#: seventh would mean the frozen algorithm grew a step, which is a §9
-#: escalation rather than a commit.
+#: The seven reasons `check` can refuse with (D13.24). The list is closed: a
+#: new one means the frozen algorithm grew a step, which is a §9 escalation
+#: rather than a commit. The seventh, `known-overlap` (step 7b), is exactly
+#: that: pre-registered engine change P-ENG2 (2026-10-30), failure ledger
+#: `check-assumed-non-overlap-precondition`.
 REASONS: tuple[str, ...] = (
     "scope-version", "unknown-enum", "store-mismatch", "no-tt_q",
-    "log-rewritten", "log-unreadable",
+    "log-rewritten", "log-unreadable", "known-overlap",
 )
 
 #: Presentation cap on witnesses **per step**, with the true count always
@@ -529,19 +543,27 @@ class ChainCache:
 @dataclass(frozen=True, slots=True)
 class LogWalk:
     """What one pass over the log yields: every record boundary's rolling
-    chain, and every record's `(tt, start_offset)`.
+    chain, every record's `(tt, start_offset)`, and the identities whose
+    believed versions overlap at the end of the log (step 7b).
 
-    Both come from the same pass **on purpose** (E-2). D13.24's step 6 requires
-    `chain_of_prefix` for every checkpoint and that iterates from byte 0
-    regardless, so step 5's cursor invariant — *is `start` at or before the
-    first batch with `tt > tt_q`?* — is answered from what the walk already
-    collected instead of by a second scan. E-2's own words: *"Step 5's cursor
-    invariant is verified inside step 6's walk, so it costs nothing extra and
-    should not appear as a separate line."*
+    The chains and starts come from the same pass **on purpose** (E-2).
+    D13.24's step 6 requires `chain_of_prefix` for every checkpoint and that
+    iterates from byte 0 regardless, so step 5's cursor invariant — *is
+    `start` at or before the first batch with `tt > tt_q`?* — is answered from
+    what the walk already collected instead of by a second scan. E-2's own
+    words: *"Step 5's cursor invariant is verified inside step 6's walk, so it
+    costs nothing extra and should not appear as a separate line."*
+
+    The overlap set is keyed by what that pass computed: the chain at the
+    log's end is a digest of every record, so the interval replay behind it
+    runs once per log state (`_overlaps_at`) — from byte 0 the first time,
+    over only the appended records when the log extends a state already
+    replayed — and a `ChainCache` keeps the result with the chains.
     """
 
     chains: dict[int, str]
     starts: tuple[tuple[int, int], ...]      # (tt, record start offset), in log order
+    overlaps: tuple["KnownOverlap", ...] = ()
 
     def first_start_after(self, tt_q: int) -> int | None:
         """The start offset of the first batch in the `tt`-suffix, or `None`
@@ -558,11 +580,434 @@ def _walk(log: EventLog) -> LogWalk:
     chains = {0: SEED_CHAIN}
     chain = SEED_CHAIN
     starts: list[tuple[int, int]] = []
+    last = 0
     for batch, end, raw in log.batches_from(0):
         chain = extend_chain(chain, raw)
         chains[end] = chain
         starts.append((int(batch["tt"]), end - len(raw)))
-    return LogWalk(chains, tuple(starts))
+        last = end
+    return LogWalk(chains, tuple(starts), _overlaps_at(log, chains, last))
+
+
+# ---------------------------------------------------------------------------
+# the known-overlap precondition (step 7b)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True, slots=True)
+class KnownOverlap:
+    """One identity whose believed versions overlap in valid time at the end
+    of the log — what `tgms check --full` reports as
+    `row/believed-versions-overlap`, derived from the log alone.
+
+    `footprint` is how step 7b asks whether a scope could have read it: the
+    identity, its relation type, `props = "*"` (two versions disagree about
+    every property, existence and event count over the overlap), and `vt` =
+    the hull of **every** believed version of the identity, closed at the
+    right like every other footprint (D13.21) — wider than the overlapping
+    region itself, which is the safe direction. `kind` is filled in only
+    because an `OpFootprint` needs one: step 7b does not test the kinds
+    conjunct (see `_touches`)."""
+
+    footprint: OpFootprint
+    intervals: tuple[tuple[int, int], ...]
+
+    def to_json(self) -> dict[str, Any]:
+        return {"entity_kind": self.footprint.entity_kind,
+                "identity": self.footprint.identity.to_json(),
+                "intervals": [list(iv) for iv in self.intervals]}
+
+
+class _Refused(Exception):
+    """The applier raises on this op, so its whole batch rolls back (the
+    store skips it on the live path and on replay alike, `Store._write`)."""
+
+
+def _overlapping(a_s: Any, a_e: Any, b_s: Any, b_e: Any) -> bool:
+    return a_s < b_e and b_s < a_e
+
+
+def _remainder(vs: Any, ve: Any, cs: Any, ce: Any) -> list[tuple[Any, Any]]:
+    """`tgms.storage.base._remainder`, restated: the parts of `[vs, ve)` not
+    covered by `[cs, ce)`."""
+    out = []
+    if vs < cs:
+        out.append((vs, min(ve, cs)))
+    if ce < ve:
+        out.append((max(vs, ce), ve))
+    return out
+
+
+def _interval(start: Any, end: Any) -> tuple[Any, Any]:
+    """`base._interval`'s validation (`Interval`'s `start < end`), refusing
+    where it raises."""
+    try:
+        Interval(start, end)
+    except (ValueError, TypeError):
+        raise _Refused() from None
+    return start, end
+
+
+class _Believed:
+    """The log replayed over **intervals only** — which `(vt_s, vt_e)` each
+    identity believes at the end of the log, and nothing else (no props, no
+    `tt`, no version ids). It restates the five appliers of
+    `tgms/storage/base.py` (`StorageAdapter`, which every backend inherits
+    unchanged) exactly as far as they decide which intervals stay believed:
+
+    - `assert_node` / `assert_edge`: every believed version overlapping the
+      asserted interval is replaced by its remainders, then the new interval
+      is added;
+    - `correct`: the same, refusing when nothing overlaps (and, for a node,
+      when the hits disagree on their label, D-140);
+    - `retract`: every version valid at `t` is cut to `[vt_s, t)`, refusing
+      when none is;
+    - `ingest_events`: every event interval is **added, superseding nothing**
+      — the one way two believed versions of one identity come to overlap;
+      explicit `nodes` refuse on a duplicate or on a uid already believed, and
+      endpoints with no believed version get `[first seen, OPEN_END)`.
+
+    A batch with a refused op is rolled back whole, as the store rolls it
+    back. Edge identities are keyed on the four logged fields `edge_eid`
+    hashes, node identities on the uid, so nothing here hashes per event.
+    The node table carries labels because `correct` refuses on them; node
+    overlaps are unreachable through these appliers and are tracked anyway,
+    so a log that somehow contains one is still caught.
+
+    One known divergence, in the safe direction: a batch that writes one
+    identity twice at one `vt_s` gives both rows one version id, and the
+    native engine's close/retire-by-id then stops believing both where this
+    replay stops believing only the hit — so this replay can believe more
+    than the store, never less, and can only over-report an overlap.
+    """
+
+    __slots__ = ("edges", "nodes", "_multi_e", "_multi_n", "_undo")
+
+    def __init__(self) -> None:
+        #: edge key `(src, dst, rel_type, disc)` -> believed `[(vt_s, vt_e)]`
+        self.edges: dict[tuple[Any, Any, Any, Any], list[tuple[Any, Any]]] = {}
+        #: uid -> believed `[(vt_s, vt_e, label)]`
+        self.nodes: dict[Any, list[tuple[Any, Any, Any]]] = {}
+        #: identities that have ever held two or more believed versions — the
+        #: only ones the end-of-log overlap test has to look at (a superset is
+        #: harmless: `overlaps` re-tests each)
+        self._multi_e: set[tuple[Any, Any, Any, Any]] = set()
+        self._multi_n: set[Any] = set()
+        #: the current batch's undo actions, applied in reverse on a refusal
+        self._undo: list[tuple[Any, ...]] = []
+
+    # -- replaying ------------------------------------------------------------
+
+    def replay(self, log: EventLog, start: int, chain: str, end: int,
+               chains: dict[int, str]) -> None:
+        """Apply every record in `[start, end)` — the walk's own records:
+        each one's rolling chain must equal the one the walk computed, or the
+        log changed between the walk and this read, and the check refuses
+        (`StateError`, which `check` reports as `log-unreadable`)."""
+        at = start
+        if at < end:
+            for batch, b_end, raw in log.batches_from(start):
+                chain = extend_chain(chain, raw)
+                if b_end > end or chains.get(b_end) != chain:
+                    break
+                self.apply_batch(batch)
+                at = b_end
+                if at == end:
+                    break
+        if at != end:
+            raise StateError("the event log changed while it was being checked",
+                             offset=at, expected=end)
+
+    def apply_batch(self, batch: dict[str, Any]) -> None:
+        undo = self._undo = []
+        try:
+            for op in batch.get("ops", ()):
+                self._apply_op(op)
+        except (_Refused, KeyError, TypeError, ValueError, AttributeError):
+            # `_Refused` is the applier's own refusal; the rest are an op the
+            # applier cannot have applied either (a missing or mistyped field
+            # raises there just the same). Roll the whole batch back.
+            for action in reversed(undo):
+                if action[0] == "ingest":
+                    for key in reversed(action[2]):
+                        self.edges[key].pop()
+                    for key in action[1]:
+                        self.edges.pop(key, None)
+                else:
+                    table = self.edges if action[0] == "edge" else self.nodes
+                    if action[2] is None:
+                        table.pop(action[1], None)
+                    else:
+                        table[action[1]] = action[2]
+        self._undo = []
+
+    def _set_edge(self, key: Any, versions: list[tuple[Any, Any]]) -> None:
+        """Replace `key`'s believed list (never mutating the old one, so the
+        undo action can hold it by reference)."""
+        self._undo.append(("edge", key, self.edges.get(key)))
+        if versions:
+            self.edges[key] = versions
+            if len(versions) > 1:
+                self._multi_e.add(key)
+        else:
+            self.edges.pop(key, None)
+
+    def _set_node(self, uid: Any, versions: list[tuple[Any, Any, Any]]) -> None:
+        self._undo.append(("node", uid, self.nodes.get(uid)))
+        if versions:
+            self.nodes[uid] = versions
+            if len(versions) > 1:
+                self._multi_n.add(uid)
+        else:
+            self.nodes.pop(uid, None)
+
+    # -- the five appliers, over intervals -----------------------------------
+
+    def _apply_op(self, op: dict[str, Any]) -> None:
+        kind = op["op"]
+        if kind == "ingest_events":
+            self._ingest_events(op)
+        elif kind == "assert_edge":
+            key = (op["src"], op["dst"], op["rel_type"], op.get("disc", ""))
+            vt = _interval(op["vt_s"], op.get("vt_e", OPEN_END))
+            self._set_edge(key, self._replace(self.edges.get(key, ()), vt) + [vt])
+        elif kind == "assert_node":
+            uid, label = op["uid"], op["label"]
+            vt = _interval(op["vt_s"], op.get("vt_e", OPEN_END))
+            self._set_node(uid, self._replace(self.nodes.get(uid, ()), vt)
+                           + [(vt[0], vt[1], label)])
+        elif kind == "retract":
+            ref, t = op["ref"], op["t"]
+            if ref["kind"] == "node":
+                uid = ref["uid"]
+                versions = self.nodes.get(uid, ())
+                hits = [v for v in versions if v[0] <= t < v[1]]
+                if not hits:
+                    raise _Refused()
+                self._set_node(uid, [v for v in versions if not v[0] <= t < v[1]]
+                               + [(v[0], t, v[2]) for v in hits if v[0] < t])
+            else:
+                key = self._edge_ref(ref)
+                versions_e = self.edges.get(key, ())
+                hits_e = [v for v in versions_e if v[0] <= t < v[1]]
+                if not hits_e:
+                    raise _Refused()
+                self._set_edge(key, [v for v in versions_e if not v[0] <= t < v[1]]
+                               + [(v[0], t) for v in hits_e if v[0] < t])
+        elif kind == "correct":
+            ref = op["ref"]
+            op["props"]                       # `base._correct` reads it first
+            vt = _interval(op["vt_s"], op.get("vt_e", OPEN_END))
+            if ref["kind"] == "node":
+                uid = ref["uid"]
+                versions = self.nodes.get(uid, ())
+                hits = [v for v in versions if _overlapping(v[0], v[1], *vt)]
+                if not hits or len({v[2] for v in hits}) > 1:
+                    raise _Refused()
+                self._set_node(uid, self._replace(versions, vt)
+                               + [(vt[0], vt[1], hits[0][2])])
+            else:
+                key = self._edge_ref(ref)
+                versions_e = self.edges.get(key, ())
+                if not any(_overlapping(v[0], v[1], *vt) for v in versions_e):
+                    raise _Refused()
+                self._set_edge(key, self._replace(versions_e, vt) + [vt])
+        else:
+            raise _Refused()
+
+    @staticmethod
+    def _edge_ref(ref: dict[str, Any]) -> tuple[Any, Any, Any, Any]:
+        if ref["kind"] != "edge":
+            raise _Refused()
+        return (ref["src"], ref["dst"], ref["rel_type"], ref.get("disc", ""))
+
+    @staticmethod
+    def _replace(versions: Any, vt: tuple[Any, Any]) -> list[Any]:
+        """Every version not overlapping `vt`, plus the remainders of the
+        ones that do — what survives a supersede at `vt` (labels, where
+        present, ride along on the remainders)."""
+        out: list[Any] = []
+        cs, ce = vt
+        for v in versions:
+            if not _overlapping(v[0], v[1], cs, ce):
+                out.append(v)
+                continue
+            for fs, fe in _remainder(v[0], v[1], cs, ce):
+                out.append((fs, fe) + tuple(v[2:]))
+        return out
+
+    def _ingest_events(self, op: dict[str, Any]) -> None:
+        """Everything that can refuse runs before anything is written, as in
+        `base._ingest_events`; the event loop is the hot path of a bulk load
+        and is written for it."""
+        events = op.get("events") or []
+        base = op.get("offset", 0)
+        rows: list[tuple[tuple[Any, Any, Any, Any], tuple[Any, Any]]] = []
+        first_seen: dict[Any, Any] = {}
+        seen_get = first_seen.get
+        for i, ev in enumerate(events):
+            src, dst, vt_s = ev["src"], ev["dst"], ev["vt_s"]
+            disc = ev["disc"] if "disc" in ev else f"#{base + i}"
+            rows.append(((src, dst, ev["rel_type"], disc), (vt_s, ev.get("vt_e") or vt_s + 1)))
+            v = seen_get(src)
+            if v is None or vt_s < v:
+                first_seen[src] = vt_s
+            v = seen_get(dst)
+            if v is None or vt_s < v:
+                first_seen[dst] = vt_s
+        explicit: list[tuple[Any, tuple[Any, Any, Any]]] = []
+        nodes = op.get("nodes")
+        if nodes:
+            seen: set[Any] = set()
+            for rec in nodes:
+                if rec["uid"] in seen:
+                    raise _Refused()
+                seen.add(rec["uid"])
+            if any(self.nodes.get(uid) for uid in seen):
+                raise _Refused()
+            for rec in nodes:
+                vt = _interval(rec["vt_s"], rec.get("vt_e", OPEN_END))
+                explicit.append((rec["uid"], (vt[0], vt[1], rec["label"])))
+        label = op.get("node_label", "Node")
+        explicit_uids = {uid for uid, _v in explicit}
+        for uid, version in explicit:
+            self._set_node(uid, [version])
+        believed_nodes = self.nodes
+        for u, vt_s in first_seen.items():
+            if u in explicit_uids or believed_nodes.get(u):
+                continue
+            self._set_node(u, [(vt_s, OPEN_END, label)])
+        # filed before the loop and filled as it goes, so a field that fails
+        # mid-loop (an unhashable one) still rolls back exactly what landed
+        created: list[Any] = []
+        appended: list[Any] = []
+        self._undo.append(("ingest", created, appended))
+        edges, multi = self.edges, self._multi_e
+        edges_get = edges.get
+        for key, vt in rows:
+            prior = edges_get(key)
+            if prior is None:
+                edges[key] = [vt]
+                created.append(key)
+            else:
+                prior.append(vt)
+                appended.append(key)
+                multi.add(key)
+
+    # -- the result -----------------------------------------------------------
+
+    def overlaps(self) -> tuple[KnownOverlap, ...]:
+        """`integrity.rs::overlaps`' rule over what is believed now: sorted
+        by `vt_s`, some interval ends after the next one starts."""
+        out: list[KnownOverlap] = []
+        for key in self._multi_e:
+            ivs = self.edges.get(key)
+            if ivs is None or not _has_overlap(ivs):
+                continue
+            src, dst, rel_type, disc = (str(x) for x in key)
+            ident = Identity(eid=(edge_eid(src, dst, rel_type, disc),), src=(src,),
+                             dst=(dst,), rel_type=(rel_type,), disc=(disc,))
+            out.append(_known(ident, "edge", (rel_type,), sorted(ivs)))
+        for uid in self._multi_n:
+            nvs = self.nodes.get(uid)
+            if nvs is None or not _has_overlap(nvs):
+                continue
+            out.append(_known(Identity(uid=(str(uid),)), "node", TOP,
+                              sorted((v[0], v[1]) for v in nvs)))
+        out.sort(key=lambda k: (k.footprint.entity_kind,
+                                repr(k.footprint.identity.to_json())))
+        return tuple(out)
+
+
+@dataclass(slots=True)
+class _Replay:
+    """One replayed log state: where it ends, the walk's chain there, the
+    replay itself, and its overlaps."""
+
+    end: int
+    chain: str
+    believed: _Believed
+    overlaps: tuple[KnownOverlap, ...]
+
+
+#: The last few replayed log states, content-addressed by `(end, chain)` —
+#: the rolling chain the walk computes anyway is a digest of every record up
+#: to `end`, so a state is reused only for a log whose records are those
+#: bytes, whichever `EventLog` object or path reads them. A walk whose log
+#: extends a remembered state takes it and replays only the new records
+#: (ownership moves: the state is mutated forward and re-filed under its new
+#: end). Process memory only; it cannot change a verdict, only skip
+#: replaying records whose replay is already known — the posture of
+#: `_IDENTITY_MEMOS`, and like it, not opt-in.
+_REPLAYS: list[_Replay] = []
+_REPLAYS_KEPT = 2
+_REPLAYS_LOCK = threading.Lock()
+
+
+def _overlaps_at(log: EventLog, chains: dict[int, str], end: int) -> tuple[KnownOverlap, ...]:
+    """The known overlaps of the log state the walk just read (`chains`, up
+    to `end`), replaying only what no remembered state already covers."""
+    if end == 0:
+        return ()
+    with _REPLAYS_LOCK:
+        best: _Replay | None = None
+        for r in _REPLAYS:
+            if chains.get(r.end) == r.chain and (best is None or r.end > best.end):
+                best = r
+        if best is not None and best.end == end:
+            return best.overlaps
+        if best is not None:
+            _REPLAYS.remove(best)
+    if best is None:
+        believed, start, chain = _Believed(), 0, SEED_CHAIN
+    else:
+        believed, start, chain = best.believed, best.end, best.chain
+    believed.replay(log, start, chain, end, chains)
+    overlaps = believed.overlaps()
+    with _REPLAYS_LOCK:
+        _REPLAYS.append(_Replay(end, chains[end], believed, overlaps))
+        del _REPLAYS[:-_REPLAYS_KEPT]
+    return overlaps
+
+
+def _has_overlap(versions: Sequence[tuple[Any, ...]]) -> bool:
+    ivs = sorted((v[0], v[1]) for v in versions)
+    return any(a[1] > b[0] for a, b in zip(ivs, ivs[1:]))
+
+
+def _known(identity: Identity, entity_kind: Any, rel_type: Any,
+           intervals: list[tuple[Any, Any]]) -> KnownOverlap:
+    lo = min(s for s, _e in intervals)
+    hi = max(e for _s, e in intervals)
+    vt = ((int(lo), min(int(hi) + 1, OPEN_END)),) if int(lo) < int(hi) else TOP
+    return KnownOverlap(
+        footprint=OpFootprint(seq=0, arm="value", kind="ingest_events", cls="A",
+                              entity_kind=entity_kind, identity=identity,
+                              rel_type=rel_type, vt=vt, props=TOP),
+        intervals=tuple((s, e) for s, e in intervals))
+
+
+def _touches(term: ScopeTerm, fp: OpFootprint) -> bool:
+    """Could a read described by `term` have read the identity `fp` names?
+
+    `intersects` minus its kinds conjunct. `kinds` says which *later writes*
+    could change a result; a known overlap is not a later write but a state
+    the read may already have seen, so no kind set can exclude it. The other
+    four conjuncts — entity kind and identity (through the target arms),
+    relation type, valid time, properties — are `intersects`' own. A target
+    arm that would `REFUSE` counts as touching: the safe direction."""
+    if fp.entity_kind == "edge" and not meets(term.rel_types, fp.rel_type):
+        return False
+    if not vt_overlaps(term.vt, fp.vt):
+        return False
+    if not meets(term.props, fp.props):
+        return False
+    m, _arm = targets_match(term.targets, fp)
+    return m is not Match.MISS
+
+
+def known_overlap(scope: DependencyScope, overlaps: Sequence[KnownOverlap]) -> bool:
+    """Step 7b's test: does any term of `scope` touch any known overlap?"""
+    return any(_touches(term, k.footprint) for k in overlaps for term in scope.terms)
 
 
 #: One `StoreIdentityMemo` per live `EventLog` object (weakly keyed: it dies
@@ -671,6 +1116,12 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
     The verdict carries `exempt: {basis, batches, tt_range, theorem}` whenever
     at least one batch was exempted — the receipt is mandatory, never a silent
     skip.
+
+    **Step 7b (P-ENG2) refuses with `known-overlap`** when a term could have
+    read an identity whose believed versions overlap at the end of the log —
+    see `KnownOverlap` and `_touches`. On a log with no such identity it
+    changes nothing, which is every log the write path builds without an
+    explicit-`disc` collision in `ingest_events`.
     """
     parsed = _parse(scope)
     if isinstance(parsed, str):
@@ -749,6 +1200,21 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
     #     rewritten log still refuses.
     if scope.is_empty:
         return FRESH(tuple(degraded))
+
+    # 7b — the known overlap (P-ENG2, failure ledger
+    #     `check-assumed-non-overlap-precondition`). Steps 8-9 and every
+    #     scope derivation assume I1: no two believed versions of one
+    #     identity overlap in valid time. The walk replayed the log over
+    #     intervals and kept the identities for which that is false at its
+    #     end (what `tgms check --full` reports as `believed-versions-overlap`);
+    #     if a term could have read one of them, the answer rests on a
+    #     precondition known to be false, and "don't know" is the only honest
+    #     verdict. Checked after the integrity steps, so a rewritten log still
+    #     says so, and after step 7, since an empty scope reads nothing. A
+    #     `⊤` term touches every identity, so on a log with any overlap at
+    #     all it lands here.
+    if walked.overlaps and known_overlap(scope, walked.overlaps):
+        return UNDECIDABLE("known-overlap", tuple(degraded))
 
     # 8 — the scan. BOTH arms of every op (D13.21a), each term separately.
     witnesses: list[Witness] = []
@@ -943,8 +1409,8 @@ def check_trace(record: dict[str, Any], log: EventLog, tt_now: int = OPEN_END, *
 
 
 __all__ = [
-    "CONJUNCTS", "ChainCache", "FRESH", "Match", "POSSIBLY_STALE", "PlanVerdict",
-    "REASONS", "State", "StepsVerdict", "UNDECIDABLE", "Verdict", "WITNESS_CAP",
-    "Witness", "check", "check_steps", "check_trace", "incident_match",
-    "intersects", "meets", "targets_match", "vt_overlaps",
+    "CONJUNCTS", "ChainCache", "FRESH", "KnownOverlap", "Match", "POSSIBLY_STALE",
+    "PlanVerdict", "REASONS", "State", "StepsVerdict", "UNDECIDABLE", "Verdict",
+    "WITNESS_CAP", "Witness", "check", "check_steps", "check_trace", "incident_match",
+    "intersects", "known_overlap", "meets", "targets_match", "vt_overlaps",
 ]

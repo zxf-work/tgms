@@ -44,6 +44,8 @@ _REASON_TEXT: dict[str, str] = {
     "log-rewritten": "this store's history no longer matches the one this answer "
                      "was produced from",
     "log-unreadable": "this store's history could not be read",
+    "known-overlap": "this store holds two overlapping versions of something this "
+                     "answer read, so whether it is still current cannot be decided",
 }
 
 
