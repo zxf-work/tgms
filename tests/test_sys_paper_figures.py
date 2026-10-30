@@ -192,7 +192,10 @@ def test_arcs_csv_carries_the_macro_values_and_the_record_bar(tmp_path, monkeypa
     by_source = {r["source"]: r["value"] for r in data["rows"]}
     assert by_source["recSoakVerifyFullOverlapCount"] == 13714.0
     assert by_source["recStormV1CrossoverSpeedupSumN1k"] == pytest.approx(0.829)
-    assert by_source["recStormV3ProbeSpeedup"] == pytest.approx(1.419)
+    # the "after" points are the same-build pair the reconstruction macros land
+    assert by_source["recStormV2SpeedupSumN1kSeed0"] == pytest.approx(2.16)
+    assert by_source["recStormV2SpeedupSumProbe"] == pytest.approx(1.95)
+    assert "recStormV3ProbeSpeedup" not in by_source
     # the soak-2 writer bar is read from its record, not typed
     assert data["writer_bound"] == 50
 
@@ -233,18 +236,23 @@ def test_external_medians_are_asserted_against_the_macros(tmp_path, monkeypatch)
     assert set(facets) == {t for _s, _n, t, _k in mod._EXT_FACETS}
     college = facets["CollegeMsg, $N=10^3$"]
     assert len(college["series"][("neo", "after")]) == 9
-    assert college["ratio"] == pytest.approx(1.67)
+    # the ratio is Neo4j over incremental refresh on the R1c control
+    assert college["ratio"] == pytest.approx(11.60)
     probe = facets["synth, $N=10^4$"]
     assert len(probe["series"][("incr", "after")]) == 1
+    assert probe["ratio"] == pytest.approx(11.67)
     # a macro that disagrees with the record must fail the build
     bad = tmp_path / "macros.tex"
     text = mod.SYS_PAPER_MACROS.read_text(encoding="utf-8")
-    bad.write_text(text.replace("csname recExt1SpeedupLOneArcFiveProbe\\endcsname{8.51}",
-                                "csname recExt1SpeedupLOneArcFiveProbe\\endcsname{8.61}"),
-                   encoding="utf-8")
-    monkeypatch.setattr(mod, "SYS_PAPER_MACROS", bad)
-    with pytest.raises(AssertionError, match="recExt1SpeedupLOneArcFiveProbe"):
-        mod.build_external_data()
+    for name, landed, tampered in (("recExt1SpeedupLOneROneCMedianCollegeMsg", "11.60", "11.70"),
+                                   ("recExt1SpeedupLOneROneCProbe", "11.67", "11.77")):
+        old = f"csname {name}\\endcsname{{{landed}}}"
+        assert old in text, f"{name} is not landed as {landed} in the generated macros"
+        bad.write_text(text.replace(old, f"csname {name}\\endcsname{{{tampered}}}"),
+                       encoding="utf-8")
+        monkeypatch.setattr(mod, "SYS_PAPER_MACROS", bad)
+        with pytest.raises(AssertionError, match=name):
+            mod.build_external_data()
 
 
 def test_durability_strip_places_every_crash_boundary_once():

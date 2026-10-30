@@ -4852,6 +4852,53 @@ def test_external_withheld_symmetric_macros_recompute_without_failure():
     assert values["recWithheldSymTgmsFreshBeforeArrival"] == "39"
     assert values["recWithheldSymTgmsStaleAfterArrival"] == "39"
     assert values["recWithheldSymTgmsFalseFreshAfterArrival"] == "0"
+    assert values["recWithheldSymFlaggedAfterArrival"] == "197"
+    assert values["recWithheldSymRegistered"] == "884"
+
+
+def test_external_withheld_symmetric_flagged_count_independently_recomputed():
+    """The whole-registry flagged count after the late correction lands is the
+    record's own, equals what the in-order schedule flags when the same burst
+    arrives on time, and covers every changed artifact (the check is
+    conservative: flagged >= changed, never a FRESH leftover)."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_withheld_symmetric(m)
+    values = {name: value for name, value, _ in m.items}
+    s = json.loads(mod.EXTERNAL_WITHHELD_SYM.read_text(encoding="utf-8"))["summary"]
+    reg = s["registry"]["R11-after-arrival"]
+    assert values["recWithheldSymFlaggedAfterArrival"] == str(reg["possibly_stale"])
+    assert values["recWithheldSymRegistered"] == str(reg["n"])
+    assert reg["fresh"] + reg["possibly_stale"] == reg["n"] and reg["false_fresh_log"] == 0
+    on_time = [b for b in s["fidelity"]["per_burst"] if b["epoch"] == s["held_epoch"]]
+    assert len(on_time) == 1 and on_time[0]["invalidated_l0"] == reg["possibly_stale"]
+    assert int(values["recWithheldSymFlaggedAfterArrival"]) >= int(values["recWithheldSymAffected"])
+
+
+def test_tampered_withheld_symmetric_flagged_count_fails_even_with_a_patched_digest(tmp_path):
+    """A registry-wide flagged count that no longer matches the on-time schedule
+    (and falls under the changed count) must fail with the sha256 gate patched."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_WITHHELD_SYM.read_text(encoding="utf-8"))
+    reg = data["summary"]["registry"]["R11-after-arrival"]
+    reg["fresh"] += reg["possibly_stale"] - 10
+    reg["possibly_stale"] = 10
+    tampered = tmp_path / mod.EXTERNAL_WITHHELD_SYM.name
+    tampered_bytes = json.dumps(data).encode()
+    tampered.write_bytes(tampered_bytes)
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    patched = re.sub(r"^[0-9a-f]{64}(\s+\S*withheld-symmetric-2026-10-29\.json)$",
+                     hashlib.sha256(tampered_bytes).hexdigest() + r"\1", sums_text,
+                     flags=re.MULTILINE)
+    assert patched != sums_text, "fixture did not find the row to patch"
+    sums_path = tmp_path / "SHA256SUMS.txt"
+    sums_path.write_text(patched, encoding="utf-8")
+    mod.EXTERNAL_WITHHELD_SYM = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = sums_path
+    m = mod.Macros()
+    mod.compute_external_withheld_symmetric(m)
+    assert any("flagged when the same burst arrives on time" in f for f in mod.FAILURES)
+    assert any("flags at least every changed artifact" in f for f in mod.FAILURES)
 
 
 def test_external_withheld_symmetric_affected_matches_the_dataflow_record():
@@ -5227,6 +5274,7 @@ AXES_FROZEN = {
     "recAxesTgmsRegistryKbPerArtifact": "1.34",
     "recAxesTgmsRegistryMemKbPerArtifact": "4.76",
     "recAxesRatioN10k": "336",
+    "recAxesHarnessRatioN10k": "194",
     "recAxesViewArrangedRecordsN1k": "8{,}855{,}756",
     "recAxesViewArrangedRecordsN10k": "73{,}182{,}955",
 }
@@ -5239,6 +5287,28 @@ def test_axes_standing_state_macros_recompute_without_failure():
     assert mod.FAILURES == []
     values = {name: value for name, value, _ in m.items}
     assert values == AXES_FROZEN
+
+
+def test_axes_harness_ratio_independently_recomputed_from_the_rows():
+    """View VmRSS over the TGMS harness process (the one that also holds the
+    storage engine) after burst 1 at N = 10^4, straight from the rows; it is
+    smaller than the check-process ratio because the harness is the larger
+    TGMS process."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_axes_standing_state(m)
+    values = {name: value for name, value, _ in m.items}
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_AXES_STANDING_ROWS.read_text(encoding="utf-8").splitlines() if line]
+    cell = mod.AXES_N10K_CELL
+    view = next(r for r in rows if r["configuration"] == "ivm-dd" and r["cell_id"] == cell)
+    tgms = next(r for r in rows if r["configuration"] == "tgms" and r["cell_id"] == cell)
+    view_kb = next(c["vm_rss_kb"] for c in view["checkpoints"] if c["label"] == "after_burst_1")
+    harness_kb = tgms["harness_process"]["after_burst_1"]["vm_rss_kb"]
+    check_kb = tgms["check_process"]["after_check_pass"]["vm_rss_kb"]
+    assert values["recAxesHarnessRatioN10k"] == str(round(view_kb / harness_kb))
+    assert harness_kb > check_kb
+    assert int(values["recAxesHarnessRatioN10k"]) < int(values["recAxesRatioN10k"])
 
 
 def _axes_tampered(mod, tmp_path, edit, *, patch_sums: bool) -> None:
@@ -5317,6 +5387,18 @@ AXES_B_FROZEN = {
     "recAxesOnDemandFirstCheckMs": "4.3",
     "recAxesViewPerBurstMsN1k": "113",
     "recAxesViewPerBurstMsN10k": "5{,}359",
+    "recAxesViewPerBurstMsCollegeMsg": "6.1",
+    "recAxesOnDemandAllMsCollegeMsg": "866",
+    "recAxesOnDemandAllMsN1k": "5{,}572",
+    "recAxesOnDemandAllMsN10k": "94{,}221",
+    "recAxesAllReadRatioCollegeMsg": "141",
+    "recAxesAllReadRatioN1k": "49",
+    "recAxesAllReadRatioN10k": "18",
+    "recAxesRegisteredCollegeMsg": "934",
+    "recAxesRegisteredN1k": "884",
+    "recAxesRegisteredN10k": "8{,}922",
+    "recAxesOnDemandKOneMsMin": "4.9",
+    "recAxesOnDemandKOneMsMax": "5.0",
 }
 
 
@@ -5326,6 +5408,45 @@ def test_axes_on_demand_macros_recompute_without_failure():
     mod.compute_axes_on_demand(m)
     assert mod.FAILURES == []
     assert {name: value for name, value, _ in m.items} == AXES_B_FROZEN
+
+
+def test_axes_on_demand_new_macros_independently_recomputed_from_the_rows():
+    """Cost per burst with every registered artifact read (k = N) and at k = 1,
+    the registered counts, and the ratio to the view's per-burst cost, straight
+    from the committed rows and the dataflow rows."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_axes_on_demand(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_AXES_ON_DEMAND_ROWS.read_text(encoding="utf-8").splitlines() if line]
+    ivm = {r["cell_id"]: r for r in (
+        json.loads(line) for line in
+        mod.EXTERNAL_IVM_ROWS.read_text(encoding="utf-8").splitlines() if line)}
+    k_one = []
+    for tok, cell in (("CollegeMsg", mod.AXES_COLLEGEMSG_CELL), ("N1k", mod.AXES_N1K_CELL),
+                      ("N10k", mod.AXES_N10K_CELL)):
+        mine = [r for r in rows if r["cell_id"] == cell]
+        k_max = max(r["k"] for r in mine)
+        assert k_max == max(mod.AXES_K_GRIDS[cell])
+        all_ms = statistics.median(r["on_demand_ms"] for r in mine if r["k"] == k_max)
+        k_one.append(statistics.median(r["on_demand_ms"] for r in mine if r["k"] == 1))
+        view_ms = statistics.median(
+            b["refresh_plus_publish_ms"] for b in ivm[cell]["result"]["per_burst"])
+        n_registered = {r["n_registered"] for r in mine}
+        assert len(n_registered) == 1
+        n = n_registered.pop()
+        # every registered artifact is read at the top of the grid
+        assert {r["on_demand_reads"] for r in mine if r["k"] == k_max} == {min(k_max, n)}
+        assert values[f"recAxesOnDemandAllMs{tok}"] == mod.tex_num(round(all_ms), 4)
+        assert values[f"recAxesAllReadRatio{tok}"] == str(round(all_ms / view_ms))
+        assert values[f"recAxesRegistered{tok}"] == mod.tex_num(n, 4)
+    assert values["recAxesOnDemandKOneMsMin"] == f"{min(k_one):.1f}"
+    assert values["recAxesOnDemandKOneMsMax"] == f"{max(k_one):.1f}"
+    col_view = statistics.median(b["refresh_plus_publish_ms"] for b in
+                                 ivm[mod.AXES_COLLEGEMSG_CELL]["result"]["per_burst"])
+    assert values["recAxesViewPerBurstMsCollegeMsg"] == f"{col_view:.1f}"
 
 
 def test_axes_crossover_edges():
@@ -5375,6 +5496,18 @@ def test_tampered_axes_on_demand_rows_fail_even_with_a_patched_digest(tmp_path):
     assert any("falsifier flag" in f for f in mod.FAILURES)
 
 
+def test_axes_on_demand_unequal_registered_counts_fail(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def split(rows):
+        rows[0]["n_registered"] += 1
+
+    _axes_b_tampered(mod, tmp_path, split)
+    m = mod.Macros()
+    mod.compute_axes_on_demand(m)
+    assert any("one registered count across the cell's runs" in f for f in mod.FAILURES)
+
+
 def test_axes_on_demand_short_reads_fail(tmp_path):
     mod = _load("sys_paper_macros")
 
@@ -5415,6 +5548,24 @@ R1C_FROZEN = {
     "recExt1SpeedupLOneROneCMinCollegeMsg": "9.38",
     "recExt1RatioGrROneCProbe": "7.66",
     "recExt1SpeedupLOneROneCProbe": "11.67",
+    "recExt1ControlROneCSynthSpeedupMin": "2.42",
+    "recExt1ControlROneCSynthSpeedupMax": "7.76",
+    "recExt1ControlROneCCollegeMsgSpeedupMin": "4.29",
+    "recExt1ControlROneCCollegeMsgSpeedupMax": "5.49",
+    "recExt1ControlROneCProbeSpeedup": "1.52",
+    "recExt1ControlROneCCheckPhaseMsSynth": "51",
+    "recExt1ControlROneCCheckPhaseMsCollegeMsg": "54",
+    "recExt1ControlROneCRefreshPhaseMsSynth": "5{,}201",
+    "recExt1ControlROneCRefreshPhaseMsCollegeMsg": "514",
+    "recExt1ControlROneCArcFiveCheckPhaseMsSynth": "2{,}681",
+    "recExt1ControlROneCArcFiveCheckPhaseMsCollegeMsg": "2{,}964",
+    "recStoreLogMbSynth": "4.10",
+    "recStoreLogMbCollegeMsg": "4.14",
+    "recQueryTemplates": "13",
+    "recTemplatesArtifactsMinSynth": "27",
+    "recTemplatesArtifactsMaxSynth": "82",
+    "recTemplatesArtifactsMinCollegeMsg": "61",
+    "recTemplatesArtifactsMaxCollegeMsg": "81",
 }
 
 
@@ -5476,6 +5627,84 @@ def test_external_r1c_speedups_independently_recomputed_from_the_record():
     nonprobe = [cid for cid in r1c if cid != probe_cid]
     assert values["recExt1ControlROneCSpeedupMedian"] == \
         f"{statistics.median(speedup(r1c[c]) for c in nonprobe):.2f}"
+
+
+def test_external_r1c_range_phases_and_probe_independently_recomputed():
+    """Per-store min and max speedup over the nine N = 1,000 cells, the check
+    and refresh phase per batch (median of per-cell medians) on the shipped
+    engine and the check phase in the fifth-arc control, and the probe cell's
+    own speedup (the README's 139,653.9 / 91,599.9 ms), from the committed
+    record and batch files."""
+    mod, values = _r1c_values()
+    probe_cid = "synth-iv-60k-c1-none-n10000-s0"
+
+    def per_cell(path):
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        return {c["cell_id"]: c for c in rec["summary"]["per_cell"]}
+
+    def by_cell(path):
+        out = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line:
+                b = json.loads(line)
+                out.setdefault(b["cell_id"], []).append(b["arms"]["tgms-L1"])
+        return out
+
+    r1c = per_cell(mod.EXTERNAL_TGMS_CONTROL_R1C)
+    r1c_batches = by_cell(mod.EXTERNAL_TGMS_CONTROL_R1C_BATCHES)
+    arc5_batches = by_cell(mod.EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)
+    for store, tok, check, refresh, arc5_check in (
+            ("synth-iv-60k", "Synth", "51", "5{,}201", "2{,}681"),
+            ("collegemsg", "CollegeMsg", "54", "514", "2{,}964")):
+        cells = [c for c in r1c if c != probe_cid and r1c[c]["store"] == store]
+        assert len(cells) == 9
+        sp = [r1c[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+              / r1c[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+        assert values[f"recExt1ControlROneC{tok}SpeedupMin"] == f"{min(sp):.2f}"
+        assert values[f"recExt1ControlROneC{tok}SpeedupMax"] == f"{max(sp):.2f}"
+        assert min(sp) < statistics.median(sp) < max(sp)
+
+        def phase(batches, field):
+            return statistics.median(statistics.median(a[field] for a in batches[c])
+                                     for c in cells)
+
+        assert values[f"recExt1ControlROneCCheckPhaseMs{tok}"] == f"{phase(r1c_batches, 'check_wall_ms'):.0f}"
+        assert values[f"recExt1ControlROneCCheckPhaseMs{tok}"] == check
+        assert values[f"recExt1ControlROneCRefreshPhaseMs{tok}"] == refresh
+        assert values[f"recExt1ControlROneCArcFiveCheckPhaseMs{tok}"] == arc5_check
+        assert f"{round(phase(r1c_batches, 'refresh_wall_ms')):,}".replace(",", "{,}") == refresh
+        assert f"{round(phase(arc5_batches, 'check_wall_ms')):,}".replace(",", "{,}") == arc5_check
+    probe = r1c[probe_cid]["arms"]
+    assert values["recExt1ControlROneCProbeSpeedup"] == \
+        f"{probe['global-recompute']['ttf_p50_ms'] / probe['tgms-L1']['ttf_p50_ms']:.2f}"
+    assert values["recExt1ControlROneCProbeSpeedup"] == f"{139653.9 / 91599.9:.2f}"
+
+
+def test_external_r1c_store_size_and_template_coverage_independently_recomputed():
+    """Event-log size before the first correction (one base store per dataset,
+    so every cell of a store agrees) and the registered artifacts per query
+    template, from the committed rows: 13 templates, per-template counts that
+    sum to the registered count."""
+    mod, values = _r1c_values()
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_TGMS_CONTROL_R1C_ROWS.read_text(encoding="utf-8").splitlines() if line]
+    r1c = json.loads(mod.EXTERNAL_TGMS_CONTROL_R1C.read_text(encoding="utf-8"))
+    store_of = {c["cell_id"]: c["store"] for c in r1c["summary"]["per_cell"]}
+    n1k = {c["cell_id"] for c in r1c["summary"]["per_cell"] if c["n_artifacts"] == 1_000}
+    for store, tok in (("synth-iv-60k", "Synth"), ("collegemsg", "CollegeMsg")):
+        mine = [r for r in rows if r["cell_id"] in n1k and store_of[r["cell_id"]] == store]
+        assert len(mine) == 9
+        log0 = [r["manifest"]["summary"]["check_cost_curve"][0]["log_bytes"] for r in mine]
+        assert max(log0) - min(log0) < 1000
+        assert values[f"recStoreLogMb{tok}"] == f"{min(log0) / 1e6:.2f}"
+        counts = [r["manifest"]["summary"]["narrowing_coverage"]["per_template_counts"]
+                  for r in mine]
+        assert all(c == counts[0] for c in counts)
+        assert len(counts[0]) == int(values["recQueryTemplates"]) == 13
+        assert values[f"recTemplatesArtifactsMin{tok}"] == str(min(counts[0].values()))
+        assert values[f"recTemplatesArtifactsMax{tok}"] == str(max(counts[0].values()))
+        assert int(values[f"recTemplatesArtifactsMin{tok}"]) \
+            <= int(values[f"recTemplatesArtifactsMax{tok}"])
 
 
 def test_external_r1c_rows_match_the_fifth_arc_rows_batch_for_batch():
