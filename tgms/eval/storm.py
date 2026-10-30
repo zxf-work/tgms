@@ -383,6 +383,19 @@ class BatchResult:
     #: The on-demand interval's own `ChainCache` misses this batch (`"chain"`
     #: runs only; the interval uses a cache of its own, never the arms').
     on_demand_check_cache_misses: int | None = None
+    #: The on-demand read policy (`ON_DEMAND_POLICIES`). `"check"` — the
+    #: default, and the mode as first written — is left out of `to_json` so
+    #: rows written without the setting keep their exact bytes; `"always"` is
+    #: written.
+    on_demand_policy: str = "check"
+    #: The wall time of applying this batch's correction, `_write` end to end
+    #: (the log append, the chain extension, the adapter's op application and
+    #: its commit), in ms. It is timed with the same `_timed` as every other
+    #: interval and sits outside every other interval (the arms', the
+    #: end-to-end and the on-demand ones), so the scope "reads plus applying
+    #: the correction" is `on_demand_ms + correction_apply_ms`. `None` for a
+    #: `BatchResult` built without it, and then absent from `to_json`.
+    correction_apply_ms: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         out = {
@@ -404,6 +417,8 @@ class BatchResult:
             "correction_disc": self.correction_disc,
             "correction_eid": self.correction_eid,
         }
+        if self.correction_apply_ms is not None:
+            out["correction_apply_ms"] = self.correction_apply_ms
         if self.check_cache != "none":
             out["check_cache"] = self.check_cache
             out["check_cache_misses"] = self.check_cache_misses
@@ -413,6 +428,8 @@ class BatchResult:
             out["on_demand_reads"] = self.on_demand_reads
             out["on_demand_refreshes"] = self.on_demand_refreshes
             out["on_demand_refresh_errors"] = self.on_demand_refresh_errors
+            if self.on_demand_policy != "check":
+                out["on_demand_policy"] = self.on_demand_policy
             if self.on_demand_check_cache_misses is not None:
                 out["on_demand_check_cache_misses"] = self.on_demand_check_cache_misses
         return out
@@ -582,6 +599,16 @@ TTF_MODES: tuple[str, ...] = ("sum", "end-to-end")
 #: library default and this harness's default; the setting is recorded on
 #: every row that uses it.
 CHECK_CACHES: tuple[str, ...] = ("none", "chain")
+
+#: The on-demand read mode's per-read policy (`Storm(refresh_on_read_policy=)`,
+#: CLI `--refresh-on-read-policy`). `"check"` (the default and the mode as
+#: first written): one `check_artifact`, then one `refresh` only when the
+#: check does not say fresh. `"always"` (recompute on read): each read
+#: artifact's plan is re-run and republished unconditionally, no
+#: `check_artifact` call, always exact. The two share the draw, the interval,
+#: the burst wrappers and the rollback; the only difference is the skipped
+#: check. The policy is recorded on every row it is not the default for.
+ON_DEMAND_POLICIES: tuple[str, ...] = ("check", "always")
 
 #: Age-band Δvt targets as a multiple of `corrections.py`'s own
 #: `step = max(2, sub.span // 20)` unit (`corrections.py:188`) — the
@@ -849,7 +876,8 @@ class Storm:
                              list[Correction]] | None = None,
                 name_prefix: str = "storm", collect_timing: bool = True,
                 measure_ttf: str = "sum", check_cache: str = "none",
-                refresh_on_read: int | None = None) -> None:
+                refresh_on_read: int | None = None,
+                refresh_on_read_policy: str = "check") -> None:
         if measure_ttf not in TTF_MODES:
             raise ValueError(f"unknown measure_ttf mode: {measure_ttf!r}; "
                              f"choose from {TTF_MODES}")
@@ -864,6 +892,9 @@ class Storm:
             ChainCache() if check_cache == "chain" else None)
         if refresh_on_read is not None and refresh_on_read < 1:
             raise ValueError(f"refresh_on_read must be >= 1, got {refresh_on_read!r}")
+        if refresh_on_read_policy not in ON_DEMAND_POLICIES:
+            raise ValueError(f"unknown refresh_on_read_policy: {refresh_on_read_policy!r}; "
+                             f"choose from {ON_DEMAND_POLICIES}")
         #: The on-demand read mode (`BatchResult.on_demand_k`); `None` = off.
         #: Its RNG is its own (string-seeded, so stable across processes) and
         #: its check cache is its own, persisting across batches the way one
@@ -871,6 +902,7 @@ class Storm:
         #: append is a miss the interval pays for, and nothing it does moves
         #: the arms' `check_cache_misses`.
         self.refresh_on_read = refresh_on_read
+        self.refresh_on_read_policy = refresh_on_read_policy
         self.on_demand_rng = random.Random(f"on-demand-read:{seed}")
         self.on_demand_cache: ChainCache | None = (
             ChainCache() if (check_cache == "chain" and refresh_on_read is not None)
@@ -1095,7 +1127,8 @@ class Storm:
         correction = corrections[self.rng.randrange(len(corrections))]
         tt = self._next_tt()
         try:
-            batch = self._write(tt, list(correction.ops))
+            batch, correction_apply_ms = self._timed(
+                lambda: self._write(tt, list(correction.ops)))
         except StateError as e:
             # `storm-harness-swallows-write-refusals`: a monotonic-tt /
             # state error from the write path is an engine-or-setup error,
@@ -1216,7 +1249,9 @@ class Storm:
         # sees. Every artifact is fresh at the start of a batch (the previous
         # batch's oracle pass republished all of them), so this is the
         # per-burst cost of serving k reads after one correction: k checks,
-        # plus one refresh per check that does not say fresh.
+        # plus one refresh per check that does not say fresh (policy
+        # "check"), or, under the policy "always" (recompute on read), k
+        # refreshes and no check.
         od: dict[str, Any] = {}
         if self.refresh_on_read is not None:
             names = list(self.artifacts)
@@ -1224,6 +1259,7 @@ class Storm:
             od_misses_before = (self.on_demand_cache.misses
                                 if self.on_demand_cache is not None else 0)
             od_counts = {"reads": 0, "refreshes": 0, "errors": 0}
+            always = self.refresh_on_read_policy == "always"
             od_mark = _registry_mark(self.registry)
 
             def _run_on_demand(names=drawn, counts=od_counts) -> None:
@@ -1240,19 +1276,31 @@ class Storm:
                         if record is None:
                             continue
                         counts["reads"] += 1
-                        verdict = check_artifact(record, self.store.eventlog, level1=True,
-                                                 chain_cache=self.on_demand_cache)
-                        if not verdict.actionable_fresh and verdict.refresh is not None:
-                            counts["refreshes"] += 1
-                            try:
-                                refresh(record, verdict.refresh, self.store, self.registry)
-                            except TgmsError:
-                                counts["errors"] += 1
+                        if always:
+                            # recompute on read: no check; the handle is built
+                            # from the record the way the oracle pass builds it
+                            handle = RefreshHandle(record.id, record.refresh["kind"],
+                                                   record.refresh["ref"],
+                                                   record.plan.get("plan_format"),
+                                                   record.refresh.get("basis_policy", "open"))
+                        else:
+                            verdict = check_artifact(record, self.store.eventlog,
+                                                     level1=True,
+                                                     chain_cache=self.on_demand_cache)
+                            if verdict.actionable_fresh or verdict.refresh is None:
+                                continue
+                            handle = verdict.refresh
+                        counts["refreshes"] += 1
+                        try:
+                            refresh(record, handle, self.store, self.registry)
+                        except TgmsError:
+                            counts["errors"] += 1
 
             _unused, od_ms = self._timed(_run_on_demand)
             _registry_rollback(self.registry, od_mark)
             od = {
                 "on_demand_k": self.refresh_on_read, "on_demand_ms": od_ms,
+                "on_demand_policy": self.refresh_on_read_policy,
                 "on_demand_reads": od_counts["reads"],
                 "on_demand_refreshes": od_counts["refreshes"],
                 "on_demand_refresh_errors": od_counts["errors"],
@@ -1338,7 +1386,8 @@ class Storm:
             age_vt_meaningful=(self.interval_vt if isinstance(self.mix, Mix)
                               and self.mix.age is not None else None),
             correction_identities=tuple(correction.identities), correction_vt=interval,
-            correction_disc=correction_disc, correction_eid=correction_eid, **od)
+            correction_disc=correction_disc, correction_eid=correction_eid,
+            correction_apply_ms=correction_apply_ms, **od)
 
     def run(self, n_batches: int, *, max_attempts_factor: int = 4) -> list[BatchResult]:
         """Run until `n_batches` batches have been realized, or give up
@@ -1531,6 +1580,8 @@ def summarize(results: Sequence[BatchResult]) -> dict[str, Any]:
         reads = sum(r.on_demand_reads or 0 for r in od_rows)
         out["on_demand"] = {
             "k": od_rows[0].on_demand_k,
+            **({"policy": od_rows[0].on_demand_policy}
+               if od_rows[0].on_demand_policy != "check" else {}),
             "batches": len(od_rows),
             "ms_per_batch_median": _percentile(od_ms, 0.5),
             "ms_per_batch_mean": (sum(od_ms) / len(od_ms)) if od_ms else None,
@@ -1548,4 +1599,5 @@ __all__ = [
     # C2
     "MIXES", "MIX_APPEND_FRAC", "AGE_BANDS", "DEGREE_BUCKETS", "RANGE_WIDTHS", "TTF_MODES",
     "Mix", "build_mix",
+    "ON_DEMAND_POLICIES",
 ]

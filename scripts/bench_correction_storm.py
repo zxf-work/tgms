@@ -54,7 +54,8 @@ from tgms.artifact.lookup import affected  # noqa: E402
 from tgms.artifact.record import ArtifactRecord  # noqa: E402
 from tgms.artifact.refresh import refresh  # noqa: E402
 from tgms.eval.storm import (  # noqa: E402
-    ARMS, AGE_BANDS, CHECK_CACHES, DEGREE_BUCKETS, MIXES, RANGE_WIDTHS, TTF_MODES, Storm,
+    ARMS, AGE_BANDS, CHECK_CACHES, DEGREE_BUCKETS, MIXES, ON_DEMAND_POLICIES, RANGE_WIDTHS,
+    TTF_MODES, Storm,
     build_mix,
     narrowing_coverage, summarize,
 )
@@ -225,6 +226,13 @@ def main(argv: list[str] | None = None) -> int:
                          "without replacement; clamped to the registered count) and give "
                          "each one check and, if not fresh, one refresh, timed as one "
                          "interval; rows gain on_demand_* fields, nothing else changes")
+    ap.add_argument("--refresh-on-read-policy", choices=list(ON_DEMAND_POLICIES),
+                    default="check",
+                    help="what each of the K on-demand reads does (default check): "
+                         "check = one check, then one refresh only when the check does "
+                         "not say fresh; always = recompute on read, one refresh of every "
+                         "read artifact, no check. Needs --refresh-on-read; rows gain "
+                         "on_demand_policy for always only")
     ap.add_argument("--allow-r18-trip", action="store_true",
                     help=f"permit --n-artifacts above {R18_TRIP_N_ARTIFACTS} (design memo "
                          "§3's R-18 trip point) — the campaign's 10^5 cells need this")
@@ -279,6 +287,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.refresh_on_read is not None and args.refresh_on_read < 1:
         ap.error(f"--refresh-on-read must be >= 1, got {args.refresh_on_read}")
+    if args.refresh_on_read_policy != "check" and args.refresh_on_read is None:
+        ap.error("--refresh-on-read-policy needs --refresh-on-read K")
     if args.n_artifacts > R18_TRIP_N_ARTIFACTS and not args.allow_r18_trip:
         ap.error(f"--n-artifacts {args.n_artifacts} is above the R-18 trip point "
                 f"({R18_TRIP_N_ARTIFACTS}); pass --allow-r18-trip to proceed anyway "
@@ -305,7 +315,8 @@ def main(argv: list[str] | None = None) -> int:
     storm = Storm(work_store, n_artifacts=args.n_artifacts, seed=args.seed,
                  backend=args.backend, arms=tuple(args.arms), mix=mix,
                  measure_ttf=args.measure_ttf, check_cache=args.check_cache,
-                 refresh_on_read=args.refresh_on_read)
+                 refresh_on_read=args.refresh_on_read,
+                 refresh_on_read_policy=args.refresh_on_read_policy)
     n_registered = len(storm.artifacts)
     n_skipped = storm.n_registration_skipped
     # storm-v1 addendum-4 (D-161): registration-time only, read-only against
@@ -442,6 +453,7 @@ def main(argv: list[str] | None = None) -> int:
         # recorded only when the mode is on, so a manifest written without it
         # keeps its exact config keys
         manifest["config"]["refresh_on_read"] = args.refresh_on_read
+        manifest["config"]["refresh_on_read_policy"] = args.refresh_on_read_policy
     manifest_path = args.out / f"{base}.json"
     write_bytes_with_retry(manifest_path,
                            (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"))
