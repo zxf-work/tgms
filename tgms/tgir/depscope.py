@@ -26,8 +26,10 @@ literal inputs, not a defect.
 from __future__ import annotations
 
 import json
+import os
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from typing import Any, Iterable, Literal, Union
+from typing import Any, Iterable, Iterator, Literal, Union
 
 from tgms.core.errors import InvalidArgError
 from tgms.core.model import OPEN_END, canonical_json, digest
@@ -624,9 +626,16 @@ class StoreIdentityMemo:
     of the prefix it stores (header line parses to the same header, the
     first record's raw bytes end the prefix, nothing but blank lines in
     between) — so a file swapped mid-call can never pin a stale pairing.
+
+    **Inside `burst()`** (failure ledger `check-fingerprint-per-check`) the
+    byte compare is shared: after one compare passes, later calls in the same
+    burst that find the log's stat key — size, mtime, inode, ctime — unchanged
+    are served without re-reading the prefix; any stat change re-compares.
+    `log.header()` is still called first on every call. See `burst` for the
+    caller's side of that bargain.
     """
 
-    __slots__ = ("_entry", "hits", "misses")
+    __slots__ = ("_entry", "hits", "misses", "_burst_depth", "_burst_key")
 
     def __init__(self) -> None:
         #: `(path, prefix_bytes, identity)`, replaced as one tuple so a reader
@@ -634,19 +643,54 @@ class StoreIdentityMemo:
         self._entry: tuple[str, bytes, str] | None = None
         self.hits = 0
         self.misses = 0
+        self._burst_depth = 0
+        #: The log's stat key when a full prefix compare last passed inside
+        #: the current burst; `None` outside one.
+        self._burst_key: tuple[str, int, int, int, int] | None = None
+
+    @contextmanager
+    def burst(self) -> Iterator["StoreIdentityMemo"]:
+        """A block of calls that share one prefix compare per log state.
+
+        **The caller vouches** that nothing rewrites the log in place while
+        the block runs — the storm harness's oracle pass, say, which
+        re-executes and republishes every artifact between two of its own
+        appends and writes the log not at all. Appends are fine: they change
+        the size, and a changed stat key sends the next call back to the byte
+        compare. What the block gives up is only a same-size, same-tick,
+        in-place rewrite of the genesis record *during* the block; one made
+        before the block is still caught by its first call. Bursts nest; the
+        shared state is dropped when the outermost one exits."""
+        self._burst_depth += 1
+        try:
+            yield self
+        finally:
+            self._burst_depth -= 1
+            if self._burst_depth == 0:
+                self._burst_key = None
 
     def identity(self, log: Any) -> str:
         header = log.header()
         path = str(log.path)
         entry = self._entry
         if entry is not None and entry[0] == path:
+            key: tuple[str, int, int, int, int] | None = None
+            if self._burst_depth:
+                st = os.stat(log.path)
+                key = (path, st.st_size, st.st_mtime_ns, st.st_ino, st.st_ctime_ns)
+                if key == self._burst_key:
+                    self.hits += 1
+                    return entry[2]
             prefix = entry[1]
             with open(log.path, "rb") as f:
                 if f.read(len(prefix)) == prefix:
                     self.hits += 1
+                    if key is not None:
+                        self._burst_key = key
                     return entry[2]
         self.misses += 1
         self._entry = None
+        self._burst_key = None
         first: Any = None
         end = 0
         raw = b""

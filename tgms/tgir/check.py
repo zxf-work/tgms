@@ -49,9 +49,10 @@ import hashlib
 import os
 import threading
 import weakref
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any, Iterable, Literal, Sequence
+from typing import Any, Iterable, Iterator, Literal, Sequence
 
 from tgms.core.errors import InvalidArgError, StateError
 from tgms.core.model import OPEN_END, Interval, edge_eid
@@ -469,10 +470,38 @@ def _fingerprint(path: Any, size: int) -> str:
     return h.hexdigest()
 
 
+#: How many trailing bytes of the log a check inside a burst re-reads. A
+#: correction batch record is a few hundred bytes, so this covers the last
+#: record whole on the logs this cache serves; it is a cheap tripwire, not
+#: the guarantee (see `ChainCache.burst`).
+_TAIL_BYTES = 4096
+
+
+def _tail(path: Any, size: int) -> bytes:
+    """The last `min(size, _TAIL_BYTES)` bytes of the first `size` bytes."""
+    with open(path, "rb") as fh:
+        start = max(0, size - _TAIL_BYTES)
+        fh.seek(start)
+        return fh.read(size - start)
+
+
 @dataclass(frozen=True, slots=True)
 class _CacheEntry:
     walk: "LogWalk"
     fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class _BurstState:
+    """One log state a check earlier in the current burst validated in full:
+    its stat key, its last `_TAIL_BYTES` bytes, the entry the full fingerprint
+    vouched for, and — once a later check in the burst has asked for it while
+    the state still held — the store identity."""
+
+    key: tuple[str, int, int, int, int]
+    tail: bytes
+    entry: _CacheEntry
+    identity: str | None = None
 
 
 class ChainCache:
@@ -507,34 +536,125 @@ class ChainCache:
     still much cheaper than the walk, while a stale entry can no longer be
     served whatever the host's timestamp resolution.
 
+    **Bursts share that digest** (failure ledger `check-fingerprint-per-check`,
+    pre-registered as P-ENG2). Outside a burst, nothing above changes. Inside
+    `with cache.burst():` the first check of each log state takes the path
+    above — a hit re-digests the whole prefix, a miss re-walks — and records
+    the state's stat key and last `_TAIL_BYTES` bytes; every later check in
+    the same burst that finds the same stat key *and* the same tail bytes is
+    served that entry (and, from the second check on, the store identity)
+    without re-reading the prefix. Any change of size, mtime, inode, ctime or
+    tail sends the check back to the full path. See `burst` for what the
+    caller vouches for and what that does and does not keep of D-162.
+
     Behaviour is otherwise unchanged: the cache stays opt-in, verdicts with and
     without it are identical, and the counters keep their meaning — a
     fingerprint mismatch is a **miss** (the log is re-walked and the entry
-    replaced). A caller auditing an adversarial log should still pass `None`.
+    replaced), and a check served from a burst's shared state is a **hit**.
+    `fingerprints` counts whole-prefix digests taken, so the sharing is
+    observable. A caller auditing an adversarial log should still pass `None`.
     """
 
     def __init__(self) -> None:
         self._entries: dict[tuple[str, int, int, int, int], _CacheEntry] = {}
         self.hits = 0
         self.misses = 0
+        #: Whole-prefix `sha256` digests taken (the D-162 cost), miss or hit.
+        self.fingerprints = 0
+        self._burst_depth = 0
+        self._burst: dict[str, _BurstState] = {}
 
     @staticmethod
     def _key(log: EventLog) -> tuple[str, int, int, int, int]:
         st = _stat(log.path)
         return (str(log.path), st.st_size, st.st_mtime_ns, st.st_ino, st.st_ctime_ns)
 
+    @contextmanager
+    def burst(self) -> Iterator["ChainCache"]:
+        """A block of checks that share one validation per log state.
+
+        **What the caller vouches for:** nothing rewrites the log in place
+        while the block runs. The storm harness is the shape this is for: it
+        is the store's single writer (it holds `writer.lock`), it appends
+        exactly one correction batch, and only then runs a block of hundreds
+        of checks against the log it just wrote, appending nothing until the
+        block ends.
+
+        **What D-162 keeps.** Outside every burst, every hit still re-digests
+        the whole prefix, so `test_a_same_tick_same_size_tamper_is_caught_
+        with_the_cache_in_hand` is unchanged. Inside a burst, the first check
+        of each log state still re-digests the whole prefix, so an in-place
+        rewrite made *before* the block — the D-162 case, which a stat key
+        cannot see — is caught there, as before; and any append, truncation,
+        or rewrite that moves a stat field or touches the last `_TAIL_BYTES`
+        bytes is caught at the next check in the block. What a burst gives up
+        is exactly one case: a same-size, same-tick, in-place rewrite *of the
+        middle of the log during the block*, which the caller has said does
+        not happen. The burst ends (and its shared state is forgotten) when
+        the outermost `with` exits; bursts nest.
+        """
+        self._burst_depth += 1
+        try:
+            yield self
+        finally:
+            self._burst_depth -= 1
+            if self._burst_depth == 0:
+                self._burst.clear()
+
+    def _burst_state(self, log: EventLog) -> _BurstState | None:
+        """The state an earlier check in this burst validated, if the log
+        still shows the same stat key and the same tail bytes — else `None`,
+        and the caller takes the full path."""
+        if self._burst_depth == 0:
+            return None
+        state = self._burst.get(str(log.path))
+        if state is None:
+            return None
+        key = self._key(log)
+        if key != state.key or _tail(log.path, key[1]) != state.tail:
+            return None
+        return state
+
     def walk(self, log: EventLog) -> "LogWalk":
+        state = self._burst_state(log)
+        if state is not None:
+            self.hits += 1
+            return state.entry.walk
         key = self._key(log)
         size = key[1]
+        entry: _CacheEntry | None = None
         cached = self._entries.get(key)
         if cached is not None:
+            self.fingerprints += 1
             if _fingerprint(log.path, size) == cached.fingerprint:
                 self.hits += 1
-                return cached.walk
-        self.misses += 1
-        walked = _walk(log)
-        self._entries[key] = _CacheEntry(walked, _fingerprint(log.path, size))
-        return walked
+                entry = cached
+        if entry is None:
+            self.misses += 1
+            walked = _walk(log)
+            self.fingerprints += 1
+            entry = _CacheEntry(walked, _fingerprint(log.path, size))
+            self._entries[key] = entry
+        if self._burst_depth:
+            self._burst[key[0]] = _BurstState(key, _tail(log.path, size), entry)
+        return entry.walk
+
+    def store_identity(self, log: EventLog) -> str:
+        """D13.24 step 3's identity, shared across a burst the same way.
+
+        Outside a burst, or before a check in this burst has validated the
+        current log state, this is `_store_identity_of(log)` — the per-log
+        memo, revalidated against the genesis bytes on every call. Once a
+        state is validated (its whole prefix digested, which covers the
+        genesis record) and still holds, the identity computed by the first
+        check that asked while it held is served to the rest of the burst."""
+        state = self._burst_state(log)
+        if state is not None and state.identity is not None:
+            return state.identity
+        identity = _store_identity_of(log)
+        if state is not None:
+            self._burst[state.key[0]] = replace(state, identity=identity)
+        return identity
 
     def prefix_chains(self, log: EventLog) -> dict[int, str]:
         return self.walk(log).chains
@@ -1148,8 +1268,11 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
     #     is not opt-in, because it cannot change a verdict, only skip
     #     re-parsing a multi-megabyte genesis record (failure ledger
     #     `registry-store-identity-recomputed`).
+    #     Inside a `ChainCache.burst`, a state an earlier check validated in
+    #     full serves the identity too (`ChainCache.store_identity`).
     try:
-        identity = _store_identity_of(log)
+        identity = (chain_cache.store_identity(log) if chain_cache is not None
+                    else _store_identity_of(log))
     except (StateError, OSError, ValueError):
         return UNDECIDABLE("log-unreadable")
     if scope.store == UNANCHORED or scope.store != identity:

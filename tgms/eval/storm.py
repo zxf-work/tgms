@@ -75,6 +75,7 @@ import json
 import os
 import random
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -1024,6 +1025,10 @@ class Storm:
         self._tt += 1
         return self._tt
 
+    def _check_burst(self) -> Any:
+        """`self.chain_cache.burst()`, or a no-op without a cache."""
+        return self.chain_cache.burst() if self.chain_cache is not None else nullcontext()
+
     def _timed(self, fn: Callable[[], Any]) -> tuple[Any, float]:
         """Call `fn`, returning `(result, elapsed_ms)`. `elapsed_ms` is
         `0.0` when `self.collect_timing` is `False` and `fn` is still called
@@ -1111,17 +1116,23 @@ class Storm:
 
         tgms_invalidated: dict[str, set[str]] = {"tgms-L0": set(), "tgms-L1": set()}
         tgms_check_ms: dict[str, float] = {"tgms-L0": 0.0, "tgms-L1": 0.0}
-        for name in candidates:
-            record = self.registry.current(name)
-            if record is None:
-                continue
-            for arm_name, level1 in (("tgms-L0", False), ("tgms-L1", True)):
-                verdict, dt = self._timed(
-                    lambda r=record, l1=level1: check_artifact(
-                        r, self.store.eventlog, level1=l1, chain_cache=self.chain_cache))
-                tgms_check_ms[arm_name] += dt
-                if not verdict.actionable_fresh:
-                    tgms_invalidated[arm_name].add(name)
+        # One `ChainCache.burst` per check block (failure ledger
+        # `check-fingerprint-per-check`): this harness is the log's single
+        # writer and appends nothing between `self._write` above and the next
+        # batch, so the block's checks share one whole-log validation per log
+        # state. Without a cache there is nothing to share.
+        with self._check_burst():
+            for name in candidates:
+                record = self.registry.current(name)
+                if record is None:
+                    continue
+                for arm_name, level1 in (("tgms-L0", False), ("tgms-L1", True)):
+                    verdict, dt = self._timed(
+                        lambda r=record, l1=level1: check_artifact(
+                            r, self.store.eventlog, level1=l1, chain_cache=self.chain_cache))
+                    tgms_check_ms[arm_name] += dt
+                    if not verdict.actionable_fresh:
+                        tgms_invalidated[arm_name].add(name)
 
         # C2's end-to-end TTF mode (in addition to the sum-of-parts mode
         # above, which is unaffected by this block): for the tgms arms only,
@@ -1165,18 +1176,20 @@ class Storm:
                 calls = [0]
 
                 def _run_e2e(names=nominated, l1=level1, calls=calls) -> None:
-                    for name in names:
-                        record = self.registry.current(name)
-                        if record is None:
-                            continue
-                        verdict = check_artifact(record, self.store.eventlog, level1=l1,
-                                                 chain_cache=self.chain_cache)
-                        if not verdict.actionable_fresh and verdict.refresh is not None:
-                            calls[0] += 1
-                            try:
-                                refresh(record, verdict.refresh, self.store, self.registry)
-                            except TgmsError:
-                                pass
+                    with self._check_burst(), self.registry.burst():
+                        for name in names:
+                            record = self.registry.current(name)
+                            if record is None:
+                                continue
+                            verdict = check_artifact(record, self.store.eventlog, level1=l1,
+                                                     chain_cache=self.chain_cache)
+                            if not verdict.actionable_fresh and verdict.refresh is not None:
+                                calls[0] += 1
+                                try:
+                                    refresh(record, verdict.refresh, self.store,
+                                            self.registry)
+                                except TgmsError:
+                                    pass
 
                 _unused, dt = self._timed(_run_e2e)
                 end_to_end_ms[arm_name] = dt
@@ -1236,25 +1249,30 @@ class Storm:
         oracle_changed: set[str] = set()
         refresh_ms: dict[str, float] = {}
         refused: list[str] = []
-        for name in list(self.artifacts):
-            record = self.registry.current(name)
-            if record is None:
-                continue
-            handle = RefreshHandle(record.id, record.refresh["kind"], record.refresh["ref"],
-                                   record.plan.get("plan_format"),
-                                   record.refresh.get("basis_policy", "open"))
-            try:
-                new_record, dt = self._timed(
-                    lambda r=record, h=handle: refresh(r, h, self.store, self.registry))
-            except TgmsError:
-                refused.append(name)
-                continue
-            refresh_ms[name] = dt
-            new_digest = (new_record.payload or {}).get("result_digest")
-            ra = self.artifacts[name]
-            if new_digest != ra.last_env.get("result_digest"):
-                oracle_changed.add(name)
-            ra.last_env = {"result_digest": new_digest}
+        # The pass republishes every artifact and writes the event log not
+        # at all, so its publishes share one genesis-prefix compare
+        # (`Registry.burst`, failure ledger `check-fingerprint-per-check`).
+        with self.registry.burst():
+            for name in list(self.artifacts):
+                record = self.registry.current(name)
+                if record is None:
+                    continue
+                handle = RefreshHandle(record.id, record.refresh["kind"],
+                                       record.refresh["ref"],
+                                       record.plan.get("plan_format"),
+                                       record.refresh.get("basis_policy", "open"))
+                try:
+                    new_record, dt = self._timed(
+                        lambda r=record, h=handle: refresh(r, h, self.store, self.registry))
+                except TgmsError:
+                    refused.append(name)
+                    continue
+                refresh_ms[name] = dt
+                new_digest = (new_record.payload or {}).get("result_digest")
+                ra = self.artifacts[name]
+                if new_digest != ra.last_env.get("result_digest"):
+                    oracle_changed.add(name)
+                ra.last_env = {"result_digest": new_digest}
 
         scored = set(self.artifacts) - set(refused)
         invalidated_by_arm = {

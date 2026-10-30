@@ -67,6 +67,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -123,6 +124,15 @@ class Registry:
         record twice per publish (failure ledger
         `registry-store-identity-recomputed`); the value is unchanged."""
         return self._identity_memo.identity(self._log)
+
+    def burst(self) -> AbstractContextManager[StoreIdentityMemo]:
+        """`with registry.burst():` — publishes inside the block share one
+        genesis-prefix compare per log state instead of re-reading the
+        prefix twice per publish (failure ledger
+        `check-fingerprint-per-check`). The caller vouches that nothing
+        rewrites the event log in place during the block; appends are
+        detected by the stat key. See `StoreIdentityMemo.burst`."""
+        return self._identity_memo.burst()
 
     # -- loading / folding ----------------------------------------------------
 
