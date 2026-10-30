@@ -3,7 +3,7 @@
 This is the full catalogue of errors we found in our own instruments, test
 harnesses and forecasts while evaluating TGMS: twenty-one entries, numbered 1
 to 21. The accompanying paper shows four of them (rows 1, 4, 19 and 20) in its
-Table 4, and cites others by number (for example rows 7, 14, 15, 16 and 17); the
+instrument-error table, and cites others by number (for example rows 7, 14, 15, 16 and 17); the
 numbering here is the paper's numbering, so a row number means the same thing in
 both places. Numbers in the table are given as the paper prints them.
 
