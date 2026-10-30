@@ -57,7 +57,11 @@ skeleton --
       compute_axes_standing_state: P-AXES axis A, the maintained view's resident
       memory vs TGMS's registry and check process for the same artifacts;
       recAxesViewRssMb*, recAxesTgmsRssMb*, recAxesTgmsRegistry{,Mem}KbPerArtifact,
-      recAxesRatioN10k, recAxesViewArrangedRecords*
+      recAxesRatioN10k, recAxesViewArrangedRecords*; and
+      benchmarks/external-v1/axes-on-demand-2026-10-30.json (+ rows),
+      compute_axes_on_demand: axis B, the timed --refresh-on-read k runs and the
+      crossover k* against the view's median per-burst cost; recAxesCrossoverK*,
+      recAxesOnDemandMsPerRead*, recAxesOnDemandFirstCheckMs, recAxesViewPerBurstMs*
       except that recFaultTrials now prints its thousands separator (3{,}102)
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
@@ -579,6 +583,13 @@ EXTERNAL_WITHHELD_SYM_ROWS = EXTERNAL_V1 / "withheld-symmetric-2026-10-29-rows.j
 # the registry (P-AXES axis A, 2026-10-30)" section.
 EXTERNAL_AXES_STANDING = EXTERNAL_V1 / "axes-standing-state-2026-10-30.json"
 EXTERNAL_AXES_STANDING_ROWS = EXTERNAL_V1 / "axes-standing-state-2026-10-30-rows.jsonl"
+# P-AXES axis B (2026-10-30, Addendum AXES-A frozen 2026-10-30T01:29:22Z): the
+# timed --refresh-on-read k runs and the crossover k* against the view's
+# per-burst cost on record (scripts/axes_on_demand_record.py). See
+# benchmarks/external-v1/README.md's "Work when only k of N artifacts are read
+# (P-AXES axis B, 2026-10-30)" section.
+EXTERNAL_AXES_ON_DEMAND = EXTERNAL_V1 / "axes-on-demand-2026-10-30.json"
+EXTERNAL_AXES_ON_DEMAND_ROWS = EXTERNAL_V1 / "axes-on-demand-2026-10-30-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 # Lane W2af: the per-cell equality-manifest sidecar (never read by any
 # function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
@@ -11133,6 +11144,117 @@ def compute_axes_standing_state(m: Macros) -> None:
           f"{where}: {AXES_N10K_CELL} records in the view's arrangements after burst 1")
 
 
+AXES_COLLEGEMSG_CELL = "collegemsg-c1-none-n1000-s0"
+AXES_K_GRIDS = {"collegemsg-c1-none-n1000-s0": (1, 10, 100, 1000),
+                "synth-iv-60k-c1-none-n1000-s0": (1, 10, 100, 1000),
+                "synth-iv-60k-c1-none-n10000-s0": (1, 10, 100, 1000, 10000)}
+
+
+def _axes_crossover(ks: list[int], cost: list[float], view: float) -> tuple[str, float | None]:
+    """Restated from scripts/axes_on_demand_record.py's `crossover` (this
+    generator imports no other script): ("interpolated", k*), ("none", None)
+    when TGMS's cost at k = 1 already reaches the view's, or ("above_grid",
+    None) when it stays below with every artifact read."""
+    if cost[0] >= view:
+        return "none", None
+    for (k0, c0), (k1, c1) in zip(zip(ks, cost), zip(ks[1:], cost[1:])):
+        if c0 < view <= c1:
+            return "interpolated", k0 + (view - c0) * (k1 - k0) / (c1 - c0)
+    return "above_grid", None
+
+
+def _axes_k_text(kind: str, k: float | None) -> str:
+    if kind == "interpolated":
+        assert k is not None
+        return f"{k:.1f}" if k < 10 else tex_num(round(k), 4)
+    return {"none": "none", "above_grid": "above $N$"}[kind]
+
+
+def compute_axes_on_demand(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_AXES_ON_DEMAND, EXTERNAL_AXES_ON_DEMAND_ROWS, EXTERNAL_IVM_ROWS):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry")
+    record = json.loads(EXTERNAL_AXES_ON_DEMAND.read_text(encoding="utf-8"))
+    where = relpath(EXTERNAL_AXES_ON_DEMAND)
+    eq(record["config"]["campaign"], "axes-on-demand", f"{where}: config.campaign")
+    rows = load_jsonl(EXTERNAL_AXES_ON_DEMAND_ROWS)
+    eq(record["result_digest"],
+       hashlib.sha256(json.dumps(rows, sort_keys=True).encode("utf-8")).hexdigest(),
+       f"{where}: result_digest == sha256 of the rows")
+    ivm = {r["cell_id"]: r for r in load_jsonl(EXTERNAL_IVM_ROWS)}
+    pc = record["summary"]["per_cell"]
+    out: dict[str, dict] = {}
+    for cell_id, grid in AXES_K_GRIDS.items():
+        w = f"{where}: {cell_id}"
+        view_vals = [b["refresh_plus_publish_ms"] for b in ivm[cell_id]["result"]["per_burst"]]
+        v_med, v_mean = statistics.median(view_vals), statistics.fmean(view_vals)
+        close_rel(pc[cell_id]["view_per_burst"]["median_ms"], v_med, 1e-12,
+                  f"{w}: view median per-burst cost == the view record's")
+        ks, med, mean, per_read_at_n = [], [], [], None
+        for k in grid:
+            rs = [r for r in rows if r["cell_id"] == cell_id and r["k"] == k]
+            require(len(rs) > 0, f"{w}: rows for k={k}")
+            if not rs:
+                return
+            for r in rs:
+                require(r["on_demand_reads"] == min(k, r["n_registered"]),
+                        f"{w}: k={k} batch {r['batch_index']} reads == min(k, registered)")
+                require(r["on_demand_refreshes"] <= r["on_demand_reads"],
+                        f"{w}: k={k} refreshes <= reads")
+                require(r["on_demand_refresh_errors"] == 0, f"{w}: k={k} no refresh errors")
+            ms = [r["on_demand_ms"] for r in rs]
+            ks.append(rs[0]["on_demand_reads"])
+            med.append(statistics.median(ms))
+            mean.append(statistics.fmean(ms))
+            close_rel(pc[cell_id]["per_k"][str(k)]["median_ms"], med[-1], 1e-12,
+                      f"{w}: k={k} median per-burst cost")
+            if k == grid[-1]:
+                per_read_at_n = statistics.median(
+                    [r["on_demand_ms"] / r["on_demand_reads"] for r in rs])
+        kind, kstar = _axes_crossover(ks, med, v_med)
+        stated = pc[cell_id]["crossover_median"]
+        eq(stated["kind"], kind, f"{w}: crossover kind (median basis)")
+        if kind == "interpolated":
+            close_rel(stated["k_star"], kstar, 1e-12, f"{w}: k* (median basis)")
+        kind_mean, kstar_mean = _axes_crossover(ks, mean, v_mean)
+        eq(pc[cell_id]["crossover_mean"]["kind"], kind_mean, f"{w}: crossover kind (mean basis)")
+        if kind_mean == "interpolated":
+            close_rel(pc[cell_id]["crossover_mean"]["k_star"], kstar_mean, 1e-12,
+                      f"{w}: k* (mean basis)")
+        out[cell_id] = {"kind": kind, "k": kstar, "per_read_at_n": per_read_at_n,
+                        "view_median": v_med}
+
+    first = [r["on_demand_ms"] for r in rows if r["k"] == 1 and r["on_demand_refreshes"] == 0]
+    require(len(first) > 0, f"{where}: k = 1 batches without a refresh exist")
+    first_med = statistics.median(first) if first else 0.0
+    close_rel(record["summary"]["first_check_ms_median_all_cells"], first_med, 1e-12,
+              f"{where}: first-check median")
+    falsified = "none" in (out[AXES_N1K_CELL]["kind"], out[AXES_N10K_CELL]["kind"])
+    eq(record["summary"]["verdict"]["falsifier_k_star_below_1_on_synth"], falsified,
+       f"{where}: the falsifier flag matches the rows")
+
+    lo, hi, col = out[AXES_N1K_CELL], out[AXES_N10K_CELL], out[AXES_COLLEGEMSG_CELL]
+    m.add("recAxesCrossoverKN1k", _axes_k_text(lo["kind"], lo["k"]),
+          f"{where}: {AXES_N1K_CELL} k* vs the view's median per-burst cost, linear "
+          "interpolation on the k grid")
+    m.add("recAxesCrossoverKN10k", _axes_k_text(hi["kind"], hi["k"]),
+          f"{where}: {AXES_N10K_CELL} k* vs the view's median per-burst cost")
+    m.add("recAxesCrossoverKCollegeMsg", _axes_k_text(col["kind"], col["k"]),
+          f"{where}: {AXES_COLLEGEMSG_CELL} k* vs the view's median per-burst cost")
+    m.add("recAxesOnDemandMsPerReadN1k", f"{lo['per_read_at_n']:.2f}",
+          f"{where}: {AXES_N1K_CELL} at k = N, median over batches of on_demand_ms / reads")
+    m.add("recAxesOnDemandMsPerReadN10k", f"{hi['per_read_at_n']:.2f}",
+          f"{where}: {AXES_N10K_CELL} at k = N, median over batches of on_demand_ms / reads")
+    m.add("recAxesOnDemandFirstCheckMs", f"{first_med:.1f}",
+          f"{where}: median on_demand_ms of the k = 1 batches whose one read did not refresh "
+          "(the first check after a correction), all three cells")
+    m.add("recAxesViewPerBurstMsN1k", tex_num(round(lo["view_median"]), 4),
+          f"{relpath(EXTERNAL_IVM_ROWS)}: {AXES_N1K_CELL} median refresh_plus_publish_ms")
+    m.add("recAxesViewPerBurstMsN10k", tex_num(round(hi["view_median"]), 4),
+          f"{relpath(EXTERNAL_IVM_ROWS)}: {AXES_N10K_CELL} median refresh_plus_publish_ms")
+
+
 # --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
@@ -11244,6 +11366,7 @@ def main() -> int:
     compute_external_withheld_hold(m)
     compute_external_withheld_symmetric(m)
     compute_axes_standing_state(m)
+    compute_axes_on_demand(m)
     compute_c8_f18(m)
     compute_refresh_cost_attribution(m)
     add_pending_stubs(m)
