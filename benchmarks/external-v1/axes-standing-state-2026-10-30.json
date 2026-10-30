@@ -1,0 +1,211 @@
+{
+  "config": {
+    "axis": "A",
+    "campaign": "axes-standing-state",
+    "cells": [
+      {
+        "cell_id": "collegemsg-c1-none-n1000-s0",
+        "n_artifacts": 1000,
+        "store": "collegemsg",
+        "tgms_measure_ttf": "end-to-end"
+      },
+      {
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "n_artifacts": 1000,
+        "store": "synth-iv-60k",
+        "tgms_measure_ttf": "end-to-end"
+      },
+      {
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "n_artifacts": 10000,
+        "store": "synth-iv-60k",
+        "tgms_measure_ttf": "sum"
+      }
+    ],
+    "date": "2026-10-30",
+    "ivm_dd": {
+      "binary_sha256": "1450d22724d21cdc94f516b0936b1b1cd986da8ca931a112379059e642eff2a5",
+      "build": "cargo build --release --locked --offline",
+      "command": "ivm-dd run <cell> --out <dir> --state-report, sampled by scripts/axes_standing_state.py view",
+      "cross_check": "the unpatched binary's process_rss_kb_end in ivm-differential-2026-10-07-rows.jsonl: 581308 / 4255796 / 33498972 kB for the three cells (this run: 571964 / 4269728 / 33503264 kB at end)",
+      "differential_dataflow": "0.25.1",
+      "rustc": "1.97.1 (8bab26f4f 2026-07-14)",
+      "source": "external/ivm-dd at baa5d5ad (cd194679 plus --state-report; dataflow and timed path unchanged)",
+      "timely": "0.31.0",
+      "workers": 1
+    },
+    "measured_utc": {
+      "end": "2026-10-30T01:20:42Z",
+      "start": "2026-10-30T01:01:52Z"
+    },
+    "nice": 19,
+    "sampling_interval_s": 1.0,
+    "tgms": {
+      "backend": "native",
+      "burst_after": 10,
+      "burst_size": 10000,
+      "check_cache": "chain",
+      "engine_note": "the fixed engine; crates/ unchanged since b6cdde0",
+      "engine_so_sha256": "d48ae71caca80d9f3ea9f360b2e7a2f242f3e9e03ee223d69c4f8aff08b7faca",
+      "harness": "scripts/axes_standing_state.py tgms (Storm registration, one burst, then a separate check process)",
+      "mix": "c1",
+      "store_copies": "fresh copies of the same-host control's store copies; the originals only read"
+    },
+    "units": "kB in rows and summary are /proc/<pid>/status kB (KiB)",
+    "untimed": true
+  },
+  "dataset": {
+    "components": {
+      "export cell collegemsg-c1-none-n1000-s0 (cell_digest)": "fd7138450eaf97fceb3d2349cfd742eca7022440670b50339e886a852cd6b860",
+      "export cell synth-iv-60k-c1-none-n1000-s0 (cell_digest)": "bddc50c35840589c2caebdaae9503b96401a22365594c9d67b8ee6d824d6a05d",
+      "export cell synth-iv-60k-c1-none-n10000-s0 (cell_digest)": "1ae16e57e824e3c65c86f8a11edb2d5b85bc5f5ef4ad92453ad77fb0938a6549",
+      "store collegemsg eventlog.jsonl (sha256)": "1644f321204d1d218f17ad9bcffc9f9cc5c38e90ffca339511d29682212ec60a",
+      "store synth-iv-60k eventlog.jsonl (sha256)": "8383b23b94a41a8fde2febc0fa36b52978449445b50e25ba53c823467f6c1068"
+    },
+    "digest": "0ab02e7632bf60b26a8957d0e50c17c4dc57c5ebedfa694136448cf8745102ed",
+    "digest_kind": "manifest",
+    "name": "exported seed-0 c1-none cells (collegemsg N=10^3, synth-iv-60k N=10^3 and N=10^4) and their source stores"
+  },
+  "git_commit": "c2fefb2e649cb6e7aec1dbce6d53760002f43c5a",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.03
+  },
+  "n_cells": 3,
+  "preregistration": "P-AXES, frozen 2026-10-30T00:50:31Z. Axis A (standing state): resident memory of the view process after loading the changelog and registering N artifacts, steady after one burst (RSS, and the dataflow's own state accounting if it reports it), versus TGMS's standing cost for the same N: registry file bytes, in-memory registry entries, and the check process's RSS after registration. Prediction: the view's resident memory grows at least linearly with N and at N = 10^4 is >= 10x TGMS's; TGMS's registry is ~4 KB per artifact and its process RSS is within 2x between 10^3 and 10^4. Falsifier: the ratio at 10^4 < 2x -> the standing-state axis does not favour TGMS and the paper says so.",
+  "protocol": {
+    "ceilings": {
+      "note": "memory measurement; no timing claim"
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/external-v1/axes-standing-state-2026-10-30-rows.jsonl",
+  "result_digest": "5f101ba19e902259c624da5a0e3f5405cd380bda4faec1a9841ee29789a8f41d",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "falsifier": {
+      "condition": "view / TGMS RSS ratio at N = 10^4 < 2",
+      "triggered": false
+    },
+    "per_cell": {
+      "collegemsg-c1-none-n1000-s0": {
+        "n_registered": 934,
+        "ratio_view_over_tgms_after_burst_1": 9.998251136761105,
+        "ratio_view_over_tgms_after_registration": 13.356228389870106,
+        "ratio_view_over_tgms_harness_after_burst_1": 5.93369867563416,
+        "ratio_view_over_tgms_peak_after_burst_1": 7.628362510674637,
+        "tgms_check_hwm_kb_after_check_pass": 74944,
+        "tgms_check_rss_kb_after_check_pass": 57180,
+        "tgms_check_rss_kb_after_imports": 38316,
+        "tgms_check_rss_kb_after_registry_load": 42804,
+        "tgms_harness_rss_kb_after_burst_1": 96348,
+        "tgms_harness_rss_kb_after_registration": 91188,
+        "tgms_registry_bytes": 1310320,
+        "tgms_registry_bytes_after_burst_1": 2826072,
+        "tgms_registry_bytes_per_artifact": 1402.9122055674518,
+        "tgms_registry_bytes_per_republish": 1622.8608137044969,
+        "tgms_registry_mem_bytes_per_artifact": 4920.462526766595,
+        "tgms_registry_mem_kb": 4488,
+        "view_arranged_records_after_burst_1": 1091364,
+        "view_arranged_records_after_registration": 1091231,
+        "view_rss_kb_after_bundle_load": 90652,
+        "view_rss_kb_after_burst_1": 571700,
+        "view_rss_kb_after_registration": 571700
+      },
+      "synth-iv-60k-c1-none-n1000-s0": {
+        "n_registered": 884,
+        "ratio_view_over_tgms_after_burst_1": 75.8385079928952,
+        "ratio_view_over_tgms_after_registration": 100.59626802374893,
+        "ratio_view_over_tgms_harness_after_burst_1": 36.7053058698119,
+        "ratio_view_over_tgms_peak_after_burst_1": 57.88335773548072,
+        "tgms_check_hwm_kb_after_check_pass": 73764,
+        "tgms_check_rss_kb_after_check_pass": 56300,
+        "tgms_check_rss_kb_after_imports": 38220,
+        "tgms_check_rss_kb_after_registry_load": 42444,
+        "tgms_harness_rss_kb_after_burst_1": 116324,
+        "tgms_harness_rss_kb_after_registration": 86344,
+        "tgms_registry_bytes": 1204512,
+        "tgms_registry_bytes_after_burst_1": 2603456,
+        "tgms_registry_bytes_per_artifact": 1362.5701357466064,
+        "tgms_registry_bytes_per_republish": 1582.5158371040725,
+        "tgms_registry_mem_bytes_per_artifact": 4892.959276018099,
+        "tgms_registry_mem_kb": 4224,
+        "view_arranged_records_after_burst_1": 8855756,
+        "view_arranged_records_after_registration": 8855088,
+        "view_rss_kb_after_bundle_load": 89424,
+        "view_rss_kb_after_burst_1": 4269708,
+        "view_rss_kb_after_registration": 4269708
+      },
+      "synth-iv-60k-c1-none-n10000-s0": {
+        "n_registered": 8922,
+        "ratio_view_over_tgms_after_burst_1": 336.05404429465574,
+        "ratio_view_over_tgms_after_registration": 415.4248090467216,
+        "ratio_view_over_tgms_harness_after_burst_1": 194.02374389029166,
+        "ratio_view_over_tgms_peak_after_burst_1": 291.94182642035554,
+        "tgms_check_hwm_kb_after_check_pass": 114760,
+        "tgms_check_rss_kb_after_check_pass": 99696,
+        "tgms_check_rss_kb_after_imports": 38144,
+        "tgms_check_rss_kb_after_registry_load": 80648,
+        "tgms_harness_rss_kb_after_burst_1": 172676,
+        "tgms_harness_rss_kb_after_registration": 127376,
+        "tgms_registry_bytes": 12209661,
+        "tgms_registry_bytes_after_burst_1": 26382114,
+        "tgms_registry_bytes_per_artifact": 1368.4892400806993,
+        "tgms_registry_bytes_per_republish": 1588.483860121049,
+        "tgms_registry_mem_bytes_per_artifact": 4878.289172831203,
+        "tgms_registry_mem_kb": 42504,
+        "view_arranged_records_after_burst_1": 73182955,
+        "view_arranged_records_after_registration": 73176136,
+        "view_rss_kb_after_bundle_load": 109408,
+        "view_rss_kb_after_burst_1": 33503244,
+        "view_rss_kb_after_registration": 33503180
+      }
+    },
+    "predictions": {
+      "registry_about_4kb_per_artifact": {
+        "reading": "on disk 1.33-1.37 KiB per artifact at registration (one generation; append-only, it grows by about one record per republish); in memory 4.76-4.81 KiB per artifact"
+      },
+      "tgms_rss_within_2x_n1k_to_n10k": {
+        "holds": true,
+        "reading": "x1.90 after the registry load, x1.77 after the check pass, but only because of the interpreter-and-imports baseline (~37 MiB); the registry's own memory grows x10.06"
+      },
+      "view_at_least_10x_tgms_at_n10k": {
+        "holds": true,
+        "ratio": 336.05404429465574
+      },
+      "view_grows_at_least_linearly": {
+        "holds": false,
+        "reading": "sub-linear: view RSS x7.85 (arranged records x8.26) for x10.09 the artifacts"
+      }
+    },
+    "ratio_view_over_tgms_n10k_after_burst_1": 336.05404429465574,
+    "synth_growth_n1k_to_n10k": {
+      "n_registered": 10.092760180995475,
+      "tgms_check_peak_after_check_pass": 1.5557724635323464,
+      "tgms_check_rss_after_check_pass": 1.7707992895204263,
+      "tgms_check_rss_after_registry_load": 1.900103666006974,
+      "tgms_registry_mem": 10.0625,
+      "view_arranged_records_after_burst_1": 8.263885658096271,
+      "view_rss_after_burst_1": 7.846729565581534
+    },
+    "tgms_check_rss_kb_after_imports_range": [
+      38144,
+      38316
+    ],
+    "tgms_registry_bytes_per_artifact_range": [
+      1362.5701357466064,
+      1402.9122055674518
+    ],
+    "tgms_registry_mem_bytes_per_artifact_range": [
+      4878.289172831203,
+      4920.462526766595
+    ]
+  },
+  "timestamp_utc": "2026-10-30T01:20:42Z"
+}

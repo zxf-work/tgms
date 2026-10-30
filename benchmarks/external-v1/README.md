@@ -890,3 +890,126 @@ on the pre-registered prediction):
 | `recWithheldSymTgmsFreshBeforeArrival` | 39 | `summary.tgms_fresh_before_arrival` |
 | `recWithheldSymTgmsStaleAfterArrival` | 39 | `summary.tgms_possibly_stale_after_arrival` |
 | `recWithheldSymTgmsFalseFreshAfterArrival` | 0 | `summary.tgms_false_fresh_log_after_arrival` |
+
+## Standing state: the maintained view vs the registry (P-AXES axis A, 2026-10-30)
+
+**Pre-registration** (P-AXES, frozen 2026-10-30T00:50:31Z, before this lane
+ran anything), axis A verbatim: "**(A) Standing state.** Resident memory of
+the view process after loading the changelog and registering N artifacts,
+steady after one burst (RSS, and the dataflow's own state accounting if it
+reports it), versus TGMS's standing cost for the same N: registry file
+bytes, in-memory registry entries, and the check process's RSS after
+registration. Prediction: the view's resident memory grows at least
+linearly with N and at N = 10⁴ is ≥ 10× TGMS's; TGMS's registry is ≈ 4 KB
+per artifact and its process RSS is within 2× between 10³ and 10⁴.
+Falsifier: the ratio at 10⁴ < 2× → the standing-state axis does not favour
+TGMS and the paper says so." Axis B (the work done when only k of N
+artifacts are read per burst) is a separate record.
+
+**Configurations.** The three cells on record with an exported bundle and a
+same-host control: `collegemsg-c1-none-n1000-s0`,
+`synth-iv-60k-c1-none-n1000-s0` and the probe
+`synth-iv-60k-c1-none-n10000-s0`. Both sides hold the same population: the
+view's artifact count equals TGMS's registered count (934, 884, 8,922), and
+the sha256 of TGMS's sorted registered names equals the one computed from
+each bundle's `artifacts.jsonl`.
+
+- **The view.** `ivm-dd run <cell> --out <dir> --state-report`, one timely
+  worker, sampled at 1 s from outside (`/proc/<pid>/status` `VmRSS`/`VmHWM`,
+  `scripts/axes_standing_state.py view`). `--state-report` (new; the
+  dataflow and the default output are unchanged) also reads `VmRSS`/`VmHWM`
+  inside the process after the bundle load, after epoch 0 is loaded and
+  every artifact registered, after burst 1 and at the end, together with
+  the dataflow's own state accounting: the live records in every
+  arrangement, from differential's `differential/arrange` log. Built from
+  `external/ivm-dd` at `baa5d5ad` (rustc 1.97.1, `--locked --offline`).
+  The readings agree with the unpatched binary's own end-of-run
+  `process_rss_kb_end` in `ivm-differential-2026-10-07-rows.jsonl`
+  (581,308 / 4,255,796 / 33,498,972 kB there; 571,964 / 4,269,728 /
+  33,503,264 kB here).
+- **TGMS.** `scripts/axes_standing_state.py tgms`: the correction-storm
+  harness registers the population (the committed flags: `--mix c1`,
+  `--check-cache chain`, end-to-end mode at 10³, sum mode for the probe)
+  and runs one burst; the registry's file bytes and in-memory entries are
+  read after registration. The *check process* is a fresh interpreter that
+  opens only the registry as burst 1 found it and the event log holding
+  burst 1's correction, and runs that burst's check pass as the harness
+  does (the candidate pre-filter, then `check_artifact` at level 0 and
+  level 1 for every candidate, one `ChainCache`). It never opens the
+  storage engine: deciding freshness needs the registry and the log only.
+  Its `VmRSS` is read after imports, after the registry load and after the
+  check pass (with `VmHWM`, the peak). The harness process, which also
+  holds the storage engine, is reported for context.
+
+All runs untimed (`nice -n 19`), 2026-10-30T01:01Z–01:21Z. MiB = 2²⁰ bytes.
+
+| | collegemsg 10³ | synth 10³ | synth 10⁴ (probe) |
+|---|---:|---:|---:|
+| registered artifacts | 934 | 884 | 8,922 |
+| view RSS after load + registration, MiB | 558.3 | 4,169.6 | 32,718.0 |
+| view RSS after burst 1, MiB | 558.3 | 4,169.6 | 32,718.0 |
+| view arranged records after burst 1 | 1,091,364 | 8,855,756 | 73,182,955 |
+| TGMS check process after imports, MiB | 37.4 | 37.3 | 37.2 |
+| TGMS check process after registry load, MiB | 41.8 | 41.4 | 78.8 |
+| TGMS check process after the check pass (peak), MiB | 55.8 (73.2) | 55.0 (72.0) | 97.4 (112.1) |
+| TGMS harness process after registration / after burst 1, MiB | 89.1 / 94.1 | 84.3 / 113.6 | 124.4 / 168.6 |
+| registry file after registration, bytes (KiB per artifact) | 1,310,320 (1.37) | 1,204,512 (1.33) | 12,209,661 (1.34) |
+| registry in memory, KiB per artifact | 4.80 | 4.78 | 4.76 |
+| registry file after burst 1, bytes | 2,826,072 | 2,603,456 | 26,382,114 |
+| **view ÷ TGMS check process**, after registration | 13.4× | 100.6× | 415.4× |
+| **view ÷ TGMS check process**, after burst 1 | 10.0× | 75.8× | 336.1× |
+| view ÷ TGMS check-process peak, after burst 1 | 7.6× | 57.9× | 291.9× |
+| view ÷ TGMS harness process, after burst 1 | 5.9× | 36.7× | 194.0× |
+
+"Registry in memory" is the check process's `VmRSS` after the registry
+load minus its `VmRSS` after imports, per registered artifact.
+
+**Readings.**
+
+1. **The falsifier is not triggered; the ≥ 10× half of the prediction
+   holds.** At N = 10⁴ the view holds 336× the check process's resident
+   memory after burst 1 (415× after registration). Even against the whole
+   harness process, which holds the storage engine as well, it is 194×.
+2. **The view grows sub-linearly, not "at least linearly".** From 884 to
+   8,922 artifacts (×10.09) on the same store, the view's RSS grows ×7.85
+   and its arranged records ×8.26. The linear-growth half of the
+   prediction does not hold as worded.
+3. **The registry is 1.33–1.37 KiB per artifact on disk and 4.76–4.80 KiB
+   in memory.** The "≈ 4 KB per artifact" prediction matches the in-memory
+   cost, not the file, which is about a third of it at registration. The
+   file is append-only: every republish adds one record (1.55–1.58 KiB per
+   artifact here: the file roughly doubles after burst 1, when every
+   artifact is republished), so it grows with the refresh history unless
+   compacted.
+4. **TGMS's process RSS is within 2× between 10³ and 10⁴ (×1.90 after the
+   registry load, ×1.77 after the check pass, ×1.56 at peak), but only
+   because of the ≈ 37 MiB interpreter-and-imports baseline.** The
+   registry's own memory grows ×10.06 (4.1 → 41.5 MiB), linearly in N.
+
+**Files.** `axes-standing-state-2026-10-30.json` (per-cell summary, the
+growth factors and the readings above; validates against
+`result_manifest.schema.json`) and `axes-standing-state-2026-10-30-rows.jsonl`
+(6 rows: per cell, the view's four checkpoints with arranged records and its
+1 s samples, and TGMS's registration, burst-1, harness and check-process
+readings); both sha256-listed in `SHA256SUMS.txt`. Assembled by
+`scripts/axes_standing_state_record.py` from `scripts/axes_standing_state.py`'s
+outputs. Code: public main `c2fefb2e` (measured from a worktree of
+`cd194679` carrying that content); the extension module is the fifth-arc
+re-measurement's build.
+
+**Macros** (`scripts/sys_paper_macros.py`'s `compute_axes_standing_state`,
+recomputed from the rows and gated on the record's sha256 and on the
+falsifier). The N = 10³ macros read the synth cell, the store the probe
+shares:
+
+| macro | value | field |
+|---|---:|---|
+| `recAxesViewRssMbN1k` | 4,170 | synth 10³ view `VmRSS` after burst 1, MiB |
+| `recAxesViewRssMbN10k` | 32,718 | probe view `VmRSS` after burst 1, MiB |
+| `recAxesTgmsRssMbN1k` | 55.0 | synth 10³ check process `VmRSS` after the check pass, MiB |
+| `recAxesTgmsRssMbN10k` | 97.4 | probe check process `VmRSS` after the check pass, MiB |
+| `recAxesTgmsRegistryKbPerArtifact` | 1.34 | probe registry file bytes after registration ÷ registered, KiB |
+| `recAxesTgmsRegistryMemKbPerArtifact` | 4.76 | probe registry in memory ÷ registered, KiB |
+| `recAxesRatioN10k` | 336 | probe view ÷ check process, after burst 1 |
+| `recAxesViewArrangedRecordsN1k` | 8,855,756 | synth 10³ arranged records after burst 1 |
+| `recAxesViewArrangedRecordsN10k` | 73,182,955 | probe arranged records after burst 1 |
