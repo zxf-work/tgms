@@ -62,10 +62,34 @@ from tgms.eval.storm import (  # noqa: E402
 from tgms.eval.corrections import _believed_nodes  # noqa: E402
 from tgms.eval.storm_dag import SHAPES as DAG_SHAPES, _handle_for, build_dag, cascade  # noqa: E402
 from tgms.storage.base import make_op  # noqa: E402
+from tgms.tgir import leaves as _leaves  # noqa: E402
 from tgms.storage.eventlog import extend_chain  # noqa: E402
 from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
+
+#: `--leaf-scopes`: the lineage derivations the registered population gets.
+#: `current` leaves `tgms.tgir.leaves.LEAF_SCOPES` as shipped (13 entries).
+#: `storm-v1` is the lineage the first storm campaign ran on (commit 8962b78's
+#: `LEAF_SCOPES`: three entries, the other ten operators on the coarse `"*"`
+#: scope): the ten later entries are removed in-process before anything is
+#: registered. Removing an entry only widens a scope, so the check stays sound.
+LEAF_SCOPE_MODES = ("current", "storm-v1")
+STORM_V1_LEAF_SCOPES = ("entity_history", "neighborhood_evolution", "aggregate_events")
+
+
+def apply_leaf_scopes(mode: str) -> list[str]:
+    """Apply `--leaf-scopes MODE` to this process's `LEAF_SCOPES`; return the
+    sorted names of the entries removed (empty for `current`). Must run before
+    the population is registered, because a scope is derived at registration."""
+    if mode not in LEAF_SCOPE_MODES:
+        raise ValueError(f"leaf_scopes must be one of {LEAF_SCOPE_MODES}, got {mode!r}")
+    if mode == "current":
+        return []
+    removed = sorted(op for op in _leaves.LEAF_SCOPES if op not in STORM_V1_LEAF_SCOPES)
+    for op in removed:
+        del _leaves.LEAF_SCOPES[op]
+    return removed
 
 #: §3's R-18 trip point: the median `intersects_calls`/batch crosses
 #: 50,000 (design memo §3's table) somewhere between 10^4 and 10^5
@@ -283,6 +307,12 @@ def main(argv: list[str] | None = None) -> int:
                          "in-flight batch if the signal arrives before --batches "
                          "batches complete, writing a partial manifest instead of "
                          "nothing (config.wall_capped=true)")
+    ap.add_argument("--leaf-scopes", choices=list(LEAF_SCOPE_MODES), default="current",
+                    help="lineage derivations for the registered population: `current` "
+                         "(as shipped) or `storm-v1` (only entity_history, "
+                         "neighborhood_evolution and aggregate_events keep a derived "
+                         "scope; the other ten operators take the coarse scope, "
+                         "removed in-process before registration)")
     args = ap.parse_args(argv)
 
     if args.refresh_on_read is not None and args.refresh_on_read < 1:
@@ -300,6 +330,8 @@ def main(argv: list[str] | None = None) -> int:
     if not store_path.exists():
         ap.error(f"no such store: {args.store}")
     store_label = store_path.name
+
+    leaf_scopes_removed = apply_leaf_scopes(args.leaf_scopes)
 
     work_root = Path(tempfile.mkdtemp(prefix="storm-"))
     work_store = work_root / "store"
@@ -454,6 +486,12 @@ def main(argv: list[str] | None = None) -> int:
         # keeps its exact config keys
         manifest["config"]["refresh_on_read"] = args.refresh_on_read
         manifest["config"]["refresh_on_read_policy"] = args.refresh_on_read_policy
+    if args.leaf_scopes != "current":
+        # recorded only off the default, so a default manifest keeps its exact config keys
+        manifest["config"]["leaf_scopes"] = args.leaf_scopes
+        manifest["config"]["leaf_scopes_removed"] = len(leaf_scopes_removed)
+        manifest["config"]["leaf_scopes_removed_ops"] = leaf_scopes_removed
+        manifest["config"]["leaf_scopes_kept_ops"] = sorted(_leaves.LEAF_SCOPES)
     manifest_path = args.out / f"{base}.json"
     write_bytes_with_retry(manifest_path,
                            (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"))
