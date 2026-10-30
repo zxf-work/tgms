@@ -1013,3 +1013,138 @@ shares:
 | `recAxesRatioN10k` | 336 | probe view ÷ check process, after burst 1 |
 | `recAxesViewArrangedRecordsN1k` | 8,855,756 | synth 10³ arranged records after burst 1 |
 | `recAxesViewArrangedRecordsN10k` | 73,182,955 | probe arranged records after burst 1 |
+
+## Work when only k of N artifacts are read (P-AXES axis B, 2026-10-30)
+
+**Pre-registration** (P-AXES, frozen 2026-10-30T00:50:31Z), axis B verbatim:
+"**(B) Work when only k of N artifacts are read per burst.** The view pays
+its full maintenance cost per burst regardless of k (`refresh_plus_publish`
+per burst on record: ≈ 4–7 ms collegemsg, 64–266 ms synth at 10³, 5.35 s at
+10⁴). TGMS with on-demand refresh pays, per burst, k × (one check, plus one
+refresh when the check says possibly stale). Measure TGMS's on-demand cost
+per read artifact (a harness mode that refreshes only the artifacts read, k
+drawn uniformly per burst) at k ∈ {1, 10, 100, N} for N = 10³ (both stores)
+and k ∈ {1, 10, 100, 1,000, N} for the probe, and compute the crossover k\*
+where TGMS's per-burst cost equals the view's. Prediction: k\* ∈ [3, 30] at
+N = 10³ on synth, k\* ∈ [100, 1,000] at N = 10⁴, and ≤ 3 on collegemsg (the
+view's per-burst cost there is only ≈ 5 ms). Falsifier: k\* < 1 on synth at
+either N → TGMS loses even when a single artifact is read, and the paper
+says the view dominates on cost in every regime."
+
+**Addendum AXES-A** (frozen 2026-10-30T01:29:22Z, after the first smoke
+runs): the timed runs measure the tip with the three check-path engine
+changes (UNDECIDABLE on a known overlap; the whole-log fingerprint and store
+identity shared per burst of checks; the cached log walk extended over
+appended records instead of re-walked), with the smoke numbers taken before
+them reported as "before"; k\* is computed against the view's **median**
+per-burst cost (primary), the mean as sensitivity.
+
+**Mechanism.** `scripts/bench_correction_storm.py --refresh-on-read k`: per
+burst, after the correction lands, k registered names are drawn uniformly
+without replacement (an RNG of the mode's own, so the correction draws are
+untouched; k is clamped to the registered count, so k = N reads 934, 884 and
+8,922); each gets one level-1 `check_artifact` and, when the check does not
+say fresh, one `refresh`; the k reads are timed as one interval
+(`on_demand_ms`), run inside one burst of the interval's own chain cache
+(the end-to-end intervals' convention), and the registry is rolled back
+afterwards, outside the timed region. Every artifact is fresh at the start
+of a burst (the previous burst's oracle pass republished all of them), so
+this is the cost of serving k reads after one correction. With the mode
+off, rows are byte-identical to the code before it; with it on, rows only
+gain the `on_demand_*` fields. The view is not re-run: its per-burst cost is
+`refresh_plus_publish_ms` in `ivm-differential-2026-10-07-rows.jsonl`.
+"Median" is `statistics.median` on both sides.
+
+**Smoke, untimed, collegemsg N = 10³, 2 bursts (per-burst `on_demand_ms`).**
+
+| code | k = 1 | k = 10 |
+|---|---:|---:|
+| before: `cd194679` | 86–89 ms | 195–200 ms |
+| `c9797b71`, reads outside a burst | 3.9–7.3 ms | 118–127 ms |
+| `fbbcb447`, the k reads in one burst (measured) | 3.8–7.4 ms | 8.9–11.1 ms |
+
+Before the engine changes the first check after each correction re-walked
+the whole 4.1 MB log (≈ 95 ms), and every later check re-digested it (≈ 11
+ms). At `c9797b71` the first check extends the cached walk instead; the
+later checks pay the whole-log digest only outside a burst, which is why the
+on-demand interval now runs as one (`ada93918`).
+
+**Timed runs.** xzgpu, one run at a time, no `nice`, Memgraph stopped for
+the window and restarted after, pre-flight found no other benchmark, test or
+build process; 2026-10-30T02:25:29Z–04:42:09Z (2 h 17 min for the 13 runs).
+The committed flags: `--seed 0 --mix c1 --backend native --burst-size 10000
+--burst-after 10 --check-cache chain`, end-to-end mode with 20 bursts at
+N = 10³, sum mode with 5 bursts for the probe. Every run: 0 refresh errors,
+0 false-fresh for tgms-L1.
+
+Per-burst on-demand cost, ms (median, with the mean in parentheses):
+
+| k | collegemsg 10³ | synth 10³ | synth 10⁴ (probe) |
+|---|---:|---:|---:|
+| 1 | 4.93 (5.34) | 4.87 (8.19) | 4.98 (5.02) |
+| 10 | 13.55 (20.70) | 48.38 (78.01) | 29.66 (86.51) |
+| 100 | 91.94 (112.79) | 429.36 (528.93) | 731.59 (833.04) |
+| 1,000 | — | — | 10,152.17 (7,712.34) |
+| N | 865.94 (970.88) | 5,572.27 (5,111.98) | 94,220.65 (61,755.47) |
+| **view per burst** | **6.13 (11.08)** | **113.46 (199.21)** | **5,359.28 (5,458.85)** |
+| **k\*, median basis** | **2.3** | **25.4** | **542** |
+| k\*, mean basis | 4.4 | 34.2 | 705 |
+| ms per read at k = N (median over bursts) | 0.93 | 6.30 | 10.56 |
+
+k\* is the linear interpolation between the two grid points around the
+crossing (1–10 on collegemsg, 10–100 on synth 10³, 100–1,000 on the
+probe). The first check after a correction (the k = 1 bursts whose one read
+did not refresh: 32 of the 45) costs 4.3 ms (median; 4.1, 3.8 and 5.0 ms on
+the three cells).
+
+**Readings.**
+
+1. **All three predictions hold on the primary (median) basis, and the
+   falsifier is not triggered.** k\* = 25.4 on synth at 10³ (predicted
+   [3, 30]), 542 at 10⁴ (predicted [100, 1,000]) and 2.3 on collegemsg
+   (predicted ≤ 3). At k = 1 TGMS costs 4.9–5.0 ms per burst against the
+   view's 6.1 ms, 113 ms and 5.36 s.
+2. **On the mean basis the synth 10³ crossover leaves the predicted
+   interval** (34.2 > 30), and collegemsg's (4.4) leaves "≤ 3"; the probe's
+   (705) stays inside. The view's per-burst cost is right-skewed (on synth
+   10³: 4.5 ms to 823 ms, mean 199 vs median 113), so the mean moves k\*
+   up.
+3. **The cost per read grows with N** (6.30 ms at 10³ vs 10.56 ms at 10⁴ on
+   the same store at k = N): about one read in four is refreshed at both
+   sizes, and the refreshes cost more at 10⁴. The refresh-cost attribution
+   record found a refresh's cost flat in N on the same artifacts and
+   dependent on the operator kind, so the difference is likely the mix of
+   kinds refreshed; this record does not separate the two. Reading every
+   artifact costs TGMS 49× the view's
+   per-burst cost at 10³ on synth and 18× at 10⁴.
+4. **These numbers depend on the three engine changes.** Before them
+   (`cd194679`) the k = 1 read alone cost 86–89 ms on collegemsg, already
+   14× the view's per-burst cost, so on collegemsg there would have been no
+   crossing at k ≥ 1, and on synth 10³ only k\* ≈ 1.
+
+**Files.** `axes-on-demand-2026-10-30.json` (per cell and k: the median,
+mean, min and max per-burst cost, reads, refreshes, cost per read; the
+view's per-burst cost; both crossovers; the first-check reading; the
+verdict; the smoke numbers above; each run's manifest and rows sha256;
+validates against `result_manifest.schema.json`) and
+`axes-on-demand-2026-10-30-rows.jsonl` (185 rows, one per run and burst);
+both sha256-listed in `SHA256SUMS.txt`. Assembled by
+`scripts/axes_on_demand_record.py`. Code: `fbbcb447` (`c9797b71` plus
+`ada93918`/`fbbcb447`, the on-demand interval's burst), measured from a
+worktree carrying that content; the extension module is the fifth-arc
+re-measurement's build (`crates/` unchanged since `b6cdde0`).
+
+**Macros** (`scripts/sys_paper_macros.py`'s `compute_axes_on_demand`,
+recomputed from the rows and the view's rows, gated on both files' sha256
+and on the falsifier flag):
+
+| macro | value | field |
+|---|---:|---|
+| `recAxesCrossoverKN1k` | 25 | synth 10³ k\*, median basis |
+| `recAxesCrossoverKN10k` | 542 | probe k\*, median basis |
+| `recAxesCrossoverKCollegeMsg` | 2.3 | collegemsg 10³ k\*, median basis |
+| `recAxesOnDemandMsPerReadN1k` | 6.30 | synth 10³ at k = N, median over bursts of `on_demand_ms` ÷ reads |
+| `recAxesOnDemandMsPerReadN10k` | 10.56 | probe at k = N, the same |
+| `recAxesOnDemandFirstCheckMs` | 4.3 | median `on_demand_ms` of the k = 1 bursts without a refresh, all three cells |
+| `recAxesViewPerBurstMsN1k` | 113 | synth 10³ view, median `refresh_plus_publish_ms` |
+| `recAxesViewPerBurstMsN10k` | 5,359 | probe view, the same |

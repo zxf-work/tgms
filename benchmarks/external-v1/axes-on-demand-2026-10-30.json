@@ -1,0 +1,577 @@
+{
+  "addendum": "Addendum AXES-A, frozen 2026-10-30T01:29:22Z: phase 2 measures the engine-change tip (UNDECIDABLE on a known overlap, the shared per-burst fingerprint, incremental chain-cache extension on append); the cd194679 smoke numbers are reported as 'before'; the crossover k* is computed against the view's median per-burst cost (primary), mean as sensitivity.",
+  "config": {
+    "axis": "B",
+    "campaign": "axes-on-demand",
+    "cells": [
+      {
+        "batches": 20,
+        "cell_id": "collegemsg-c1-none-n1000-s0",
+        "k_grid": [
+          1,
+          10,
+          100,
+          1000
+        ],
+        "measure_ttf": "end-to-end",
+        "n_artifacts": 1000,
+        "store": "collegemsg"
+      },
+      {
+        "batches": 20,
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "k_grid": [
+          1,
+          10,
+          100,
+          1000
+        ],
+        "measure_ttf": "end-to-end",
+        "n_artifacts": 1000,
+        "store": "synth-iv-60k"
+      },
+      {
+        "batches": 5,
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "k_grid": [
+          1,
+          10,
+          100,
+          1000,
+          10000
+        ],
+        "measure_ttf": "sum",
+        "n_artifacts": 10000,
+        "store": "synth-iv-60k"
+      }
+    ],
+    "code": "c9797b71 (the engine changes of P-ENG2: UNDECIDABLE on a known overlap, the shared per-burst fingerprint, incremental chain-cache extension) plus ada93918 (the on-demand interval's reads run in one ChainCache/Registry burst); measured from a worktree carrying fbbcb447's content",
+    "date": "2026-10-30",
+    "engine_note": "crates/ unchanged since b6cdde0",
+    "engine_so_sha256": "d48ae71caca80d9f3ea9f360b2e7a2f242f3e9e03ee223d69c4f8aff08b7faca",
+    "flags": "--seed 0 --mix c1 --backend native --burst-size 10000 --burst-after 10 --check-cache chain --refresh-on-read k (--allow-r18-trip at 10^4)",
+    "host_protocol": "timed runs one at a time, no nice; Memgraph stopped for the window and restarted after; pre-flight found no other benchmark, test or build process",
+    "median_definition": "statistics.median on both sides",
+    "on_demand_definition": "per batch, after the correction lands: k names drawn uniformly without replacement (own seeded RNG, clamped to the registered count); one level-1 check each and one refresh when the check does not say fresh; timed as one interval, inside one burst of the interval's own chain cache; registry rolled back after",
+    "runs": {
+      "collegemsg-c1-none-n1000-s0-k1": {
+        "manifest_sha256": "1f9cf469f83830090b53b247ed7db943ff3a6a5637281ae7cb694d4448b600e5",
+        "result_digest": "e6cb9125e087431f77a56647c2c559fedaaf8bb21ab2ebbf6c10202e87ff67f3",
+        "rows_sha256": "903481e202baecf42c625267103342e989145900461df8bf479526a09c979188",
+        "timestamp_utc": "2026-10-30T02:27:22Z",
+        "wall_s": 109.11774945259094
+      },
+      "collegemsg-c1-none-n1000-s0-k10": {
+        "manifest_sha256": "5b3a1a120828db1271c2a2f5a4a27eac33c4205bd70d9ff38bfaf481e110700d",
+        "result_digest": "a6d7d464b6098815b914a4d2905e4455f589c3c708c32fde4b1f7158b4c3e5da",
+        "rows_sha256": "dd6d887da4e5d62a70929669a7ac428b0c25facebe5f7f211656a0600904deb1",
+        "timestamp_utc": "2026-10-30T02:29:08Z",
+        "wall_s": 105.58440160751343
+      },
+      "collegemsg-c1-none-n1000-s0-k100": {
+        "manifest_sha256": "7436a62cf53e52fd86a6e99a595e101f905e94a3b13b5f30a14a10e109fb3413",
+        "result_digest": "07b4fc7072ded9bd6318bb602650467eac5ced825196a7b292b476c897526fe6",
+        "rows_sha256": "0c2d6293a0aa1469a960a0e95022d17b9f416c2425ae90aada2dfd7ff92c4a3d",
+        "timestamp_utc": "2026-10-30T02:30:59Z",
+        "wall_s": 110.5801329612732
+      },
+      "collegemsg-c1-none-n1000-s0-k1000": {
+        "manifest_sha256": "aeeda127305c447572bb797496ee88d65c04fcd94250cd4a909ad09e3bbc0990",
+        "result_digest": "151360441ef971311e7716dc0ef1efb82f83e6ee0931b276393c6ac363cc12d0",
+        "rows_sha256": "bf40cfa09024c98500d42de6a26d67cc52501adbb57cc8370f6209976e14c6b2",
+        "timestamp_utc": "2026-10-30T02:33:10Z",
+        "wall_s": 129.4868459701538
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k1": {
+        "manifest_sha256": "4b347c2b3cbec306541b53dc6f82ba2fdb5dc63c8ea7f739abc72e5ece660999",
+        "result_digest": "3f126bb3dc7acc113cf894f2c2cbd128653d30ab8fdd29b0bbc3f89f523d6c8b",
+        "rows_sha256": "ef3ce8a38837ce7b398ec00d1d00e26950b6874cec4ef1e2a5e2a8d9b84ce6a9",
+        "timestamp_utc": "2026-10-30T02:41:44Z",
+        "wall_s": 514.2356414794922
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k10": {
+        "manifest_sha256": "f377c35354cf1f66453040d073139b5523341ff5cf8faddf0c075aa285de713d",
+        "result_digest": "1cb9c85354143c7e110681b5bfd43f5cafcc47591b7d81716e218bf75d22d3e8",
+        "rows_sha256": "88dc5c345efa82461ec78c9f11e39242b39f4ef9a711be4cb6ae337a4fc37b49",
+        "timestamp_utc": "2026-10-30T02:50:18Z",
+        "wall_s": 512.9119620323181
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k100": {
+        "manifest_sha256": "f975f0b5141da2b0feac25a71e45a3d3e00399a471699d467a5ae2c63b33a140",
+        "result_digest": "0c5cebbd7582bd43c5afaa0d1d671fce11b06fb3916c34679a90ceb0afdd8cc3",
+        "rows_sha256": "ca132dca0168b3f6c377e1b6cfea78b273a0e8c50a3bba10caea42065de52e86",
+        "timestamp_utc": "2026-10-30T02:59:00Z",
+        "wall_s": 520.8988387584686
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k1000": {
+        "manifest_sha256": "0dd27dec2c5c8a5c6705b06792c43d87bf7d3dec4cea8ea5810b8a18bda025d6",
+        "result_digest": "e509fc6f6701f608403ae94abcc56cf0c0dc2d42b9b4a3c99ba19aa766d4a9ea",
+        "rows_sha256": "3a27aebe3231bddf7acff88895a9846b94c18341418d3264d64658bee849003c",
+        "timestamp_utc": "2026-10-30T03:09:15Z",
+        "wall_s": 614.8824446201324
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k1": {
+        "manifest_sha256": "7c654176bf89fcce4605ef1eab49a0f6c2cb2bc1337424e3cd5aae5713eec6d3",
+        "result_digest": "a5cf1d5442db63c924df2c0bf75483669f68684e38b7f5ab9fa3ee2245129d6a",
+        "rows_sha256": "fd2870fd4060e6e4247d072218903975ce834b7c79162c44cff89f23775813cc",
+        "timestamp_utc": "2026-10-30T03:26:40Z",
+        "wall_s": 1044.282147884369
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k10": {
+        "manifest_sha256": "a8a36ec369d8932c634568c193a4438f95e32d27bd4b85f470308eba6eaa4510",
+        "result_digest": "b34847e921fc6e59c23ce21ac4262c2749f3209907b5159e771de2982e5338e4",
+        "rows_sha256": "09bf802c46a799a227ffbab5d64db41a14e15db5538c297bd4f8caf5b7fc990e",
+        "timestamp_utc": "2026-10-30T03:44:12Z",
+        "wall_s": 1050.542803287506
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k100": {
+        "manifest_sha256": "055309aed944c080875badb89a76d6d1a77d0e3fd8043e1aa74682b0a821014d",
+        "result_digest": "16a10df0c0b1582d3c369279c506fec6e3ab77a37dcdf173416a3fbfff170215",
+        "rows_sha256": "2df08c7bc1c4b65bacc3e7c1aad0870ed88e6f20a6bec0fc0243e1acee18cd72",
+        "timestamp_utc": "2026-10-30T04:01:34Z",
+        "wall_s": 1041.5474326610565
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k1000": {
+        "manifest_sha256": "ca00b3f1cdb449266582b42d0ea8fd521b7c927cf9975f6f8ea1eef82ee4a648",
+        "result_digest": "800193f55ff31398332777083a54d0d69ad61f24e891ff58219acf8136bc03a7",
+        "rows_sha256": "94d26084058504dd2fb0eaf6be53e2bacee15b6e07706aeff1845a6797391533",
+        "timestamp_utc": "2026-10-30T04:19:37Z",
+        "wall_s": 1082.244249343872
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k10000": {
+        "manifest_sha256": "3c6ec420edd657a59b9f07b0cc9c9c8b62a4575b0a7c43dd321d9e7325a7abd2",
+        "result_digest": "a64de436ec1fb462a1543bcac6f339b0b7f6d7726edd45fb9a26a68c6ea26349",
+        "rows_sha256": "ca61c0260d039fc4e5e460b867e4981156c5c8c4b48c7091538fae1179790b78",
+        "timestamp_utc": "2026-10-30T04:42:09Z",
+        "wall_s": 1350.1363396644592
+      }
+    },
+    "view_per_burst_source": "benchmarks/external-v1/ivm-differential-2026-10-07-rows.jsonl, per_burst[].refresh_plus_publish_ms",
+    "view_rows_sha256": "8b3b83468cfa224321b707737cac80002ca7d966ebb298d9dd524bc581cf0627"
+  },
+  "dataset": {
+    "components": {
+      "store collegemsg (eventlog sha256 at run end, k=1, collegemsg-c1-none-n1000-s0)": "280d7ff0daabf2bf215815eda258171bfc990a05e8d5f99d1b6b9cba17d071d5",
+      "store collegemsg (eventlog sha256 at run end, k=10, collegemsg-c1-none-n1000-s0)": "280d7ff0daabf2bf215815eda258171bfc990a05e8d5f99d1b6b9cba17d071d5",
+      "store collegemsg (eventlog sha256 at run end, k=100, collegemsg-c1-none-n1000-s0)": "280d7ff0daabf2bf215815eda258171bfc990a05e8d5f99d1b6b9cba17d071d5",
+      "store collegemsg (eventlog sha256 at run end, k=1000, collegemsg-c1-none-n1000-s0)": "280d7ff0daabf2bf215815eda258171bfc990a05e8d5f99d1b6b9cba17d071d5",
+      "store synth-iv-60k (eventlog sha256 at run end, k=1, synth-iv-60k-c1-none-n1000-s0)": "35929fd00230e88820caa3a247632b2ba59facc565e55adb3f31c6c14f6aeb1f",
+      "store synth-iv-60k (eventlog sha256 at run end, k=1, synth-iv-60k-c1-none-n10000-s0)": "f33ad2da7281a98dd9ac6976689263e7e6681cdef521f84cb211708b4fe40658",
+      "store synth-iv-60k (eventlog sha256 at run end, k=10, synth-iv-60k-c1-none-n1000-s0)": "35929fd00230e88820caa3a247632b2ba59facc565e55adb3f31c6c14f6aeb1f",
+      "store synth-iv-60k (eventlog sha256 at run end, k=10, synth-iv-60k-c1-none-n10000-s0)": "f33ad2da7281a98dd9ac6976689263e7e6681cdef521f84cb211708b4fe40658",
+      "store synth-iv-60k (eventlog sha256 at run end, k=100, synth-iv-60k-c1-none-n1000-s0)": "35929fd00230e88820caa3a247632b2ba59facc565e55adb3f31c6c14f6aeb1f",
+      "store synth-iv-60k (eventlog sha256 at run end, k=100, synth-iv-60k-c1-none-n10000-s0)": "f33ad2da7281a98dd9ac6976689263e7e6681cdef521f84cb211708b4fe40658",
+      "store synth-iv-60k (eventlog sha256 at run end, k=1000, synth-iv-60k-c1-none-n1000-s0)": "35929fd00230e88820caa3a247632b2ba59facc565e55adb3f31c6c14f6aeb1f",
+      "store synth-iv-60k (eventlog sha256 at run end, k=1000, synth-iv-60k-c1-none-n10000-s0)": "f33ad2da7281a98dd9ac6976689263e7e6681cdef521f84cb211708b4fe40658",
+      "store synth-iv-60k (eventlog sha256 at run end, k=10000, synth-iv-60k-c1-none-n10000-s0)": "f33ad2da7281a98dd9ac6976689263e7e6681cdef521f84cb211708b4fe40658"
+    },
+    "digest": "2e090f06f3775b82f0fbfc1b12b05b8e62eeac7c857c3d5ddcf8526ed15b8574",
+    "digest_kind": "manifest",
+    "name": "collegemsg and synth-iv-60k same-host control stores (copies), seed-0 c1-none populations at N = 10^3 and 10^4"
+  },
+  "git_commit": "fbbcb4470adf1a7722b564d555113de08daafb84",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.03
+  },
+  "n_cells": 3,
+  "preregistration": "P-AXES, frozen 2026-10-30T00:50:31Z. Axis B (work when only k of N artifacts are read per burst): the view pays its full maintenance cost per burst regardless of k (refresh_plus_publish per burst on record: ~4-7 ms collegemsg, 64-266 ms synth at 10^3, 5.35 s at 10^4). TGMS with on-demand refresh pays, per burst, k x (one check, plus one refresh when the check says possibly stale). Measure TGMS's on-demand cost per read artifact (a harness mode that refreshes only the artifacts read, k drawn uniformly per burst) at k in {1, 10, 100, N} for N = 10^3 (both stores) and k in {1, 10, 100, 1,000, N} for the probe, and compute the crossover k* where TGMS's per-burst cost equals the view's. Prediction: k* in [3, 30] at N = 10^3 on synth, k* in [100, 1,000] at N = 10^4, and <= 3 on collegemsg (the view's per-burst cost there is only ~5 ms). Falsifier: k* < 1 on synth at either N -> TGMS loses even when a single artifact is read, and the paper says the view dominates on cost in every regime.",
+  "protocol": {
+    "ceilings": {
+      "note": "one run per (cell, k); box quiet, Memgraph stopped"
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/external-v1/axes-on-demand-2026-10-30-rows.jsonl",
+  "result_digest": "893f163a4eccaa714dea9056f2da5f3bf5750fe63d2019ab43978e155b690f09",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "first_check_batches_all_cells": 32,
+    "first_check_ms_median_all_cells": 4.344419343397021,
+    "per_cell": {
+      "collegemsg-c1-none-n1000-s0": {
+        "crossover_mean": {
+          "between": [
+            1,
+            10
+          ],
+          "k_star": 4.3607154298562705,
+          "kind": "interpolated"
+        },
+        "crossover_median": {
+          "between": [
+            1,
+            10
+          ],
+          "k_star": 2.252230117682979,
+          "kind": "interpolated"
+        },
+        "first_check_ms": {
+          "batches": 13,
+          "median": 4.148115869611502
+        },
+        "per_k": {
+          "1": {
+            "batches": 20,
+            "k_effective": 1,
+            "max_ms": 10.548761114478111,
+            "mean_ms": 5.343814636580646,
+            "median_ms": 4.928327165544033,
+            "median_ms_per_read": 4.928327165544033,
+            "min_ms": 3.1678928062319756,
+            "ms_per_read_mean": 5.343814636580646,
+            "reads": 20,
+            "refreshes": 7,
+            "run_wall_s": 109.11774945259094
+          },
+          "10": {
+            "batches": 20,
+            "k_effective": 10,
+            "max_ms": 126.6797250136733,
+            "mean_ms": 20.699518220499158,
+            "median_ms": 13.548759510740638,
+            "median_ms_per_read": 1.3548759510740638,
+            "min_ms": 4.917520098388195,
+            "ms_per_read_mean": 2.069951822049916,
+            "reads": 200,
+            "refreshes": 56,
+            "run_wall_s": 105.58440160751343
+          },
+          "100": {
+            "batches": 20,
+            "k_effective": 100,
+            "max_ms": 257.2204312309623,
+            "mean_ms": 112.78888862580061,
+            "median_ms": 91.93691052496433,
+            "median_ms_per_read": 0.9193691052496433,
+            "min_ms": 53.17124305292964,
+            "ms_per_read_mean": 1.127888886258006,
+            "reads": 2000,
+            "refreshes": 539,
+            "run_wall_s": 110.5801329612732
+          },
+          "1000": {
+            "batches": 20,
+            "k_effective": 934,
+            "max_ms": 1728.263062890619,
+            "mean_ms": 970.8779260981828,
+            "median_ms": 865.9406397491693,
+            "median_ms_per_read": 0.9271313059412949,
+            "min_ms": 496.5019500814378,
+            "ms_per_read_mean": 1.0394838609188253,
+            "reads": 18680,
+            "refreshes": 4867,
+            "run_wall_s": 129.4868459701538
+          }
+        },
+        "view_per_burst": {
+          "bursts": 20,
+          "max_ms": 60.191868,
+          "mean_ms": 11.0778313,
+          "median_ms": 6.1277455,
+          "min_ms": 2.3998839999999997
+        }
+      },
+      "synth-iv-60k-c1-none-n1000-s0": {
+        "crossover_mean": {
+          "between": [
+            10,
+            100
+          ],
+          "k_star": 34.18980226130644,
+          "kind": "interpolated"
+        },
+        "crossover_median": {
+          "between": [
+            10,
+            100
+          ],
+          "k_star": 25.373573653272402,
+          "kind": "interpolated"
+        },
+        "first_check_ms": {
+          "batches": 14,
+          "median": 3.8428781554102898
+        },
+        "per_k": {
+          "1": {
+            "batches": 20,
+            "k_effective": 1,
+            "max_ms": 54.76888222619891,
+            "mean_ms": 8.185176458209753,
+            "median_ms": 4.869529278948903,
+            "median_ms_per_read": 4.869529278948903,
+            "min_ms": 3.38187487795949,
+            "ms_per_read_mean": 8.185176458209753,
+            "reads": 20,
+            "refreshes": 6,
+            "run_wall_s": 514.2356414794922
+          },
+          "10": {
+            "batches": 20,
+            "k_effective": 10,
+            "max_ms": 440.3961356729269,
+            "mean_ms": 78.01081307698041,
+            "median_ms": 48.384747467935085,
+            "median_ms_per_read": 4.8384747467935085,
+            "min_ms": 5.2914367988705635,
+            "ms_per_read_mean": 7.801081307698041,
+            "reads": 200,
+            "refreshes": 58,
+            "run_wall_s": 512.9119620323181
+          },
+          "100": {
+            "batches": 20,
+            "k_effective": 100,
+            "max_ms": 1312.1334500610828,
+            "mean_ms": 528.9290358778089,
+            "median_ms": 429.3629536405206,
+            "median_ms_per_read": 4.293629536405206,
+            "min_ms": 113.15783392637968,
+            "ms_per_read_mean": 5.289290358778089,
+            "reads": 2000,
+            "refreshes": 488,
+            "run_wall_s": 520.8988387584686
+          },
+          "1000": {
+            "batches": 20,
+            "k_effective": 884,
+            "max_ms": 9229.463913943619,
+            "mean_ms": 5111.978517612442,
+            "median_ms": 5572.273981291801,
+            "median_ms_per_read": 6.30347735440249,
+            "min_ms": 1155.6357420049608,
+            "ms_per_read_mean": 5.782781128520862,
+            "reads": 17680,
+            "refreshes": 4316,
+            "run_wall_s": 614.8824446201324
+          }
+        },
+        "view_per_burst": {
+          "bursts": 20,
+          "max_ms": 822.603249,
+          "mean_ms": 199.20662025000001,
+          "median_ms": 113.4624865,
+          "min_ms": 4.5345200000000006
+        }
+      },
+      "synth-iv-60k-c1-none-n10000-s0": {
+        "crossover_mean": {
+          "between": [
+            100,
+            1000
+          ],
+          "k_star": 705.1817855609663,
+          "kind": "interpolated"
+        },
+        "crossover_median": {
+          "between": [
+            100,
+            1000
+          ],
+          "k_star": 542.1087799491779,
+          "kind": "interpolated"
+        },
+        "first_check_ms": {
+          "batches": 5,
+          "median": 4.982191137969494
+        },
+        "per_k": {
+          "1": {
+            "batches": 5,
+            "k_effective": 1,
+            "max_ms": 5.413805600255728,
+            "mean_ms": 5.0208901055157185,
+            "median_ms": 4.982191137969494,
+            "median_ms_per_read": 4.982191137969494,
+            "min_ms": 4.794260952621698,
+            "ms_per_read_mean": 5.0208901055157185,
+            "reads": 5,
+            "refreshes": 0,
+            "run_wall_s": 1044.282147884369
+          },
+          "10": {
+            "batches": 5,
+            "k_effective": 10,
+            "max_ms": 320.7137491554022,
+            "mean_ms": 86.50878863409162,
+            "median_ms": 29.657650738954544,
+            "median_ms_per_read": 2.9657650738954544,
+            "min_ms": 15.797993168234825,
+            "ms_per_read_mean": 8.650878863409162,
+            "reads": 50,
+            "refreshes": 11,
+            "run_wall_s": 1050.542803287506
+          },
+          "100": {
+            "batches": 5,
+            "k_effective": 100,
+            "max_ms": 2153.1296162866056,
+            "mean_ms": 833.040788397193,
+            "median_ms": 731.5871170721948,
+            "median_ms_per_read": 7.315871170721948,
+            "min_ms": 144.22751916572452,
+            "ms_per_read_mean": 8.33040788397193,
+            "reads": 500,
+            "refreshes": 114,
+            "run_wall_s": 1041.5474326610565
+          },
+          "1000": {
+            "batches": 5,
+            "k_effective": 1000,
+            "max_ms": 12717.365037184209,
+            "mean_ms": 7712.337129749358,
+            "median_ms": 10152.168778702617,
+            "median_ms_per_read": 10.152168778702617,
+            "min_ms": 1526.8120258115232,
+            "ms_per_read_mean": 7.712337129749358,
+            "reads": 5000,
+            "refreshes": 1214,
+            "run_wall_s": 1082.244249343872
+          },
+          "10000": {
+            "batches": 5,
+            "k_effective": 8922,
+            "max_ms": 95041.81485902518,
+            "mean_ms": 61755.46999499202,
+            "median_ms": 94220.65347572789,
+            "median_ms_per_read": 10.5604857067617,
+            "min_ms": 12557.951793074608,
+            "ms_per_read_mean": 6.9217070158027365,
+            "reads": 44610,
+            "refreshes": 10813,
+            "run_wall_s": 1350.1363396644592
+          }
+        },
+        "view_per_burst": {
+          "bursts": 5,
+          "max_ms": 7007.993114999999,
+          "mean_ms": 5458.8461698,
+          "median_ms": 5359.278078,
+          "min_ms": 4428.693572
+        }
+      }
+    },
+    "smoke_untimed": {
+      "after_c9797b71_reads_outside_a_burst": {
+        "k1": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "on_demand_ms": 7.32483109459281,
+            "reads": 1,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "on_demand_ms": 3.8625518791377544,
+            "reads": 1,
+            "refreshes": 0
+          }
+        ],
+        "k10": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "on_demand_ms": 118.30832390114665,
+            "reads": 10,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "on_demand_ms": 126.90457561984658,
+            "reads": 10,
+            "refreshes": 2
+          }
+        ]
+      },
+      "after_fbbcb447_reads_in_one_burst": {
+        "k1": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "on_demand_ms": 7.424014154821634,
+            "reads": 1,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "on_demand_ms": 3.8411221466958523,
+            "reads": 1,
+            "refreshes": 0
+          }
+        ],
+        "k10": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "on_demand_ms": 8.855318184942007,
+            "reads": 10,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "on_demand_ms": 11.068293824791908,
+            "reads": 10,
+            "refreshes": 2
+          }
+        ]
+      },
+      "before_cd194679": {
+        "k1": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "on_demand_ms": 89.22827709466219,
+            "reads": 1,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "on_demand_ms": 85.93906322494149,
+            "reads": 1,
+            "refreshes": 0
+          }
+        ],
+        "k10": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "on_demand_ms": 195.2411108650267,
+            "reads": 10,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "on_demand_ms": 200.3003340214491,
+            "reads": 10,
+            "refreshes": 2
+          }
+        ]
+      },
+      "note": "untimed (nice 19), collegemsg N = 10^3, 2 batches, committed flags; not the record's measurement, context for the engine change"
+    },
+    "verdict": {
+      "collegemsg_at_most_3": true,
+      "falsifier_k_star_below_1_on_synth": false,
+      "k_star_collegemsg_n1k": 2.252230117682979,
+      "k_star_synth_n10k": 542.1087799491779,
+      "k_star_synth_n1k": 25.373573653272402,
+      "synth_n10k_in_100_1000": true,
+      "synth_n1k_in_3_30": true
+    }
+  },
+  "timestamp_utc": "2026-10-30T04:42:09Z"
+}

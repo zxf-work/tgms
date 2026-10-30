@@ -1,4 +1,4 @@
-21d8a6dcfb6753fb80ee038b62b073829f49471d8b664c5f8508bef3456bfddd  benchmarks/external-v1/README.md
+042cb92e232a94094a3b2eaa1ed3176609b459bbebc372d180e6338ec61e98d2  benchmarks/external-v1/README.md
 a783e8cd29ce332e86c3b7fedda48d69ce300ba01fbf886a3e36939aa71dcf51  benchmarks/external-v1/neo4j-recompute-2026-10-07.json
 a9b6bfd21f4547ef3074516d9808e1fc7fc3a143cbc34c1c013f7a77d64e0be5  benchmarks/external-v1/neo4j-recompute-2026-10-07-rows.jsonl
 3dd39bbcf156277b7ff39363798f27ab9aee7fe7be70c5dc22c0365c845b564e  benchmarks/external-v1/ivm-differential-2026-10-07.json
@@ -20,3 +20,5 @@ f7d331ce735cbd17befcf42304509b6bf630253f32f497bb885dd41b199a49be  benchmarks/ext
 480fffafccfcea0006432b7d849d2bf85b5e4c1f3564dfbe9d42e930a26a2d67  benchmarks/external-v1/withheld-symmetric-2026-10-29-rows.jsonl
 aa6a41cb3fdce4a3ff24af9a0a488f6336cbc0ce2c461dbe68f5702e1597aedc  benchmarks/external-v1/axes-standing-state-2026-10-30.json
 8740bbeb824730b66d27f01e7227a654986a2c893c8fa8c7bbb20203ec30d711  benchmarks/external-v1/axes-standing-state-2026-10-30-rows.jsonl
+23c2f3841d9924b15852a1e89230dbd40b1940ec7ceed124628635e628d6d02e  benchmarks/external-v1/axes-on-demand-2026-10-30.json
+c9746ada7a1d7160306071281d6ac3c3f4fc13dbacc836b486e4caa9586bc461  benchmarks/external-v1/axes-on-demand-2026-10-30-rows.jsonl
