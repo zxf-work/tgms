@@ -485,10 +485,30 @@ def _tail(path: Any, size: int) -> bytes:
         return fh.read(size - start)
 
 
+def _read(path: Any, size: int) -> bytes:
+    """Exactly the first `size` bytes of `path` (fewer if it is shorter)."""
+    with open(path, "rb") as fh:
+        return fh.read(size)
+
+
 @dataclass(frozen=True, slots=True)
 class _CacheEntry:
     walk: "LogWalk"
     fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class _Base:
+    """The newest log state a `ChainCache` walked for one path, kept whole —
+    its bytes, the running `sha256` over them, its walk — so the next state,
+    if it is this one plus appended records, can be checked byte for byte
+    and walked from here (failure ledger
+    `chain-cache-rewalks-whole-log-on-append`)."""
+
+    ino: int
+    data: bytes
+    hasher: Any
+    walk: "LogWalk"
 
 
 @dataclass(frozen=True, slots=True)
@@ -542,8 +562,8 @@ class ChainCache:
     above — a hit re-digests the whole prefix, a miss re-walks — and records
     the state's stat key and last `_TAIL_BYTES` bytes; every later check in
     the same burst that finds the same stat key *and* the same tail bytes is
-    served that entry (and, from the second check on, the store identity)
-    without re-reading the prefix. Any change of size, mtime, inode, ctime or
+    served that entry (and the store identity) without re-reading the
+    prefix. Any change of size, mtime, inode, ctime or
     tail sends the check back to the full path. See `burst` for what the
     caller vouches for and what that does and does not keep of D-162.
 
@@ -553,6 +573,22 @@ class ChainCache:
     replaced), and a check served from a burst's shared state is a **hit**.
     `fingerprints` counts whole-prefix digests taken, so the sharing is
     observable. A caller auditing an adversarial log should still pass `None`.
+
+    **A miss caused by an append extends the newest walk instead of
+    re-walking** (failure ledger `chain-cache-rewalks-whole-log-on-append`,
+    P-ENG2 addendum). The cache keeps, per path, the bytes of the newest log
+    state it walked. When a miss finds the same inode grown past them, it
+    reads the file once and compares that prefix **byte for byte** with the
+    kept bytes; only if every byte matches does it walk the new records alone
+    — parsing and chaining each from the kept chain, so the new tail is
+    validated exactly as the full walk validates it — and extend the kept
+    `sha256` over them, which is then the entry's fingerprint (equal to a
+    digest of the file's first `size` bytes, by construction). Any other
+    change — a different prefix, inode or record boundary, a shrink, bytes
+    that are not whole records — re-walks from byte 0 as before, and that
+    walk says what changed. An extension is still a **miss** (the counter
+    means "a new log state was walked"); `extensions` counts the ones that
+    did not re-walk.
     """
 
     def __init__(self) -> None:
@@ -561,6 +597,13 @@ class ChainCache:
         self.misses = 0
         #: Whole-prefix `sha256` digests taken (the D-162 cost), miss or hit.
         self.fingerprints = 0
+        #: Misses served by extending the newest walk over appended records.
+        self.extensions = 0
+        self._bases: dict[str, _Base] = {}
+        #: Per path, the identity a check computed (byte-revalidated by the
+        #: memo) at a stat key before any state of this burst held; the walk
+        #: that then validates that same key adopts it (`store_identity`).
+        self._pending_identity: dict[str, tuple[tuple[str, int, int, int, int], str]] = {}
         self._burst_depth = 0
         self._burst: dict[str, _BurstState] = {}
 
@@ -600,6 +643,7 @@ class ChainCache:
             self._burst_depth -= 1
             if self._burst_depth == 0:
                 self._burst.clear()
+                self._pending_identity.clear()
 
     def _burst_state(self, log: EventLog) -> _BurstState | None:
         """The state an earlier check in this burst validated, if the log
@@ -631,13 +675,44 @@ class ChainCache:
                 entry = cached
         if entry is None:
             self.misses += 1
-            walked = _walk(log)
-            self.fingerprints += 1
-            entry = _CacheEntry(walked, _fingerprint(log.path, size))
+            entry = self._extend(log, key)
+            if entry is None:
+                walked = _walk(log)
+                data = _read(log.path, size)
+                hasher = hashlib.sha256(data)
+                self.fingerprints += 1
+                entry = _CacheEntry(walked, hasher.hexdigest())
+                self._bases[key[0]] = _Base(key[3], data, hasher, walked)
             self._entries[key] = entry
         if self._burst_depth:
-            self._burst[key[0]] = _BurstState(key, _tail(log.path, size), entry)
+            pending = self._pending_identity.pop(key[0], None)
+            self._burst[key[0]] = _BurstState(
+                key, _tail(log.path, size), entry,
+                pending[1] if pending is not None and pending[0] == key else None)
         return entry.walk
+
+    def _extend(self, log: EventLog,
+                key: tuple[str, int, int, int, int]) -> _CacheEntry | None:
+        """The entry for `key` by extending the newest walk of this path over
+        appended records, or `None` when the new state is not exactly that."""
+        base = self._bases.get(key[0])
+        if base is None or base.ino != key[3]:
+            return None
+        start = len(base.data)
+        if start >= key[1] or start not in base.walk.chains:
+            return None
+        data = _read(log.path, key[1])
+        # `startswith` is one `memcmp` over the kept bytes, with no copy
+        if len(data) != key[1] or not data.startswith(base.data):
+            return None                   # not an append: the full walk says what changed
+        walked = _extend_walk(log, base.walk, start, data)
+        if walked is None:
+            return None
+        hasher = base.hasher.copy()
+        hasher.update(memoryview(data)[start:])
+        self.extensions += 1
+        self._bases[key[0]] = _Base(key[3], data, hasher, walked)
+        return _CacheEntry(walked, hasher.hexdigest())
 
     def store_identity(self, log: EventLog) -> str:
         """D13.24 step 3's identity, shared across a burst the same way.
@@ -646,14 +721,19 @@ class ChainCache:
         current log state, this is `_store_identity_of(log)` — the per-log
         memo, revalidated against the genesis bytes on every call. Once a
         state is validated (its whole prefix digested, which covers the
-        genesis record) and still holds, the identity computed by the first
-        check that asked while it held is served to the rest of the burst."""
+        genesis record) and still holds, the identity is served to the rest of
+        the burst: the one the validating check itself computed, when the
+        log's stat key was the same when it computed it as when its walk
+        validated the state; else the one the next check computes."""
         state = self._burst_state(log)
         if state is not None and state.identity is not None:
             return state.identity
+        key = self._key(log) if self._burst_depth and state is None else None
         identity = _store_identity_of(log)
         if state is not None:
             self._burst[state.key[0]] = replace(state, identity=identity)
+        elif key is not None:
+            self._pending_identity[key[0]] = (key, identity)
         return identity
 
     def prefix_chains(self, log: EventLog) -> dict[int, str]:
@@ -692,6 +772,27 @@ class LogWalk:
             if tt > tt_q:
                 return start
         return None
+
+
+def _extend_walk(log: EventLog, prior: LogWalk, start: int, data: bytes) -> LogWalk | None:
+    """`prior` (a walk ending at record boundary `start`) extended over the
+    records from `start` to the end of `data` — `None` unless those records
+    are exactly `data`'s remaining bytes, whole. Parse failures raise as in
+    the full walk, from the same record."""
+    chains = dict(prior.chains)
+    starts = list(prior.starts)
+    chain = chains[start]
+    last = start
+    for batch, end, raw in log.batches_from(start):
+        if end > len(data) or data[end - len(raw):end] != raw:
+            return None                   # the file moved since it was read
+        chain = extend_chain(chain, raw)
+        chains[end] = chain
+        starts.append((int(batch["tt"]), end - len(raw)))
+        last = end
+    if last != len(data):
+        return None
+    return LogWalk(chains, tuple(starts), _overlaps_at(log, chains, last))
 
 
 def _walk(log: EventLog) -> LogWalk:

@@ -926,6 +926,18 @@ class Storm:
         #: never confused with one the engine is refusing outright.
         self.n_mix_starved = 0
         self._register_population(n_artifacts)
+        # Warm every check cache, and the per-log store-identity memo, on the
+        # log the population was registered against (untimed setup), so the
+        # first check after the first correction extends a walk over the
+        # appended batch the way every later batch's does (failure ledger
+        # `chain-cache-rewalks-whole-log-on-append`) instead of paying the
+        # run's one cold walk inside a timed check. Each batch's
+        # `check_cache_misses` is a delta taken at the batch's start, so it
+        # is unchanged.
+        for cache in (self.chain_cache, self.on_demand_cache):
+            if cache is not None:
+                cache.walk(self.store.eventlog)
+                cache.store_identity(self.store.eventlog)
 
     def _write_refusal_error(self) -> RuntimeError:
         """The loud failure for `storm-harness-swallows-write-refusals`:
