@@ -2467,6 +2467,10 @@ def compute_c6(m: Macros) -> None:
     avoided_pct = round(1000 * prop_avoided / prop_rows_total) / 10
     eq(avoided_pct, 99.0, "C6 frozen: M5 round-2 avoided-recomputation rate")
 
+    m.add("recFreshFalseFresh", m4_false_fresh,
+          f"{relpath(FRESH_FULL)}+{FRESH_FIXTURE.name}: changed trials with verdict=='fresh'")
+    m.add("recPropTwoFalseSafe", prop_false_safe,
+          "benchmarks/m5-v1/topup-propagation2-*.json: round-2 false-safe decisions")
     m.add("recFreshChangedTrials", len(m4_changed),
           f"{relpath(FRESH_FULL)}+{FRESH_FIXTURE.name}: trials whose answer changed (M4)")
     m.add("recCarveTwoTrials", tex_num(len(carve2_rows), 4),
