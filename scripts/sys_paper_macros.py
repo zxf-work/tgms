@@ -67,7 +67,12 @@ skeleton --
       re-run and republished, no check) on the axis B protocol beside TGMS on demand;
       recRorMsPerRead*, recRorCrossoverK{,Mean}*, recRorPerBurstMs{K1,KN}*,
       recRorRegimeGain*, and from the axis B record recAxesCrossoverKMean* and, from the
-      same-day check controls, recAxesOnDemandWithAppendMs{K1,KN}*
+      same-day check controls, recAxesOnDemandWithAppendMs{K1,KN}*; the reads-plus-apply
+      crossovers recAxesCrossoverKApply{,Mean}* (TGMS: axis B's reads plus the same
+      burst's apply from the reference run, an estimate) and recRorCrossoverKApply{,Mean}*,
+      recRorPerReadRatio*, recAxesOnDemandMsPerReadCollegeMsg, recRorApplyMsMedian{Min,Max}
+  C2-DF   benchmarks/diskfull-v1/eval-diskfull-campaign-2026-09-14.json,
+      compute_diskfull: recDiskfull{Trials,Problems,Hangs,Fired}
   C7-R1C  benchmarks/external-v1/tgms-control-2026-10-30-r1c.json (+ rows, batches,
       checks), compute_external_r1c: the 19-cell same-host control re-run at the engine
       check-path changes (P-ENG2); recExt1ControlROneC* mirror the recExt1ControlArcFive*
@@ -460,6 +465,7 @@ READERS_10M = ROOT / "benchmarks" / "results-v1" / "eval-readers-10m-2026-09.jso
 FRESH_FULL = ROOT / "benchmarks" / "freshness-v1" / "trials-full.json"
 FRESH_FIXTURE = ROOT / "benchmarks" / "freshness-v1" / "trials-fixture.json"
 M5_CARVE_TWO = ROOT / "benchmarks" / "m5-v1" / "topup-carve2-synth-iv-60k.json"
+DISKFULL_V1 = ROOT / "benchmarks" / "diskfull-v1" / "eval-diskfull-campaign-2026-09-14.json"
 M5_PROP_TWO = [
     ROOT / "benchmarks" / "m5-v1" / f"topup-propagation2-{store}.json"
     for store in ("bitcoinotc", "collegemsg", "sx-mathoverflow")
@@ -1348,6 +1354,8 @@ def compute_c3(m: Macros) -> None:
     eq(trt["stopped_at_ops"], 2_500_000, "C3: treatment stopped at 2.5M ops")
     eq(ctl["ops_series"][-1][0], 2_500_000, "C3: control ops_series last point is 2.5M ops")
     eq(trt["ops_series"][-1][0], 2_500_000, "C3: treatment ops_series last point is 2.5M ops")
+    m.add("recManifestOpsMillions", f"{ctl['stopped_at_ops'] / 1e6:.1f}",
+          f"{relpath(B1_RAW)}: b1a control/treatment stopped_at_ops, millions")
 
     bytes_ctl = ctl["manifest_bytes_at_stop"]
     bytes_trt = trt["manifest_bytes_at_stop"]
@@ -2358,6 +2366,34 @@ def compute_c5(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# C2-DF --- disk exhaustion (ENOSPC at fsync) injection sweep
+# --------------------------------------------------------------------------
+
+def compute_diskfull(m: Macros) -> None:
+    d = json.loads(DISKFULL_V1.read_text(encoding="utf-8"))
+    where = relpath(DISKFULL_V1)
+    results = d["results"]
+    eq(len(results), d["total_trials"], f"{where}: len(results) == total_trials")
+    problems = sum(1 for r in results if r["problems"])
+    hangs = sum(1 for r in results if r["hang"])
+    fired = sum(1 for r in results if r["fault_fired"])
+    eq(problems, d["total_problems"], f"{where}: trials with problems == total_problems")
+    eq(hangs, d["stats"]["total_hangs"], f"{where}: hangs == stats.total_hangs")
+    eq(fired, d["stats"]["n_fault_fired"], f"{where}: fired == stats.n_fault_fired")
+    eq(fired, d["stats"]["by_mode"]["diskfull"]["fired"],
+       f"{where}: every firing is the diskfull mode's (short_write never fires)")
+    for r in results:
+        if r["fault_fired"]:
+            require(r["clean_error"] and r["q1_acked_survive"] and r["q2_deterministic"]
+                    and r["q3_single_generation"] and r["q4_orphans_reclaimed"],
+                    f"{where}: trial {r['trial']} fired and passed Q1-Q4")
+    m.add("recDiskfullTrials", tex_num(len(results), 4), f"{where}: len(results)")
+    m.add("recDiskfullProblems", problems, f"{where}: trials with a non-empty problems list")
+    m.add("recDiskfullHangs", hangs, f"{where}: trials with hang == true")
+    m.add("recDiskfullFired", fired, f"{where}: trials whose ENOSPC-at-fsync injection fired")
+
+
+# --------------------------------------------------------------------------
 # C6 --- selective refresh never reports a stale artifact fresh
 # --------------------------------------------------------------------------
 
@@ -2431,6 +2467,12 @@ def compute_c6(m: Macros) -> None:
     avoided_pct = round(1000 * prop_avoided / prop_rows_total) / 10
     eq(avoided_pct, 99.0, "C6 frozen: M5 round-2 avoided-recomputation rate")
 
+    m.add("recFreshChangedTrials", len(m4_changed),
+          f"{relpath(FRESH_FULL)}+{FRESH_FIXTURE.name}: trials whose answer changed (M4)")
+    m.add("recCarveTwoTrials", tex_num(len(carve2_rows), 4),
+          f"{relpath(M5_CARVE_TWO)}: len(rows), the round-2 carve trials")
+    m.add("recPropTwoDecisions", tex_num(prop_rows_total, 4),
+          "benchmarks/m5-v1/topup-propagation2-*.json: round-2 propagation decisions")
     m.add("recFalseFreshCarveTwo", carve2_false_fresh,
           f"{relpath(M5_CARVE_TWO)}: rows with changed and verdict=='fresh', of 28,044")
     m.add("recRowTouchRate", f"{rt_rate:.1f}",
@@ -11802,13 +11844,57 @@ def compute_axes_recompute_on_read(m: Macros) -> None:
                     require(r["correction_apply_ms"] > 0, f"{w}: control k={k} apply timing")
                 ctrl[tag] = statistics.median(
                     [r["on_demand_ms"] + r["correction_apply_ms"] for r in cr])
+        # reads plus applying the correction (the scope of the view's own number):
+        # recompute on read with each burst's own apply; TGMS = axis B's on_demand_ms
+        # plus the same burst index's apply in the reference run (the check control at
+        # k = 1 on the N = 10^3 cells, recompute on read at k = 1 on the probe) -- an
+        # estimate, as the record labels it
+        ref_policy = "always" if cell_id == AXES_N10K_CELL else "check"
+        apply_ref = {r["batch_index"]: r["correction_apply_ms"] for r in rows
+                     if r["cell_id"] == cell_id and r["policy"] == ref_policy
+                     and r["k"] == grid[0]}
+        require(len(apply_ref) > 0, f"{w}: apply reference run present")
+        aw_med, aw_mean, cw_med, cw_mean = [], [], [], []
+        for k in grid:
+            al = [r for r in rows if r["cell_id"] == cell_id and r["policy"] == "always"
+                  and r["k"] == k]
+            ck = [r for r in axes_rows if r["cell_id"] == cell_id and r["k"] == k]
+            require(all(r["batch_index"] in apply_ref for r in ck),
+                    f"{w}: k={k} every axis B burst has a reference apply")
+            if not all(r["batch_index"] in apply_ref for r in ck):
+                return
+            aw = [r["on_demand_ms"] + r["correction_apply_ms"] for r in al]
+            cw = [r["on_demand_ms"] + apply_ref[r["batch_index"]] for r in ck]
+            aw_med.append(statistics.median(aw))
+            aw_mean.append(statistics.fmean(aw))
+            cw_med.append(statistics.median(cw))
+            cw_mean.append(statistics.fmean(cw))
+        applied = {"ror_apply": _axes_crossover(ks, aw_med, v_med),
+                   "ror_apply_mean": _axes_crossover(ks, aw_mean, v_mean),
+                   "tgms_apply": _axes_crossover(ks, cw_med, v_med),
+                   "tgms_apply_mean": _axes_crossover(ks, cw_mean, v_mean)}
+        sw = pc[cell_id]["crossover"]["with_apply"]
+        for key, side, basis in (("ror_apply", "recompute_on_read", "median"),
+                                 ("ror_apply_mean", "recompute_on_read", "mean"),
+                                 ("tgms_apply", "tgms_check", "median"),
+                                 ("tgms_apply_mean", "tgms_check", "mean")):
+            kind, kv = applied[key]
+            eq(sw[side][basis]["kind"], kind, f"{w}: reads+apply {side} k* kind ({basis})")
+            if kind == "interpolated":
+                close_rel(sw[side][basis]["k_star"], kv, 1e-12,
+                          f"{w}: reads+apply {side} k* ({basis})")
+        pr = pc[cell_id]["per_read_at_n"]
+        close_rel(pr["tgms_check_record_median"], c_per_read_at_n, 1e-12,
+                  f"{w}: TGMS per read at k = N == the record's")
+        close_rel(pr["ratio_recompute_to_tgms"], a_per_read_at_n / c_per_read_at_n, 1e-12,
+                  f"{w}: recompute / TGMS per read at k = N == the record's")
         n_reg = {r["n_registered"] for r in rows if r["cell_id"] == cell_id}
         eq(len(n_reg), 1, f"{w}: one registered count across the cell's runs")
         out[cell_id] = {
             "ror": (kind_a, k_a), "ror_mean": (kind_am, k_am), "tgms": (kind_c, k_c),
             "tgms_mean": (kind_cm, k_cm), "a_per_read_at_n": a_per_read_at_n,
             "c_per_read_at_n": c_per_read_at_n, "a_k1": a_med[0], "a_kn": a_med[-1],
-            "ctrl": ctrl}
+            "ctrl": ctrl, **applied}
         require(grid[0] == 1, f"{w}: the k grid starts at 1")
 
     lo, hi, col = out[AXES_N1K_CELL], out[AXES_N10K_CELL], out[AXES_COLLEGEMSG_CELL]
@@ -11834,6 +11920,34 @@ def compute_axes_recompute_on_read(m: Macros) -> None:
         m.add(f"recRorRegimeGain{tok}", _ror_gain_text(d["tgms"], d["ror"]),
               f"{where}: {cell} TGMS on-demand k* / recompute-on-read k*, both against the "
               "view's median per-burst cost (reads-only scope)")
+    for tok, cell, d in toks:
+        m.add(f"recAxesCrossoverKApply{tok}", _axes_k_text(*d["tgms_apply"]),
+              f"{where}: {cell} TGMS on-demand k* vs the view's median per-burst cost, reads "
+              "plus applying the correction (axis B's reads + the reference run's apply for "
+              "the same burst: an estimate)")
+        m.add(f"recAxesCrossoverKApplyMean{tok}", _axes_k_text(*d["tgms_apply_mean"]),
+              f"{where}: {cell} the same, mean basis")
+        m.add(f"recRorCrossoverKApply{tok}", _axes_k_text(*d["ror_apply"]),
+              f"{where}: {cell} recompute-on-read k* vs the view's median per-burst cost, "
+              "reads plus each burst's own correction apply")
+        m.add(f"recRorCrossoverKApplyMean{tok}", _axes_k_text(*d["ror_apply_mean"]),
+              f"{where}: {cell} the same, mean basis")
+        m.add(f"recRorPerReadRatio{tok}", f"{d['a_per_read_at_n'] / d['c_per_read_at_n']:.2f}",
+              f"{where}: {cell} at k = N, recompute on read's median cost per read / TGMS on "
+              "demand's (axis B record)")
+    m.add("recAxesOnDemandMsPerReadCollegeMsg", f"{col['c_per_read_at_n']:.2f}",
+          f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: {AXES_COLLEGEMSG_CELL} at k = N, median over "
+          "batches of on_demand_ms / reads")
+    run_medians = []
+    for key in sorted({(r["cell_id"], r["policy"], r["k"]) for r in rows}):
+        run_medians.append(statistics.median(
+            [r["correction_apply_ms"] for r in rows
+             if (r["cell_id"], r["policy"], r["k"]) == key]))
+    m.add("recRorApplyMsMedianMin", f"{min(run_medians):.1f}",
+          f"{where}: smallest per-run median correction_apply_ms over the lane's "
+          f"{len(run_medians)} runs")
+    m.add("recRorApplyMsMedianMax", f"{max(run_medians):.1f}",
+          f"{where}: largest per-run median correction_apply_ms over the lane's runs")
     for tok, cell, d in toks:
         if tok == "N10k":
             continue
@@ -11919,6 +12033,7 @@ def main() -> int:
     compute_b1_co7(m)
     compute_c4(m)
     compute_c5(m)
+    compute_diskfull(m)
     compute_c6(m)
     compute_c8(m)
     compute_c7_dag(m)
