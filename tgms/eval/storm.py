@@ -366,6 +366,22 @@ class BatchResult:
     #: correction append makes the first check of each batch a miss).
     check_cache: str = "none"
     check_cache_misses: int | None = None
+    #: The on-demand read mode (`Storm(refresh_on_read=k)`, CLI
+    #: `--refresh-on-read k`): per batch, after the correction lands, k
+    #: registered names drawn uniformly without replacement (a seeded RNG of
+    #: its own, so the correction draws are untouched); each gets one
+    #: `check_artifact` and, when the check does not say fresh, one
+    #: `refresh`, timed as one interval (`on_demand_ms`). `None` when the
+    #: mode is off, and then absent from `to_json`, so rows written without
+    #: it keep their exact bytes.
+    on_demand_k: int | None = None
+    on_demand_ms: float | None = None
+    on_demand_reads: int | None = None
+    on_demand_refreshes: int | None = None
+    on_demand_refresh_errors: int | None = None
+    #: The on-demand interval's own `ChainCache` misses this batch (`"chain"`
+    #: runs only; the interval uses a cache of its own, never the arms').
+    on_demand_check_cache_misses: int | None = None
 
     def to_json(self) -> dict[str, Any]:
         out = {
@@ -390,6 +406,14 @@ class BatchResult:
         if self.check_cache != "none":
             out["check_cache"] = self.check_cache
             out["check_cache_misses"] = self.check_cache_misses
+        if self.on_demand_k is not None:
+            out["on_demand_k"] = self.on_demand_k
+            out["on_demand_ms"] = self.on_demand_ms
+            out["on_demand_reads"] = self.on_demand_reads
+            out["on_demand_refreshes"] = self.on_demand_refreshes
+            out["on_demand_refresh_errors"] = self.on_demand_refresh_errors
+            if self.on_demand_check_cache_misses is not None:
+                out["on_demand_check_cache_misses"] = self.on_demand_check_cache_misses
         return out
 
 
@@ -823,7 +847,8 @@ class Storm:
                 mix: Callable[[Any, Substrate, Target, random.Random],
                              list[Correction]] | None = None,
                 name_prefix: str = "storm", collect_timing: bool = True,
-                measure_ttf: str = "sum", check_cache: str = "none") -> None:
+                measure_ttf: str = "sum", check_cache: str = "none",
+                refresh_on_read: int | None = None) -> None:
         if measure_ttf not in TTF_MODES:
             raise ValueError(f"unknown measure_ttf mode: {measure_ttf!r}; "
                              f"choose from {TTF_MODES}")
@@ -836,6 +861,19 @@ class Storm:
         #: is the uncached library default.
         self.chain_cache: ChainCache | None = (
             ChainCache() if check_cache == "chain" else None)
+        if refresh_on_read is not None and refresh_on_read < 1:
+            raise ValueError(f"refresh_on_read must be >= 1, got {refresh_on_read!r}")
+        #: The on-demand read mode (`BatchResult.on_demand_k`); `None` = off.
+        #: Its RNG is its own (string-seeded, so stable across processes) and
+        #: its check cache is its own, persisting across batches the way one
+        #: long-lived reader's would: the first check after each correction
+        #: append is a miss the interval pays for, and nothing it does moves
+        #: the arms' `check_cache_misses`.
+        self.refresh_on_read = refresh_on_read
+        self.on_demand_rng = random.Random(f"on-demand-read:{seed}")
+        self.on_demand_cache: ChainCache | None = (
+            ChainCache() if (check_cache == "chain" and refresh_on_read is not None)
+            else None)
         self.store_dir = Path(store_dir)
         self.backend = backend
         self.store = tgms.open(self.store_dir, backend=backend)
@@ -1145,6 +1183,51 @@ class Storm:
                 e2e_refresh_calls[arm_name] = calls[0]
                 _registry_rollback(self.registry, mark)
 
+        # The on-demand read mode (P-AXES axis B; `BatchResult.on_demand_k`).
+        # Same isolation as the end-to-end intervals above: the registry is
+        # marked before the interval and rolled back after it, both outside
+        # the timed region, so the oracle pass below (and every arm's
+        # non-timing field) sees exactly the registry a run without the mode
+        # sees. Every artifact is fresh at the start of a batch (the previous
+        # batch's oracle pass republished all of them), so this is the
+        # per-burst cost of serving k reads after one correction: k checks,
+        # plus one refresh per check that does not say fresh.
+        od: dict[str, Any] = {}
+        if self.refresh_on_read is not None:
+            names = list(self.artifacts)
+            drawn = self.on_demand_rng.sample(names, min(self.refresh_on_read, len(names)))
+            od_misses_before = (self.on_demand_cache.misses
+                                if self.on_demand_cache is not None else 0)
+            od_counts = {"reads": 0, "refreshes": 0, "errors": 0}
+            od_mark = _registry_mark(self.registry)
+
+            def _run_on_demand(names=drawn, counts=od_counts) -> None:
+                for name in names:
+                    record = self.registry.current(name)
+                    if record is None:
+                        continue
+                    counts["reads"] += 1
+                    verdict = check_artifact(record, self.store.eventlog, level1=True,
+                                             chain_cache=self.on_demand_cache)
+                    if not verdict.actionable_fresh and verdict.refresh is not None:
+                        counts["refreshes"] += 1
+                        try:
+                            refresh(record, verdict.refresh, self.store, self.registry)
+                        except TgmsError:
+                            counts["errors"] += 1
+
+            _unused, od_ms = self._timed(_run_on_demand)
+            _registry_rollback(self.registry, od_mark)
+            od = {
+                "on_demand_k": self.refresh_on_read, "on_demand_ms": od_ms,
+                "on_demand_reads": od_counts["reads"],
+                "on_demand_refreshes": od_counts["refreshes"],
+                "on_demand_refresh_errors": od_counts["errors"],
+                "on_demand_check_cache_misses": (
+                    None if self.on_demand_cache is None
+                    else self.on_demand_cache.misses - od_misses_before),
+            }
+
         entity_inv = set(_entity_touch(self.artifacts, touched))
         window_inv = set(_window_overlap(self.artifacts, interval))
         row_inv = set(_row_touch(last_env_before, correction))
@@ -1217,7 +1300,7 @@ class Storm:
             age_vt_meaningful=(self.interval_vt if isinstance(self.mix, Mix)
                               and self.mix.age is not None else None),
             correction_identities=tuple(correction.identities), correction_vt=interval,
-            correction_disc=correction_disc, correction_eid=correction_eid)
+            correction_disc=correction_disc, correction_eid=correction_eid, **od)
 
     def run(self, n_batches: int, *, max_attempts_factor: int = 4) -> list[BatchResult]:
         """Run until `n_batches` batches have been realized, or give up
@@ -1401,7 +1484,24 @@ def summarize(results: Sequence[BatchResult]) -> dict[str, Any]:
          "registry_bytes": r.registry_bytes}
         for r in results
     ]
-    return {"arms": per_arm, "check_cost_curve": check_cost_curve, "batches": len(results)}
+    out = {"arms": per_arm, "check_cost_curve": check_cost_curve, "batches": len(results)}
+    od_rows = [r for r in results if r.on_demand_k is not None]
+    if od_rows:
+        # the on-demand read mode only (absent otherwise, so a summary
+        # written without the mode keeps its exact keys)
+        od_ms = [r.on_demand_ms for r in od_rows if r.on_demand_ms is not None]
+        reads = sum(r.on_demand_reads or 0 for r in od_rows)
+        out["on_demand"] = {
+            "k": od_rows[0].on_demand_k,
+            "batches": len(od_rows),
+            "ms_per_batch_median": _percentile(od_ms, 0.5),
+            "ms_per_batch_mean": (sum(od_ms) / len(od_ms)) if od_ms else None,
+            "reads": reads,
+            "refreshes": sum(r.on_demand_refreshes or 0 for r in od_rows),
+            "refresh_errors": sum(r.on_demand_refresh_errors or 0 for r in od_rows),
+            "ms_per_read_mean": (sum(od_ms) / reads) if reads else None,
+        }
+    return out
 
 
 __all__ = [

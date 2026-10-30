@@ -219,6 +219,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="the tgms arms' check-path log-walk memo: none (default, every "
                          "check re-walks the event log) or chain (one ChainCache for the "
                          "run; verdict-identical, recorded on every row)")
+    ap.add_argument("--refresh-on-read", type=int, default=None, metavar="K",
+                    help="on-demand read mode (default off): per batch, after the "
+                         "correction lands, draw K registered names uniformly (seeded, "
+                         "without replacement; clamped to the registered count) and give "
+                         "each one check and, if not fresh, one refresh, timed as one "
+                         "interval; rows gain on_demand_* fields, nothing else changes")
     ap.add_argument("--allow-r18-trip", action="store_true",
                     help=f"permit --n-artifacts above {R18_TRIP_N_ARTIFACTS} (design memo "
                          "§3's R-18 trip point) — the campaign's 10^5 cells need this")
@@ -271,6 +277,8 @@ def main(argv: list[str] | None = None) -> int:
                          "nothing (config.wall_capped=true)")
     args = ap.parse_args(argv)
 
+    if args.refresh_on_read is not None and args.refresh_on_read < 1:
+        ap.error(f"--refresh-on-read must be >= 1, got {args.refresh_on_read}")
     if args.n_artifacts > R18_TRIP_N_ARTIFACTS and not args.allow_r18_trip:
         ap.error(f"--n-artifacts {args.n_artifacts} is above the R-18 trip point "
                 f"({R18_TRIP_N_ARTIFACTS}); pass --allow-r18-trip to proceed anyway "
@@ -296,7 +304,8 @@ def main(argv: list[str] | None = None) -> int:
     t_start = time.time()
     storm = Storm(work_store, n_artifacts=args.n_artifacts, seed=args.seed,
                  backend=args.backend, arms=tuple(args.arms), mix=mix,
-                 measure_ttf=args.measure_ttf, check_cache=args.check_cache)
+                 measure_ttf=args.measure_ttf, check_cache=args.check_cache,
+                 refresh_on_read=args.refresh_on_read)
     n_registered = len(storm.artifacts)
     n_skipped = storm.n_registration_skipped
     # storm-v1 addendum-4 (D-161): registration-time only, read-only against
@@ -429,6 +438,10 @@ def main(argv: list[str] | None = None) -> int:
         "summary": summary,
         "dag": dag_payload,
     }
+    if args.refresh_on_read is not None:
+        # recorded only when the mode is on, so a manifest written without it
+        # keeps its exact config keys
+        manifest["config"]["refresh_on_read"] = args.refresh_on_read
     manifest_path = args.out / f"{base}.json"
     write_bytes_with_retry(manifest_path,
                            (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"))
