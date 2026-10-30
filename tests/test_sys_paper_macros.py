@@ -5211,3 +5211,93 @@ def test_tampered_ldbc_coverage_record_fails_its_sha_gate(tmp_path):
     mod.compute_ldbc_coverage(mod.Macros())
     assert any("sha256" in f for f in mod.FAILURES)
     assert any("frozen" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# P-AXES axis A, standing state (2026-10-30) -- compute_axes_standing_state,
+# outside _run_all_landed/FROZEN_LANDED_VALUES, same convention as the
+# withheld sections above.
+# --------------------------------------------------------------------------
+
+AXES_FROZEN = {
+    "recAxesViewRssMbN1k": "4{,}170",
+    "recAxesViewRssMbN10k": "32{,}718",
+    "recAxesTgmsRssMbN1k": "55.0",
+    "recAxesTgmsRssMbN10k": "97.4",
+    "recAxesTgmsRegistryKbPerArtifact": "1.34",
+    "recAxesTgmsRegistryMemKbPerArtifact": "4.76",
+    "recAxesRatioN10k": "336",
+    "recAxesViewArrangedRecordsN1k": "8{,}855{,}756",
+    "recAxesViewArrangedRecordsN10k": "73{,}182{,}955",
+}
+
+
+def test_axes_standing_state_macros_recompute_without_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_axes_standing_state(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert values == AXES_FROZEN
+
+
+def _axes_tampered(mod, tmp_path, edit, *, patch_sums: bool) -> None:
+    rows = [json.loads(line) for line in
+            mod.EXTERNAL_AXES_STANDING_ROWS.read_text(encoding="utf-8").splitlines() if line]
+    edit(rows)
+    tampered = tmp_path / mod.EXTERNAL_AXES_STANDING_ROWS.name
+    data = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows).encode()
+    tampered.write_bytes(data)
+    mod.EXTERNAL_AXES_STANDING_ROWS = tampered
+    if patch_sums:
+        sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+        patched = re.sub(r"^[0-9a-f]{64}(\s+\S*axes-standing-state-2026-10-30-rows\.jsonl)$",
+                         hashlib.sha256(data).hexdigest() + r"\1", sums_text,
+                         flags=re.MULTILINE)
+        assert patched != sums_text, "fixture did not find the row to patch"
+        sums_path = tmp_path / "SHA256SUMS.txt"
+        sums_path.write_text(patched, encoding="utf-8")
+        mod.EXTERNAL_V1_SHA256SUMS = sums_path
+
+
+def _shrink_probe_view(rows):
+    for r in rows:
+        if r["configuration"] == "ivm-dd" and r["cell_id"].endswith("n10000-s0"):
+            for cp in r["checkpoints"]:
+                if cp["label"] == "after_burst_1":
+                    cp["vm_rss_kb"] = 150_000
+
+
+def test_tampered_axes_rows_sha256_mismatch_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+    _axes_tampered(mod, tmp_path, _shrink_probe_view, patch_sums=False)
+    m = mod.Macros()
+    mod.compute_axes_standing_state(m)
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_tampered_axes_rows_fail_even_with_a_patched_digest(tmp_path):
+    """A probe view RSS that disagrees with the summary (and puts the ratio
+    under the falsifier's 2x) must fail even though the sha256 gate was
+    patched to match."""
+    mod = _load("sys_paper_macros")
+    _axes_tampered(mod, tmp_path, _shrink_probe_view, patch_sums=True)
+    m = mod.Macros()
+    mod.compute_axes_standing_state(m)
+    assert any("result_digest" in f for f in mod.FAILURES)
+    assert any("view RSS after burst 1" in f for f in mod.FAILURES)
+    assert any("falsifier" in f for f in mod.FAILURES)
+
+
+def test_axes_population_mismatch_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+
+    def drop_one(rows):
+        for r in rows:
+            if r["configuration"] == "ivm-dd" and r["cell_id"].startswith("collegemsg"):
+                r["n_registered"] -= 1
+
+    _axes_tampered(mod, tmp_path, drop_one, patch_sums=True)
+    m = mod.Macros()
+    mod.compute_axes_standing_state(m)
+    assert any("the view holds TGMS's registered artifacts" in f for f in mod.FAILURES)
