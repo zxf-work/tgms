@@ -62,6 +62,10 @@ skeleton --
       compute_axes_on_demand: axis B, the timed --refresh-on-read k runs and the
       crossover k* against the view's median per-burst cost; recAxesCrossoverK*,
       recAxesOnDemandMsPerRead*, recAxesOnDemandFirstCheckMs, recAxesViewPerBurstMs*
+  C7-R1C  benchmarks/external-v1/tgms-control-2026-10-30-r1c.json (+ rows, batches,
+      checks), compute_external_r1c: the 19-cell same-host control re-run at the engine
+      check-path changes (P-ENG2); recExt1ControlROneC* mirror the recExt1ControlArcFive*
+      names, plus recExt1RatioGrROneC*, recExt1SpeedupLOneROneC*; no verdict macro
       except that recFaultTrials now prints its thousands separator (3{,}102)
   D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
@@ -640,6 +644,23 @@ EXTERNAL_TGMS_CONTROL_ARC5_BATCHES_SOURCES = (
 EXTERNAL_TGMS_CONTROL_CHECKS = EXTERNAL_V1 / "tgms-control-checks-2026-10-08.jsonl"
 EXTERNAL_TGMS_CONTROL_CHECKS_SOURCES = (
     EXTERNAL_V1 / "tgms-control-checks-2026-10-08.SOURCES.txt")
+
+# Lane R1c (2026-10-30, pre-registration P-ENG2): the same 19-cell loop as
+# the fifth-arc control above, replayed at public main ed4a83d6 (the three
+# check-path engine changes, Addendum ENG2-A's change (c), and the on-demand
+# burst, whose mode is off in this loop), --check-cache chain on every cell.
+# See benchmarks/external-v1/README.md's "Control re-measurement on the engine
+# check-path changes (R1c, 2026-10-30)" section. All six files are
+# sha256-gated in EXTERNAL_V1_SHA256SUMS the same way.
+EXTERNAL_TGMS_CONTROL_R1C = EXTERNAL_V1 / "tgms-control-2026-10-30-r1c.json"
+EXTERNAL_TGMS_CONTROL_R1C_ROWS = EXTERNAL_V1 / "tgms-control-2026-10-30-r1c-rows.jsonl"
+EXTERNAL_TGMS_CONTROL_R1C_BATCHES = (
+    EXTERNAL_V1 / "tgms-control-2026-10-30-r1c-batches.jsonl")
+EXTERNAL_TGMS_CONTROL_R1C_BATCHES_SOURCES = (
+    EXTERNAL_V1 / "tgms-control-2026-10-30-r1c-batches.SOURCES.txt")
+EXTERNAL_TGMS_CONTROL_R1C_CHECKS = EXTERNAL_V1 / "tgms-control-checks-2026-10-30-r1c.jsonl"
+EXTERNAL_TGMS_CONTROL_R1C_CHECKS_SOURCES = (
+    EXTERNAL_V1 / "tgms-control-checks-2026-10-30-r1c.SOURCES.txt")
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -10744,6 +10765,290 @@ def compute_external_arc5(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane R1c (2026-10-30, pre-registration P-ENG2, frozen 2026-10-30T00:50:31Z)
+# -- the same 19-cell same-host control loop as compute_external_arc5, re-run
+# at public main ed4a83d6 (three check-path engine changes, Addendum ENG2-A's
+# change (c), the on-demand burst whose mode is off here) with
+# --check-cache chain on every cell. Names mirror the recExt1ControlArcFive*
+# ones one for one (ArcFive -> ROneC); no verdict macro -- scoring is the
+# coordinator's. The Neo4j-side ratios use the 2026-10-07 record for the
+# collegemsg cells and the 2026-10-09 rerun record (the fixed translation) for
+# the ten synth cells it re-measured -- the only cells either record has for
+# the synth store's translation defect; see the README section. The like-for-
+# like check against the fifth-arc batches (every arm's per-batch
+# invalidated/false-fresh/false-stale counts equal on all 365 batches) is
+# asserted here, not assumed.
+# --------------------------------------------------------------------------
+
+
+def compute_external_r1c(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_TGMS_CONTROL_R1C, EXTERNAL_TGMS_CONTROL_R1C_ROWS,
+                 EXTERNAL_TGMS_CONTROL_R1C_BATCHES, EXTERNAL_TGMS_CONTROL_R1C_BATCHES_SOURCES,
+                 EXTERNAL_TGMS_CONTROL_R1C_CHECKS, EXTERNAL_TGMS_CONTROL_R1C_CHECKS_SOURCES,
+                 EXTERNAL_TGMS_CONTROL_ARC5, EXTERNAL_TGMS_CONTROL_ARC5_BATCHES,
+                 EXTERNAL_TGMS_CONTROL_ARC5_ROWS, EXTERNAL_TGMS_CONTROL_CHECKS,
+                 EXTERNAL_TGMS_CONTROL, EXTERNAL_TGMS_CONTROL_ROWS,
+                 EXTERNAL_TGMS_CONTROL_BATCHES, EXTERNAL_NEO4J, EXTERNAL_NEO4J_RERUN):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for "
+           f"{path.name}")
+
+    r1c = json.loads(EXTERNAL_TGMS_CONTROL_R1C.read_text(encoding="utf-8"))
+    r1c_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_R1C_ROWS)
+    r1c_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)
+    arc5 = json.loads(EXTERNAL_TGMS_CONTROL_ARC5.read_text(encoding="utf-8"))
+    arc5_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_ARC5_ROWS)
+    arc5_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)
+    prearc = json.loads(EXTERNAL_TGMS_CONTROL.read_text(encoding="utf-8"))
+    prearc_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_ROWS)
+    prearc_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_BATCHES)
+
+    eq(r1c["n_cells"], 19, f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: n_cells")
+    eq(len(r1c["summary"]["per_cell"]), 19,
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: len(summary.per_cell)")
+    eq(len(r1c_rows), 19, f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}: line count")
+    eq(len(r1c_batches), 365, f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)}: line count "
+       "(18 end-to-end cells x 20 batches + the 1 sum-mode probe cell x 5 batches)")
+
+    def _sha256_of(obj) -> str:
+        return hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()
+
+    eq(_sha256_of(r1c["config"]["cell_ids"]), r1c["result_digest"],
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: sha256(config.cell_ids) matches its own "
+       "result_digest")
+    eventlog_shas = sorted(r["t1_equality"].get("t1_eventlog_sha256", "") for r in r1c_rows)
+    eq(_sha256_of(eventlog_shas), r1c["dataset"]["digest"],
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: sha256(sorted per-row "
+       "t1_equality.t1_eventlog_sha256) matches its own dataset.digest")
+    eq(r1c["git_commit"], "ed4a83d62b095e56faf8b9b24a87957b1841d10e",
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)} frozen: git_commit (the R1c build)")
+    eq({c["check_cache"] for c in r1c["summary"]["per_cell"]}, {"chain"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: every cell ran --check-cache chain")
+    eq({r["t1_equality"]["verdict"] for r in r1c_rows}, {"L2"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}: every cell's equality verdict is L2")
+
+    r1c_pc = {c["cell_id"]: c for c in r1c["summary"]["per_cell"]}
+    arc5_pc = {c["cell_id"]: c for c in arc5["summary"]["per_cell"]}
+    eq(len(r1c_pc), 19, f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: distinct cell_ids")
+    eq(set(r1c_pc), set(arc5_pc), f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: cell_id set "
+       f"matches {relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s own (the same loop replayed)")
+
+    # like-for-like against the fifth-arc batches: every arm's per-batch
+    # counts equal on all 365 batches (the engine changes touch cost, not
+    # what is judged stale).
+    count_fields = ("false_fresh_count", "false_stale_count", "invalidated_count")
+    arc5_key = {(b["cell_id"], b["batch_index"]): b for b in arc5_batches}
+    r1c_key = {(b["cell_id"], b["batch_index"]): b for b in r1c_batches}
+    eq(set(r1c_key), set(arc5_key), "external-v1 R1c: (cell_id, batch_index) set equals the "
+       "fifth-arc batches'")
+    count_mismatches = sum(
+        1 for k, b in r1c_key.items()
+        for arm in b["arms"] for f in count_fields
+        if b["arms"][arm][f] != arc5_key[k]["arms"][arm][f])
+    eq(count_mismatches, 0, "external-v1 R1c: per-batch arm counts (invalidated, false-fresh, "
+       "false-stale; all six arms) differing from the fifth-arc batches, over 365 batches")
+    eq({b["ttf_mode"] for b in r1c_batches}, {"end-to-end", "sum"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)}: ttf_mode values")
+
+    check_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_R1C_CHECKS)
+    eq(len(check_rows), 365, f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_CHECKS)}: line count")
+    eq({r["control"] for r in check_rows}, {"2026-10-30-r1c"},
+       f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_CHECKS)}: control field value")
+    prior_checks = load_jsonl(EXTERNAL_TGMS_CONTROL_CHECKS)
+    check_rows = check_rows + prior_checks
+    by_control_cell: dict[tuple[str, str], list[dict]] = {}
+    for r in check_rows:
+        by_control_cell.setdefault((r["control"], r["cell_id"]), []).append(r)
+    eq(len(by_control_cell), 3 * 19, "external-v1 R1c: distinct (control, cell_id) pairs in the "
+       "per-check rows (3 controls x 19 cells)")
+
+    def _per_check_cell_median(control: str, cell_id: str) -> float:
+        batch_rows = by_control_cell[(control, cell_id)]
+        return statistics.median(
+            b["tgms_l0_check_wall_ms"] / b["candidate_survivors"] for b in batch_rows)
+
+    nonprobe = sorted(c for c in r1c_pc if c != _ARC5_PROBE_CID)
+    eq(len(nonprobe), 18, f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: non-probe cell count")
+
+    speedups = {c: r1c_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+                / r1c_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in nonprobe}
+    speedup_median = statistics.median(speedups.values())
+    close(speedup_median, 4.390449790071692, 1e-6, "external-v1 R1c frozen: median per-cell "
+          "(global-recompute / tgms-L1) ttf_p50_ms ratio over the 18 N=1,000 cells")
+
+    r1c_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in r1c_rows}
+    arc5_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in arc5_rows}
+    prearc_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in prearc_rows}
+    eq(r1c_nreg, arc5_nreg, "external-v1 R1c: n_registered per cell equals the fifth-arc's")
+    eq(r1c_nreg, prearc_nreg, "external-v1 R1c: n_registered per cell equals the pre-arc's")
+    r1c_by_cell: dict[str, list[dict]] = {}
+    for b in r1c_batches:
+        r1c_by_cell.setdefault(b["cell_id"], []).append(b)
+    r1c_publish_med = {c: statistics.median(b["global_recompute_wall_ms"] / r1c_nreg[c]
+                                             for b in bs) for c, bs in r1c_by_cell.items()}
+
+    frozen_store = {
+        "synth-iv-60k": {"speedup": 2.5405869065053084, "global_s": 13.527253727428615,
+                          "publish": 15.29918165510832, "perCheck": 0.2394709204798709},
+        "collegemsg": {"speedup": 5.201594529182574, "global_s": 3.1428888044320047,
+                        "publish": 3.361160297303738, "perCheck": 0.23866283609590755},
+    }
+    for store in ("synth-iv-60k", "collegemsg"):
+        tok = _STORM_V2_STORE_TOKEN[store]
+        cells = [c for c in nonprobe if r1c_pc[c]["store"] == store]
+        eq(len(cells), 9, f"external-v1 R1c: {store} non-probe cell count")
+        store_speedup_median = statistics.median(speedups[c] for c in cells)
+        global_p50_s = statistics.median(
+            r1c_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"] for c in cells) / 1000
+        publish_med = statistics.median(r1c_publish_med[c] for c in cells)
+        r1c_per_check_median = statistics.median(
+            _per_check_cell_median("2026-10-30-r1c", c) for c in cells)
+
+        close(store_speedup_median, frozen_store[store]["speedup"], 1e-6,
+              f"external-v1 R1c frozen: {store} median per-cell speedup")
+        close(global_p50_s, frozen_store[store]["global_s"], 1e-6,
+              f"external-v1 R1c frozen: {store} median global-recompute ttf_p50_ms, s")
+        close(publish_med, frozen_store[store]["publish"], 1e-6,
+              f"external-v1 R1c frozen: {store} median per-cell median (global_recompute_wall_ms "
+              "/ n_registered)")
+        close(r1c_per_check_median, frozen_store[store]["perCheck"], 1e-6,
+              f"external-v1 R1c frozen: {store} median per-cell median "
+              "(tgms_l0_check_wall_ms / candidate_survivors)")
+
+        # the pre-arc "before" publish number is recomputed here from the
+        # pre-arc batches, so the R1c names stand on their own.
+        prearc_by_cell: dict[str, list[dict]] = {}
+        for b in prearc_batches:
+            prearc_by_cell.setdefault(b["cell_id"], []).append(b)
+        prearc_publish = statistics.median(
+            statistics.median(b["global_recompute_wall_ms"] / prearc_nreg[c]
+                              for b in prearc_by_cell[c]) for c in cells)
+
+        m.add(f"recExt1ControlROneC{tok}SpeedupMedian", f"{store_speedup_median:.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: median over the {store} grid's 9 "
+              "N=1,000 cells of arms.global-recompute.ttf_p50_ms / arms.tgms-L1.ttf_p50_ms")
+        m.add(f"recExt1ControlROneCGlobalP50S{tok}", f"{global_p50_s:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: median over the {store} grid's 9 "
+              "N=1,000 cells of arms.global-recompute.ttf_p50_ms, /1000, s")
+        m.add(f"recExt1ControlROneCPerArtifactPublishMs{tok}", f"{publish_med:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_BATCHES)}: median over the {store} grid's "
+              "9 N=1,000 cells of each cell's own median(per-batch global_recompute_wall_ms / "
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_ROWS)}'s manifest.config.n_registered)")
+        m.add(f"recExt1ControlROneCPerCheckMs{tok}", f"{r1c_per_check_median:.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_CHECKS)}: median over the {store} grid's 9 "
+              "N=1,000 cells of that cell's own median-over-batches "
+              "(tgms_l0_check_wall_ms / candidate_survivors), control=2026-10-30-r1c; two "
+              "decimals because the value is below 1 ms")
+        m.add(f"recExt1ControlROneCPreArcPublishMs{tok}", f"{prearc_publish:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_BATCHES)}: same quantity as "
+              f"recExt1ControlROneCPerArtifactPublishMs{tok}, from the pre-arc (2026-10-05) "
+              "control -- the \"before\" number, as recExt1ControlArcFivePreArcPublishMs"
+              f"{tok}")
+
+    m.add("recExt1ControlROneCSpeedupMedian", f"{speedup_median:.2f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: median over the 18 N=1,000 cells (both "
+          "stores, excluding the probe) of arms.global-recompute.ttf_p50_ms / "
+          "arms.tgms-L1.ttf_p50_ms, fixed end-to-end TTF")
+
+    r1c_wall_total = sum(c["wall_s"] for c in r1c["summary"]["per_cell"])
+    prearc_wall_total = sum(c["wall_s"] for c in prearc["summary"]["per_cell"])
+    wall_ratio = r1c_wall_total / prearc_wall_total
+    close(wall_ratio, 0.04002942328870377, 1e-6, "external-v1 R1c frozen: sum(R1c wall_s) / "
+          "sum(T1 wall_s) over all 19 cells")
+    m.add("recExt1ControlROneCWallRatio", f"{wall_ratio:.3f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)} / {relpath(EXTERNAL_TGMS_CONTROL)}: "
+          "sum(summary.per_cell[*].wall_s) over all 19 cells, R1c / T1")
+
+    r1c_probe_wall_s = r1c_pc[_ARC5_PROBE_CID]["wall_s"]
+    close(r1c_probe_wall_s, 1029.1189031600952, 1e-3, "external-v1 R1c frozen: probe cell wall_s")
+    m.add("recExt1ControlROneCProbeWallS", str(round(r1c_probe_wall_s)),
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}: summary.per_cell[{_ARC5_PROBE_CID!r}].wall_s")
+
+    probe_per_check_median = _per_check_cell_median("2026-10-30-r1c", _ARC5_PROBE_CID)
+    close(probe_per_check_median, 0.20771849076453375, 1e-6,
+          "external-v1 R1c frozen: probe cell median (tgms_l0_check_wall_ms / "
+          "candidate_survivors)")
+    m.add("recExt1ControlROneCProbePerCheckMs", f"{probe_per_check_median:.2f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C_CHECKS)}: median over the probe cell "
+          f"({_ARC5_PROBE_CID})'s own batches of (tgms_l0_check_wall_ms / "
+          "candidate_survivors), control=2026-10-30-r1c, N=10,000; two decimals because the "
+          "value is below 1 ms")
+
+    # --- external ratios, scored against R1c ---
+    neo = json.loads(EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    rerun = json.loads(EXTERNAL_NEO4J_RERUN.read_text(encoding="utf-8"))
+    neo_pc = {c["cell_id"]: c for c in neo["summary"]["per_cell"]}
+    rerun_pc = {c["cell_id"]: c for c in rerun["summary"]["per_cell"]}
+    eq(len(rerun_pc), 10, f"{relpath(EXTERNAL_NEO4J_RERUN)}: cells re-measured with the fixed "
+       "translation")
+    # the rerun record supersedes the 2026-10-07 one on the cells it re-ran
+    # (all ten are synth cells: the nine N=1,000 and the probe); the collegemsg
+    # cells stay on the 2026-10-07 record.
+    neo_best = dict(neo_pc)
+    neo_best.update(rerun_pc)
+    eq({neo_best[c]["cell_id"] for c in nonprobe + [_ARC5_PROBE_CID]},
+       set(nonprobe + [_ARC5_PROBE_CID]),
+       "external-v1 R1c ratios: Neo4j side has every R1c cell")
+    eq(sorted(c for c in rerun_pc if c in nonprobe and r1c_pc[c]["store"] == "collegemsg"), [],
+       f"{relpath(EXTERNAL_NEO4J_RERUN)}: re-measured no collegemsg cell")
+
+    frozen_ratio_gr = {"synth-iv-60k": 7.954902914804572, "collegemsg": 2.1918925053913365}
+    frozen_speedup_l1_median = {"synth-iv-60k": 20.124623921597674,
+                                 "collegemsg": 11.602504283135394}
+    frozen_speedup_l1_min = {"synth-iv-60k": 19.147910924100337, "collegemsg": 9.383715602320692}
+    for store in ("synth-iv-60k", "collegemsg"):
+        cells = [c for c in nonprobe if r1c_pc[c]["store"] == store]
+        eq(len(cells), 9, f"external-v1 R1c ratios: {store} N=1,000 cell count (no probe)")
+        ratio_gr = [neo_best[c]["refresh_wall_ms"]["median"]
+                    / r1c_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"] for c in cells]
+        speedup_l1 = [neo_best[c]["refresh_wall_ms"]["median"]
+                      / r1c_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+        ratio_gr_median = statistics.median(ratio_gr)
+        speedup_l1_median = statistics.median(speedup_l1)
+        speedup_l1_min = min(speedup_l1)
+        close(ratio_gr_median, frozen_ratio_gr[store], 1e-6,
+              f"external-v1 R1c frozen: {store} median (neo4j refresh_wall_ms.median / R1c "
+              "global-recompute ttf_p50_ms)")
+        close(speedup_l1_median, frozen_speedup_l1_median[store], 1e-6,
+              f"external-v1 R1c frozen: {store} median (neo4j refresh_wall_ms.median / R1c "
+              "tgms-L1 ttf_p50_ms)")
+        close(speedup_l1_min, frozen_speedup_l1_min[store], 1e-6,
+              f"external-v1 R1c frozen: {store} min (neo4j refresh_wall_ms.median / R1c tgms-L1 "
+              "ttf_p50_ms)")
+
+        name_tail = "CollegeMsg" if store == "collegemsg" else "Synth"
+        src = (f"{relpath(EXTERNAL_NEO4J)} (collegemsg cells) and "
+               f"{relpath(EXTERNAL_NEO4J_RERUN)} (the synth cells it re-measured)")
+        m.add(f"recExt1RatioGrROneCMedian{name_tail}", f"{ratio_gr_median:.2f}",
+              f"{src}: median over the {store} grid's 9 N=1,000 cells of "
+              f"refresh_wall_ms.median / {relpath(EXTERNAL_TGMS_CONTROL_R1C)}'s "
+              "arms.global-recompute.ttf_p50_ms for the same cell_id")
+        m.add(f"recExt1SpeedupLOneROneCMedian{name_tail}", f"{speedup_l1_median:.2f}",
+              f"{src}: median over the same 9 cells of refresh_wall_ms.median / "
+              f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}'s arms.tgms-L1.ttf_p50_ms")
+        m.add(f"recExt1SpeedupLOneROneCMin{name_tail}", f"{speedup_l1_min:.2f}",
+              f"{src}: min over the same 9 cells of the same ratio")
+
+    probe_ratio_gr = (neo_best[_ARC5_PROBE_CID]["refresh_wall_ms"]["median"]
+                       / r1c_pc[_ARC5_PROBE_CID]["arms"]["global-recompute"]["ttf_p50_ms"])
+    probe_speedup_l1 = (neo_best[_ARC5_PROBE_CID]["refresh_wall_ms"]["median"]
+                         / r1c_pc[_ARC5_PROBE_CID]["arms"]["tgms-L1"]["ttf_p50_ms"])
+    close(probe_ratio_gr, 7.655571438677874, 1e-6,
+          "external-v1 R1c frozen: probe cell (neo4j rerun refresh_wall_ms.median / R1c "
+          "global-recompute ttf_p50_ms)")
+    close(probe_speedup_l1, 11.671744656184014, 1e-6,
+          "external-v1 R1c frozen: probe cell (neo4j rerun refresh_wall_ms.median / R1c "
+          "tgms-L1 ttf_p50_ms)")
+    m.add("recExt1RatioGrROneCProbe", f"{probe_ratio_gr:.2f}",
+          f"{relpath(EXTERNAL_NEO4J_RERUN)}: refresh_wall_ms.median at {_ARC5_PROBE_CID} / "
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}'s arms.global-recompute.ttf_p50_ms")
+    m.add("recExt1SpeedupLOneROneCProbe", f"{probe_speedup_l1:.2f}",
+          f"{relpath(EXTERNAL_NEO4J_RERUN)}: refresh_wall_ms.median at {_ARC5_PROBE_CID} / "
+          f"{relpath(EXTERNAL_TGMS_CONTROL_R1C)}'s arms.tgms-L1.ttf_p50_ms")
+
+
+# --------------------------------------------------------------------------
 # Lane C3-records (2026-10-09) -- re-run of the ten Neo4j-recompute cells
 # affected by the single-artifact temporal_paths defect (storm-000911: a
 # generated path with src == dst, cycling back through the source node;
@@ -11362,6 +11667,7 @@ def main() -> int:
     compute_external_baselines(m)
     compute_ext_sum_mode(m)
     compute_external_arc5(m)
+    compute_external_r1c(m)
     compute_external_rerun_n1b(m)
     compute_external_withheld_hold(m)
     compute_external_withheld_symmetric(m)
