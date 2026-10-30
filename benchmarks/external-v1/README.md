@@ -1420,3 +1420,223 @@ the 2026-10-07 record throughout.
 | `recExt1SpeedupLOneROneCMedianSynth` / `…CollegeMsg` | 20.12 / 11.60 | Neo4j ÷ R1c `tgms-L1` p50, median |
 | `recExt1SpeedupLOneROneCMinSynth` / `…CollegeMsg` | 19.15 / 9.38 | the same, minimum |
 | `recExt1RatioGrROneCProbe` / `recExt1SpeedupLOneROneCProbe` | 7.66 / 11.67 | the probe, against the rerun record |
+
+## Recompute on read: the third configuration of the regime comparison (P-ROR, 2026-10-30)
+
+**Pre-registration** (P-ROR, frozen 2026-10-30T07:56:05Z, before this lane's
+first run), verbatim: "The regime claim compares TGMS on demand (check, then
+refresh only when flagged) with a maintained view; it lacks the obvious third
+configuration, *recompute on read*: every read artifact's plan is re-run and
+republished unconditionally, no lineage check, always exact. Measure it on the
+on-demand protocol of P-AXES axis B (one correction per burst, k reads drawn
+uniformly, same stores and k grids, N = 10³ both stores and the probe;
+Memgraph stopped, box quiet; code = the pushed tip after lane T19), timed as
+the same interval. For every TGMS configuration report two timer scopes:
+reads only (as on record) and reads plus applying the correction (the log
+append; the scope Table 1 uses for the view), and both median and mean.
+Predictions: (1) recompute-on-read's cost per read equals the per-artifact
+refresh on record within 30 % (15.3 synth / 3.4 collegemsg / 15.65 probe
+ms); (2) at k = N TGMS on demand is cheaper per read by ≥ 2× on synth 10³ and
+the probe (6.30 / 10.56 ms on record) and ≥ 2.5× on collegemsg (0.93 ms);
+(3) at k = 1 recompute-on-read is cheaper on collegemsg (≈ 3.4 vs 4.9 ms) and
+TGMS is cheaper on synth (4.9 vs ≈ 15.3); (4) against the view (median basis)
+recompute-on-read's crossover is ≈ 7 on synth 10³, ≈ 1.8 on collegemsg and ≈
+340 on the probe, so lineage extends the regime by ≥ 2.5× on synth 10³, ≥
+1.5× on the probe, and by less than 1.5× on collegemsg. Falsifier: TGMS on
+demand costs at least as much as recompute-on-read at every measured k on
+either synth size."
+
+This section reports numbers beside the thresholds above and states no
+verdict.
+
+**Code.** Public main `7ba0a33c` plus one harness change that was not yet
+committed when the runs were made (the patch's sha256 is `0fc8e191…`; it
+landed as `dd943db2`; the manifests carry
+`7ba0a33c292824157c3f871ae052ffd790484aad`). `tgms/` is
+identical between `fbbcb447` (the code axis B timed) and `7ba0a33c`
+(`git diff --stat fbbcb447 7ba0a33c -- tgms/` is empty), so the `check`
+policy below is axis B's code path. The extension module is axis B's
+(sha256 `d48ae71c…faca`, copied, not rebuilt; `crates/` unchanged since
+`b6cdde0`).
+
+**Harness change.**
+
+- `tgms/eval/storm.py`: `Storm(refresh_on_read_policy="check")` and
+  `ON_DEMAND_POLICIES = ("check", "always")`. Under `always` (recompute on
+  read) each of the k drawn artifacts is refreshed and republished
+  unconditionally: the refresh handle is built from the registered record the
+  way the oracle pass builds it, and `check_artifact` is not called. The draw
+  (the mode's own seeded RNG), the interval (`on_demand_ms`), the interval's
+  burst wrappers (one `ChainCache` burst and one `Registry` burst), and the
+  rollback outside the timed region are the `check` policy's, so the only
+  difference between the two policies is the skipped check. `BatchResult`
+  gains `on_demand_policy` (written for `always` only; `check` rows keep
+  their bytes) and `correction_apply_ms`.
+- `correction_apply_ms` is the wall time of the burst's correction write
+  (`Storm._write`: the event-log append, the chain extension, the adapter's
+  operation application and its commit), timed with the harness's own
+  `_timed` and outside every other interval. It is on every row, mode on or
+  off. The correction draw does not depend on the policy or on k, so a given
+  burst index applies the same correction in every run of a cell.
+- `scripts/bench_correction_storm.py`: `--refresh-on-read-policy
+  {check,always}` (default `check`; requires `--refresh-on-read`); the
+  manifest's `config` records `refresh_on_read_policy` whenever the mode is
+  on.
+- Pinned by `tests/test_storm_on_demand.py` (the `check` policy writes the
+  rows the mode wrote before, with the one new `correction_apply_ms`;
+  `always` refreshes every drawn artifact with zero `check_artifact` calls
+  in the interval, ends with the registry and event log of the `check` runs,
+  and adds only `on_demand_policy`; the policy is validated). Checked once
+  against the code before the change: on the same seeded fixture, the rows of
+  the mode off and of `--refresh-on-read 5` (sum and end-to-end modes) are
+  equal in every non-timing field and in key order, the new field aside.
+
+**Smoke, untimed, collegemsg N = 10³, 2 bursts.** `check` reproduces axis B's
+smoke counts (refreshes 1, 0 at k = 1; 1, 2 at k = 10); `always` refreshes
+exactly k artifacts per burst (1, 1 and 10, 10) with 0 errors and 0 cache
+misses (no check runs). Kept in the record.
+
+**Timed runs.** xzgpu, one run at a time, no `nice`, Memgraph stopped for the
+window and restarted after; pre-flight (and again before every run) found no
+other benchmark, test, build or Neo4j process, one-minute load average 0.99–2.13 at the starts of runs
+(this lane's own single-threaded run included). Window 2026-10-30T08:05:23Z–10:56:46Z (2 h 51 min for 17 runs);
+Memgraph stopped 08:05:24Z, restarted 10:56:46Z. The flags are axis B's, run
+for run: `--seed 0 --mix c1 --backend native --burst-size 10000
+--burst-after 10 --check-cache chain`, end-to-end mode with 20 bursts at
+N = 10³, sum mode with 5 bursts for the probe, `--allow-r18-trip` at 10⁴,
+plus `--refresh-on-read k --refresh-on-read-policy {always,check}`. 13 runs
+of `always` (k ∈ {1, 10, 100, N} on the two N = 10³ cells, k ∈ {1, 10, 100,
+1,000, N} on the probe) and 4 same-day `check` controls (k = 1 and k = N on
+the two N = 10³ cells). The probe's `check` policy is not re-run: its runs
+are axis B's. Every run: 0 refresh errors, 0 false-fresh for tgms-L1; under
+`always` every read refreshed (`refreshes == reads`); the event-log digest at
+the end of every run of a cell is the same. k = N reads 934, 884 and 8,922
+artifacts.
+
+Wall per run, s: collegemsg 108 / 108 / 117 / 171 (`always` k = 1, 10, 100,
+N), 106 / 127 (`check` k = 1, N); synth 10³ 519 / 517 / 539 / 780 and 509 /
+631; probe 1,045 / 1,044 / 1,078 / 1,120 / 1,751.
+
+Each cell below is the median over bursts of the interval (the mean in
+parentheses), in ms. **Reads only** is `on_demand_ms`, as on record; **reads
+plus apply** is `on_demand_ms + correction_apply_ms` per burst. The view's
+per-burst cost is `refresh_plus_publish_ms` of
+`ivm-differential-2026-10-07-rows.jsonl`, not re-run.
+
+**Reads only.**
+
+| k | collegemsg 10³ | synth 10³ | synth 10⁴ (probe) |
+|---|---:|---:|---:|
+| **TGMS on demand** (axis B's runs) | | | |
+| 1 | 4.93 (5.34) | 4.87 (8.19) | 4.98 (5.02) |
+| 10 | 13.55 (20.70) | 48.38 (78.01) | 29.66 (86.51) |
+| 100 | 91.94 (112.79) | 429.36 (528.93) | 731.59 (833.04) |
+| 1,000 | — | — | 10,152.17 (7,712.34) |
+| N | 865.94 (970.88) | 5,572.27 (5,111.98) | 94,220.65 (61,755.47) |
+| **Recompute on read** | | | |
+| 1 | 3.17 (3.17) | 5.92 (20.96) | 7.57 (13.06) |
+| 10 | 24.21 (40.40) | 120.74 (139.71) | 97.05 (172.42) |
+| 100 | 358.85 (357.13) | 1,370.11 (1,444.54) | 1,458.82 (1,588.41) |
+| 1,000 | — | — | 16,258.09 (16,380.42) |
+| N | 3,052.98 (3,088.14) | 13,518.23 (13,506.88) | 141,649.28 (141,637.58) |
+| **View per burst** | **6.13 (11.08)** | **113.46 (199.21)** | **5,359.28 (5,458.85)** |
+
+**Reads plus applying the correction.** `correction_apply_ms` has a median of
+2.8–3.5 ms in every run; the first burst of a run is a cold write (4–14 ms on
+collegemsg, 76–82 ms on synth), which is most of the mean (6.8–18.7 ms).
+Recompute on read is measured on this scope in every run. TGMS on demand is measured on it in the four same-day `check`
+controls (k = 1 and k = N, N = 10³); the other TGMS cells (†) are an
+*estimate*: axis B's per-burst `on_demand_ms` plus the same burst index's
+`correction_apply_ms` from a reference run of the same cell (the `check`
+control at k = 1 on the N = 10³ cells, the `always` k = 1 run on the probe).
+
+| k | collegemsg 10³ | synth 10³ | synth 10⁴ (probe) |
+|---|---:|---:|---:|
+| **TGMS on demand** | | | |
+| 1 | 7.26 (12.17) measured; 7.96 (12.26) † | 7.75 (15.44) measured; 8.15 (15.18) † | 7.99 (22.85) † |
+| 10 | 16.64 (27.62) † | 51.19 (85.01) † | 43.99 (104.34) † |
+| 100 | 94.68 (119.71) † | 433.48 (535.93) † | 808.80 (850.87) † |
+| 1,000 | — | — | 10,154.81 (7,730.16) † |
+| N | 872.89 (966.97) measured; 868.72 (977.80) † | 5,682.07 (5,234.85) measured; 5,575.54 (5,118.98) † | 94,223.65 (61,773.30) † |
+| **Recompute on read** | | | |
+| 1 | 6.11 (10.65) | 9.81 (28.28) | 10.70 (30.89) |
+| 10 | 27.21 (47.78) | 128.85 (146.80) | 161.89 (190.96) |
+| 100 | 362.82 (365.07) | 1,373.47 (1,451.53) | 1,502.93 (1,606.47) |
+| 1,000 | — | — | 16,261.88 (16,398.63) |
+| N | 3,056.24 (3,095.70) | 13,521.46 (13,513.69) | 141,651.94 (141,656.25) |
+
+The same-day `check` controls against axis B's runs (reads only, median):
+collegemsg 4.47 vs 4.93 ms at k = 1 and 869.98 vs 865.94 at k = N; synth 10³
+4.33 vs 4.87 and 5,678.91 vs 5,572.27 (ratios 0.89–1.02; the refresh counts
+are identical, 7 / 4,867 and 6 / 4,316).
+
+**Crossover k\*** against the view (linear interpolation on the k grid, as in
+axis B). `none`: the configuration's cost at k = 1 already reaches the
+view's. † as above (TGMS with apply is the estimate).
+
+| scope, basis | configuration | collegemsg 10³ | synth 10³ | synth 10⁴ (probe) |
+|---|---|---:|---:|---:|
+| reads only, median | TGMS on demand | 2.25 | 25.37 | 542.11 |
+| | recompute on read | 2.27 | 9.43 | 337.20 |
+| | **regime gain** (TGMS k\* ÷ recompute k\*) | **0.99** | **2.69** | **1.61** |
+| reads only, mean | TGMS on demand | 4.36 | 34.19 | 705.18 |
+| | recompute on read | 2.91 | 14.10 | 335.49 |
+| | regime gain | 1.50 | 2.42 | 2.10 |
+| reads + apply, median | TGMS on demand † | none | 24.66 | 538.20 |
+| | recompute on read | 1.01 | 8.84 | 335.16 |
+| | regime gain | undefined | 2.79 | 1.61 |
+| reads + apply, mean | TGMS on demand † | none | 32.79 | 702.85 |
+| | recompute on read | 1.10 | 13.61 | 334.39 |
+| | regime gain | undefined | 2.41 | 2.10 |
+
+**Cost per read at k = N** (ms; the median over bursts of `on_demand_ms` ÷
+reads, with total ÷ reads in parentheses): recompute on read 3.27 (3.31)
+collegemsg, 15.29 (15.28) synth 10³, 15.88 (15.88) probe; TGMS on demand
+0.93 (1.04), 6.30 (5.78), 10.56 (6.92). Recompute ÷ TGMS: 3.53 (3.18), 2.43
+(2.64), 1.50 (2.29). At k = N recompute on read costs 498×, 119× and 26× the
+view's per-burst median (TGMS on demand: 141×, 49×, 18×).
+
+**The numbers each prediction reads, beside its threshold.**
+
+| prediction | quantity | collegemsg 10³ | synth 10³ | synth 10⁴ (probe) | threshold |
+|---|---|---:|---:|---:|---|
+| (1) | recompute cost per read at k = N, median (mean) | 3.27 (3.31) | 15.29 (15.28) | 15.88 (15.88) | per-artifact refresh on record 3.4 / 15.3 / 15.65, ±30 % |
+| | ÷ that reference | 0.96 (0.97) | 1.00 (1.00) | 1.01 (1.01) | 0.7–1.3 |
+| (2) | recompute ÷ TGMS per read at k = N, median (mean) | 3.53 (3.18) | 2.43 (2.64) | 1.50 (2.29) | ≥ 2.5 / ≥ 2 / ≥ 2 |
+| (3) | per burst at k = 1, reads only: recompute vs TGMS, median | 3.17 vs 4.93 | 5.92 vs 4.87 | 7.57 vs 4.98 | recompute cheaper on collegemsg, TGMS cheaper on synth |
+| | the same, mean | 3.17 vs 5.34 | 20.96 vs 8.19 | 13.06 vs 5.02 | |
+| (4) | recompute-on-read k\*, median basis, reads only | 2.27 | 9.43 | 337.20 | ≈ 1.8 / ≈ 7 / ≈ 340 |
+| | regime gain, median basis | 0.99 | 2.69 | 1.61 | < 1.5 / ≥ 2.5 / ≥ 1.5 |
+| falsifier | recompute ÷ TGMS per-burst median, reads only, k = 1, 10, 100, (1,000,) N | 0.64, 1.79, 3.90, 3.53 | 1.22, 2.50, 3.19, 2.43 | 1.52, 3.27, 1.99, 1.60, 1.50 | the falsifier's condition: every entry ≤ 1 on a synth cell |
+
+The same ratios on the mean basis: collegemsg 0.59, 1.95, 3.17, 3.18; synth
+10³ 2.56, 1.79, 2.73, 2.64; probe 2.60, 1.99, 1.91, 2.12, 2.29.
+
+**Files.** `axes-recompute-on-read-2026-10-30.json` (per cell and k, for both
+policies and both scopes: the median, mean, min and max per-burst cost, reads,
+refreshes, cost per read, the correction's apply cost; the view's per-burst
+cost; the crossovers for both policies, scopes and bases and the regime gain;
+the numbers each prediction reads; the smoke counts; each run's manifest and
+rows sha256 and the sha256 of the three input files; validates against
+`result_manifest.schema.json`) and
+`axes-recompute-on-read-2026-10-30-rows.jsonl` (265 rows: 185 of `always`, 80
+of the `check` controls, one per run and burst); both sha256-listed in
+`SHA256SUMS.txt`. Assembled by `scripts/axes_recompute_on_read_record.py`
+from this lane's runs, axis B's record and rows (the `check` policy on
+record) and the view's rows.
+
+**Macros** (`scripts/sys_paper_macros.py`'s `compute_axes_recompute_on_read`,
+recomputed from both records' rows and the view's rows, gated on all five
+files' sha256 and cross-checked against the stored summaries):
+
+| macro | value | field |
+|---|---:|---|
+| `recRorMsPerReadN1k` / `…N10k` / `…CollegeMsg` | 15.29 / 15.88 / 3.27 | recompute on read at k = N, median over bursts of `on_demand_ms` ÷ reads, ms |
+| `recRorCrossoverKN1k` / `…N10k` / `…CollegeMsg` | 9.4 / 337 / 2.3 | recompute-on-read k\*, median basis, reads only |
+| `recRorCrossoverKMeanN1k` / `…N10k` / `…CollegeMsg` | 14 / 335 / 2.9 | the same, mean basis |
+| `recRorPerBurstMsK1N1k` / `…N10k` / `…CollegeMsg` | 5.9 / 7.6 / 3.2 | recompute on read at k = 1, median `on_demand_ms`, ms |
+| `recRorPerBurstMsKNN1k` / `…N10k` / `…CollegeMsg` | 13,518 / 141,649 / 3,053 | the same at k = N |
+| `recRorRegimeGainN1k` / `…N10k` / `…CollegeMsg` | 2.7 / 1.6 / 1.0 | TGMS on-demand k\* ÷ recompute-on-read k\*, median basis, reads only |
+| `recAxesCrossoverKMeanN1k` / `…N10k` / `…CollegeMsg` | 34 / 705 / 4.4 | axis B's TGMS on-demand k\*, mean basis (its record's `crossover_mean`) |
+| `recAxesOnDemandWithAppendMsK1N1k` / `…K1CollegeMsg` | 7.8 / 7.3 | same-day `check` control at k = 1, median of `on_demand_ms + correction_apply_ms`, ms |
+| `recAxesOnDemandWithAppendMsKNN1k` / `…KNCollegeMsg` | 5,682 / 873 | the same at k = N |

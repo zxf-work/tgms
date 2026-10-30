@@ -1,0 +1,1640 @@
+{
+  "config": {
+    "bench_correction_storm_py_sha256": "45e9c93e56005f066e73d68d340f15361535e56cb7989c3014c901f9da8669eb",
+    "campaign": "axes-recompute-on-read",
+    "cells": [
+      {
+        "batches": 20,
+        "cell_id": "collegemsg-c1-none-n1000-s0",
+        "k_grid": [
+          1,
+          10,
+          100,
+          1000
+        ],
+        "measure_ttf": "end-to-end",
+        "n_artifacts": 1000,
+        "store": "collegemsg"
+      },
+      {
+        "batches": 20,
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "k_grid": [
+          1,
+          10,
+          100,
+          1000
+        ],
+        "measure_ttf": "end-to-end",
+        "n_artifacts": 1000,
+        "store": "synth-iv-60k"
+      },
+      {
+        "batches": 5,
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "k_grid": [
+          1,
+          10,
+          100,
+          1000,
+          10000
+        ],
+        "measure_ttf": "sum",
+        "n_artifacts": 10000,
+        "store": "synth-iv-60k"
+      }
+    ],
+    "check_policy_source": "benchmarks/external-v1/axes-on-demand-2026-10-30-rows.jsonl (all k, all cells, reads only) and this lane's same-day controls (k = 1 and k = N, N = 10^3 cells, both scopes)",
+    "code": "public main 7ba0a33c plus one harness change that was not yet committed when the runs were made (--refresh-on-read-policy {check,always} and the per-burst correction_apply_ms field in tgms/eval/storm.py and scripts/bench_correction_storm.py); tgms/ is identical between fbbcb447 (axis B's code) and 7ba0a33c, so the check-policy path is axis B's",
+    "correction_apply_definition": "wall time of Storm._write for the burst's correction (event-log append, chain extension, the adapter's operation application and commit), outside every other interval",
+    "date": "2026-10-30",
+    "engine_note": "crates/ unchanged since b6cdde0; the extension module is the one axis B measured, copied, not rebuilt",
+    "engine_so_sha256": "d48ae71caca80d9f3ea9f360b2e7a2f242f3e9e03ee223d69c4f8aff08b7faca",
+    "flags": "--seed 0 --mix c1 --backend native --burst-size 10000 --burst-after 10 --check-cache chain --refresh-on-read k --refresh-on-read-policy {always,check} (--allow-r18-trip at 10^4)",
+    "harness_patch_sha256": "0fc8e191c8815a47a0a5602f2f05c60807de6feda0b430ef671fa305413c7edb",
+    "host_protocol": "timed runs one at a time, no nice; Memgraph stopped for the window and restarted after; pre-flight found no other benchmark, test or build process (checked again before every run)",
+    "inputs_sha256": {
+      "axes_record": "23c2f3841d9924b15852a1e89230dbd40b1940ec7ceed124628635e628d6d02e",
+      "axes_rows": "c9746ada7a1d7160306071281d6ac3c3f4fc13dbacc836b486e4caa9586bc461",
+      "view_rows": "8b3b83468cfa224321b707737cac80002ca7d966ebb298d9dd524bc581cf0627"
+    },
+    "median_definition": "statistics.median on both sides",
+    "on_demand_definition": "per batch, after the correction lands: k names drawn uniformly without replacement (own seeded RNG, clamped to the registered count); policy check: one level-1 check each and one refresh when the check does not say fresh; policy always: one refresh each, no check; timed as one interval, inside one burst of the interval's own chain cache; registry rolled back after",
+    "policies": {
+      "always": "every read artifact is refreshed and republished, no check (recompute on read)",
+      "check": "one level-1 check per read, one refresh when it does not say fresh (TGMS on demand)"
+    },
+    "runs": {
+      "collegemsg-c1-none-n1000-s0-k1-always": {
+        "manifest_sha256": "c27075f37b402588eb5cabebb69c773990fc0cbf657ac935fed79988aef59026",
+        "result_digest": "cd8efcf55246ae657cebf378b110320b123f42b730587fe179fd3797534cf541",
+        "rows_sha256": "31ed52ed18391b5b8012e28bc3b96ee76f94672703ae72e75856e31fdba7329e",
+        "timestamp_utc": "2026-10-30T08:08:58Z",
+        "wall_s": 107.61999344825745
+      },
+      "collegemsg-c1-none-n1000-s0-k1-check": {
+        "manifest_sha256": "378cef8af12167f6d5a28ae84c66d94cdade10f27db365e43ef782db445eba50",
+        "result_digest": "f7b58bcab8c68cbfcc5d7ae5d015b3256b3aec2baafe8ce9c36d2d520321f5b1",
+        "rows_sha256": "9c83d0a99540c76929583c88a10402e6acb972c6122dd995715bc030c91dd2ee",
+        "timestamp_utc": "2026-10-30T08:07:10Z",
+        "wall_s": 105.608562707901
+      },
+      "collegemsg-c1-none-n1000-s0-k10-always": {
+        "manifest_sha256": "7d904d54cae2343d211b4a494f62230b47f0a96cd89a74178d8482af2b8a1ec5",
+        "result_digest": "3c4dcefa040fd4309ffe5f3f72e6e6a60788cc74ebf55eefd387b6410f03180e",
+        "rows_sha256": "589366e8670243b8ea50f67713ed8b5515761726ea7924ea0619c4e14a9f1261",
+        "timestamp_utc": "2026-10-30T08:10:47Z",
+        "wall_s": 107.6171612739563
+      },
+      "collegemsg-c1-none-n1000-s0-k100-always": {
+        "manifest_sha256": "5661d7136b5ee1a3270917857a7f77bf3afd4cea2ece341b2f46e17ea94bd6ab",
+        "result_digest": "011edb2e10976f339c04a700090dbe977e28188702e54ca01c6ae791b4ea6ba7",
+        "rows_sha256": "d9f4fba70e8b6b80427bb4f8637971e6db68641e9b36a5de9bc87c2c1816aa44",
+        "timestamp_utc": "2026-10-30T08:12:45Z",
+        "wall_s": 117.46659779548645
+      },
+      "collegemsg-c1-none-n1000-s0-k1000-always": {
+        "manifest_sha256": "4ef338f00e322eeba82d7e2100a50208f1801cc8032b7598edb89ba7882b3c42",
+        "result_digest": "3711e008eda37ce03a08bbd8c5c4cd09b9ca8cd156df3c2127a7737ba942c1ee",
+        "rows_sha256": "b0f11f3f374f65961bd7122e7abbb445909a32c4cdcc6d44106f9a2b3adb50ac",
+        "timestamp_utc": "2026-10-30T08:17:44Z",
+        "wall_s": 170.57681345939636
+      },
+      "collegemsg-c1-none-n1000-s0-k1000-check": {
+        "manifest_sha256": "899ee8c0e33907cc83f67fe36aba6f96950b2c2fabf3fff71826523bd41b8266",
+        "result_digest": "1a8d98d21e9a430f34c1794dada54e37507cbd04dc1bd905cf5085db1e37accd",
+        "rows_sha256": "46f4460cc4e8149b6543ad346c91b12235d84b94c906b82b30a0bc8c79563d22",
+        "timestamp_utc": "2026-10-30T08:14:53Z",
+        "wall_s": 127.4562680721283
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k1-always": {
+        "manifest_sha256": "f0d0aca17a1b93b54a20727495aaf3a1cf853d3f828995a50b13d9ec9b1838e8",
+        "result_digest": "f1cb8470df8e4a91c8c019cd169838815652b10855b11b24ec312e457d5ef8ee",
+        "rows_sha256": "907b5417b642a015cce4284ebaf3181900a984dbb5141b8fb5ba3b46a90af19a",
+        "timestamp_utc": "2026-10-30T08:34:54Z",
+        "wall_s": 519.2281725406647
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k1-check": {
+        "manifest_sha256": "7cb809aba55fe7fe2ecce0ddf4d04f8cbe2fde8709925417aedf3800ff00b732",
+        "result_digest": "dcb514ed12e6b403967f60ffffdb56b55ad4bd4f55ee0f473c0d5595a73ae1ed",
+        "rows_sha256": "ca5e3308c91027b9f06fea7962baf6d8ef8887d3cb85345091385f5ee13b5773",
+        "timestamp_utc": "2026-10-30T08:26:14Z",
+        "wall_s": 509.4082634449005
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k10-always": {
+        "manifest_sha256": "3ca71486d1992b74880c019bfaf30d6029fa496ce8616cdd144292d7a2120999",
+        "result_digest": "a6fa51baf62c86fa00379f050d7a63625ca04d96ab6a8582ab0066818b8d6a27",
+        "rows_sha256": "8cc5f5644fa939cdd6bc3e6dc73c82ee4f230903f3eeb055e94a61f04670102a",
+        "timestamp_utc": "2026-10-30T08:43:31Z",
+        "wall_s": 516.6050291061401
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k100-always": {
+        "manifest_sha256": "61c4d9427535fd1168a143364e66ca04c67e57217ef011abcf914b789fe6c775",
+        "result_digest": "344503820a65ac3ce7f94202ed3a190b6b11c2cc8bf8f9c130a991a3cc32ea31",
+        "rows_sha256": "ff77a0f7fffb004081e6c7a964a5c049ee902b81dec3bdb14c3b72fe28d950f8",
+        "timestamp_utc": "2026-10-30T08:52:31Z",
+        "wall_s": 539.0128211975098
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k1000-always": {
+        "manifest_sha256": "3f0a558b063c4a8c8902f3e6b3c9223ab29a061dfdaf242f59cb30861cce3845",
+        "result_digest": "24e316698ce7768852aade9d3fdc74157ba112e5812e18dee055d0462b8c2c51",
+        "rows_sha256": "2f30a2064c64fe0b884c5e5dd6c0a3d072b5b9a7ac129edb0a4baec57215e1c5",
+        "timestamp_utc": "2026-10-30T09:16:03Z",
+        "wall_s": 779.6899371147156
+      },
+      "synth-iv-60k-c1-none-n1000-s0-k1000-check": {
+        "manifest_sha256": "ad1f4773d982e6889d70cb95a7389a7e845c8797bb1a4eb64dcd83babe9cb971",
+        "result_digest": "691efc46c2a19a9b950e897320f4644ec1f20af7c568c41881cfc22d41fda28e",
+        "rows_sha256": "b8ee4c77619104392724648a366425bd65a47e8c2bd4584688229ddd4259e9f4",
+        "timestamp_utc": "2026-10-30T09:03:03Z",
+        "wall_s": 631.1471953392029
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k1-always": {
+        "manifest_sha256": "afa5657b2a83249245227d7c4acac3961e9ff6d619880e0e317ceb3884d45e46",
+        "result_digest": "4ea22dd645144d3348dfe9e3d3f92bfb4e91c27f06f153941d419a40cfd50bee",
+        "rows_sha256": "abc5ef82ed51ce36eb6321394812008ee5aec267e274684a6ae294265bf1a407",
+        "timestamp_utc": "2026-10-30T09:33:29Z",
+        "wall_s": 1045.0866022109985
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k10-always": {
+        "manifest_sha256": "3a69729fcd46ce0a1034b9f644dbc6fb2621e53f06b3224b102d16286743c5fc",
+        "result_digest": "da94a80b23911d3edb8a7c8c93500579185913f28427de14a00988f48e17017e",
+        "rows_sha256": "6238155194b97bc4bbcd1076b6ca99910107a331ff11c2ff7e82f2fddb145b46",
+        "timestamp_utc": "2026-10-30T09:50:54Z",
+        "wall_s": 1043.9301755428314
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k100-always": {
+        "manifest_sha256": "2bffdeb28b2302d0e8fc80c144b0529650252d9b9515cdf298168801243c59e7",
+        "result_digest": "453ef1c0d5e5cd27e8f60437b6d1fbc63a2d0bd3a47f8eb14b4f88fe0ad8b074",
+        "rows_sha256": "937cbe5722dceddb2ecda051fd24495a84c27d2b9c6d1e30e121f54ff1ebdfbc",
+        "timestamp_utc": "2026-10-30T10:08:53Z",
+        "wall_s": 1078.0588870048523
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k1000-always": {
+        "manifest_sha256": "88c2c1fb6deb2df8fcabb850ebf331d00a90e50bebb1554f9489f1b90e4ed11c",
+        "result_digest": "2e915a28dd5f05e39ca90204ce567a50474bdd4760dcf92bf8dad20a7a0e364a",
+        "rows_sha256": "b1d4d4c9c6ce3e3932e72cc9dc699d8e8d554268aaea953cfd62c98011f6524b",
+        "timestamp_utc": "2026-10-30T10:27:34Z",
+        "wall_s": 1119.5218119621277
+      },
+      "synth-iv-60k-c1-none-n10000-s0-k10000-always": {
+        "manifest_sha256": "e40fd7835a2073b9138f43d0481227f0712646010537ebf02840a3bb33c0c0b5",
+        "result_digest": "922f45edc339e4635f9efbd974d17577c2a54ca3b94d17bacfff8c4c6afa7545",
+        "rows_sha256": "04b0b2abebd3adaad10c6fcd7562e7a2117283b541d0c829352e0db3f4cc9d0d",
+        "timestamp_utc": "2026-10-30T10:56:45Z",
+        "wall_s": 1750.5377955436707
+      }
+    },
+    "storm_py_sha256": "537beaf1b0ca2bf27b0fb4ad81c38c73e93dd8ee9055574ba68ebb3e82f90961",
+    "timer_scopes": {
+      "reads_only": "on_demand_ms",
+      "with_apply": "on_demand_ms + correction_apply_ms, per burst"
+    },
+    "view_per_burst_source": "benchmarks/external-v1/ivm-differential-2026-10-07-rows.jsonl, per_burst[].refresh_plus_publish_ms"
+  },
+  "dataset": {
+    "components": {
+      "store collegemsg (collegemsg-c1-none-n1000-s0, eventlog sha256 at run end)": [
+        "280d7ff0daabf2bf215815eda258171bfc990a05e8d5f99d1b6b9cba17d071d5"
+      ],
+      "store synth-iv-60k (synth-iv-60k-c1-none-n1000-s0, eventlog sha256 at run end)": [
+        "35929fd00230e88820caa3a247632b2ba59facc565e55adb3f31c6c14f6aeb1f"
+      ],
+      "store synth-iv-60k (synth-iv-60k-c1-none-n10000-s0, eventlog sha256 at run end)": [
+        "f33ad2da7281a98dd9ac6976689263e7e6681cdef521f84cb211708b4fe40658"
+      ]
+    },
+    "digest": "273c447a55fcff898c68f876ea3b81d2bba03a3dc2dffd190edec0fd18c1a4c8",
+    "digest_kind": "manifest",
+    "name": "collegemsg and synth-iv-60k same-host control stores (copies), seed-0 c1-none populations at N = 10^3 and 10^4"
+  },
+  "git_commit": "7ba0a33c292824157c3f871ae052ffd790484aad",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.03
+  },
+  "n_cells": 3,
+  "preregistration": "P-ROR, frozen 2026-10-30T07:56:05Z. The regime claim compares TGMS on demand (check, then refresh only when flagged) with a maintained view; it lacks the obvious third configuration, *recompute on read*: every read artifact's plan is re-run and republished unconditionally, no lineage check, always exact. Measure it on the on-demand protocol of P-AXES axis B (one correction per burst, k reads drawn uniformly, same stores and k grids, N = 10^3 both stores and the probe; Memgraph stopped, box quiet; code = the pushed tip after lane T19), timed as the same interval. For every TGMS configuration report two timer scopes: reads only (as on record) and reads plus applying the correction (the log append; the scope Table 1 uses for the view), and both median and mean. Predictions: (1) recompute-on-read's cost per read equals the per-artifact refresh on record within 30 % (15.3 synth / 3.4 collegemsg / 15.65 probe ms); (2) at k = N TGMS on demand is cheaper per read by >= 2x on synth 10^3 and the probe (6.30 / 10.56 ms on record) and >= 2.5x on collegemsg (0.93 ms); (3) at k = 1 recompute-on-read is cheaper on collegemsg (~3.4 vs 4.9 ms) and TGMS is cheaper on synth (4.9 vs ~15.3); (4) against the view (median basis) recompute-on-read's crossover is ~7 on synth 10^3, ~1.8 on collegemsg and ~340 on the probe, so lineage extends the regime by >= 2.5x on synth 10^3, >= 1.5x on the probe, and by less than 1.5x on collegemsg. Falsifier: TGMS on demand costs at least as much as recompute-on-read at every measured k on either synth size.",
+  "protocol": {
+    "ceilings": {
+      "note": "one run per (cell, policy, k); box quiet, Memgraph stopped"
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/external-v1/axes-recompute-on-read-2026-10-30-rows.jsonl",
+  "result_digest": "7ee7641ac33064974522548b306cd8dd836437b05ce09089040a94a7e808a5be",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "per_cell": {
+      "collegemsg-c1-none-n1000-s0": {
+        "crossover": {
+          "reads_only": {
+            "recompute_on_read": {
+              "mean": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 2.912232091610867,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 2.265606590238181,
+                "kind": "interpolated"
+              }
+            },
+            "regime_gain": {
+              "mean": {
+                "kind": "ratio",
+                "value": 1.4973790867898142
+              },
+              "median": {
+                "kind": "ratio",
+                "value": 0.9940958537934885
+              }
+            },
+            "tgms_check": {
+              "mean": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 4.3607154298562705,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 2.252230117682979,
+                "kind": "interpolated"
+              }
+            }
+          },
+          "with_apply": {
+            "recompute_on_read": {
+              "mean": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 1.1033790959252747,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 1.0096721480081656,
+                "kind": "interpolated"
+              }
+            },
+            "regime_gain": {
+              "mean": {
+                "kind": "undefined",
+                "note": "TGMS k* is none, recompute-on-read k* is interpolated",
+                "value": null
+              },
+              "median": {
+                "kind": "undefined",
+                "note": "TGMS k* is none, recompute-on-read k* is interpolated",
+                "value": null
+              }
+            },
+            "tgms_check": {
+              "mean": {
+                "k_star": null,
+                "kind": "none",
+                "note": "TGMS's cost at k = 1 already reaches the view's: no crossing at k >= 1"
+              },
+              "median": {
+                "k_star": null,
+                "kind": "none",
+                "note": "TGMS's cost at k = 1 already reaches the view's: no crossing at k >= 1"
+              }
+            }
+          },
+          "with_apply_tgms_kind": "estimate (record on_demand_ms + reference apply)"
+        },
+        "n_registered": 934,
+        "per_k": {
+          "1": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 80.97807830199599,
+                "mean_ms": 7.48458334710449,
+                "median_ms": 3.0143323820084333,
+                "min_ms": 2.5839717127382755
+              },
+              "batches": 20,
+              "k_effective": 1,
+              "median_ms_per_read": 3.168663941323757,
+              "ms_per_read_mean": 3.1667946837842464,
+              "reads": 20,
+              "reads_only": {
+                "max_ms": 3.818992991000414,
+                "mean_ms": 3.1667946837842464,
+                "median_ms": 3.168663941323757,
+                "min_ms": 2.780474256724119
+              },
+              "refreshes": 20,
+              "with_apply": {
+                "max_ms": 84.47563042864203,
+                "mean_ms": 10.651378030888736,
+                "median_ms": 6.105066277086735,
+                "min_ms": 5.7761152274906635
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control": {
+              "apply_ms": {
+                "max_ms": 80.12014487758279,
+                "mean_ms": 6.9198863580822945,
+                "median_ms": 2.907984657213092,
+                "min_ms": 2.632406074553728
+              },
+              "batches": 20,
+              "k_effective": 1,
+              "median_ms_per_read": 4.471970954909921,
+              "ms_per_read_mean": 5.2522869082167745,
+              "reads": 20,
+              "reads_only": {
+                "max_ms": 9.166932199150324,
+                "mean_ms": 5.2522869082167745,
+                "median_ms": 4.471970954909921,
+                "min_ms": 3.2934253104031086
+              },
+              "refreshes": 7,
+              "with_apply": {
+                "max_ms": 87.78636902570724,
+                "mean_ms": 12.172173266299069,
+                "median_ms": 7.261620135977864,
+                "min_ms": 6.216213572770357
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control_vs_record_median_reads_only": 0.9074013970045076,
+            "check_record": {
+              "batches": 20,
+              "k_effective": 1,
+              "median_ms_per_read": 4.928327165544033,
+              "ms_per_read_mean": 5.343814636580646,
+              "reads": 20,
+              "reads_only": {
+                "max_ms": 10.548761114478111,
+                "mean_ms": 5.343814636580646,
+                "median_ms": 4.928327165544033,
+                "min_ms": 3.1678928062319756
+              },
+              "refreshes": 7,
+              "with_apply": {
+                "max_ms": 85.51323879510164,
+                "mean_ms": 12.26370099466294,
+                "median_ms": 7.963178912177682,
+                "min_ms": 6.034220103174448
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 1,
+            "ratio_always_to_check_median_reads_only": 0.6429491863846202
+          },
+          "10": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 80.42467897757888,
+                "mean_ms": 7.377222157083452,
+                "median_ms": 2.999145071953535,
+                "min_ms": 2.4238238111138344
+              },
+              "batches": 20,
+              "k_effective": 10,
+              "median_ms_per_read": 2.4211327778175473,
+              "ms_per_read_mean": 4.04004180803895,
+              "reads": 200,
+              "reads_only": {
+                "max_ms": 144.69485823065042,
+                "mean_ms": 40.4004180803895,
+                "median_ms": 24.211327778175473,
+                "min_ms": 19.01505095884204
+              },
+              "refreshes": 200,
+              "with_apply": {
+                "max_ms": 147.61239849030972,
+                "mean_ms": 47.77764023747295,
+                "median_ms": 27.208238607272506,
+                "min_ms": 22.126395720988512
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 20,
+              "k_effective": 10,
+              "median_ms_per_read": 1.3548759510740638,
+              "ms_per_read_mean": 2.069951822049916,
+              "reads": 200,
+              "reads_only": {
+                "max_ms": 126.6797250136733,
+                "mean_ms": 20.699518220499158,
+                "median_ms": 13.548759510740638,
+                "min_ms": 4.917520098388195
+              },
+              "refreshes": 56,
+              "with_apply": {
+                "max_ms": 129.48357313871384,
+                "mean_ms": 27.619404578581452,
+                "median_ms": 16.642691800370812,
+                "min_ms": 8.022898808121681
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 10,
+            "ratio_always_to_check_median_reads_only": 1.7869774542076857
+          },
+          "100": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 81.93164924159646,
+                "mean_ms": 7.936711353249848,
+                "median_ms": 3.321039257571101,
+                "min_ms": 2.769759390503168
+              },
+              "batches": 20,
+              "k_effective": 100,
+              "median_ms_per_read": 3.5884568304754794,
+              "ms_per_read_mean": 3.571326623437926,
+              "reads": 2000,
+              "reads_only": {
+                "max_ms": 505.9261848218739,
+                "mean_ms": 357.1326623437926,
+                "median_ms": 358.84568304754794,
+                "min_ms": 216.9190300628543
+              },
+              "refreshes": 2000,
+              "with_apply": {
+                "max_ms": 530.8083579875529,
+                "mean_ms": 365.06937369704247,
+                "median_ms": 362.8236558288336,
+                "min_ms": 219.68878945335746
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 20,
+              "k_effective": 100,
+              "median_ms_per_read": 0.9193691052496433,
+              "ms_per_read_mean": 1.127888886258006,
+              "reads": 2000,
+              "reads_only": {
+                "max_ms": 257.2204312309623,
+                "mean_ms": 112.78888862580061,
+                "median_ms": 91.93691052496433,
+                "min_ms": 53.17124305292964
+              },
+              "refreshes": 539,
+              "with_apply": {
+                "max_ms": 276.94280119612813,
+                "mean_ms": 119.7087749838829,
+                "median_ms": 94.68358289450407,
+                "min_ms": 56.276621762663126
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 100,
+            "ratio_always_to_check_median_reads_only": 3.9031731760238757
+          },
+          "1000": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 82.40955509245396,
+                "mean_ms": 7.557864696718752,
+                "median_ms": 3.0518670100718737,
+                "min_ms": 2.669172827154398
+              },
+              "batches": 20,
+              "k_effective": 934,
+              "median_ms_per_read": 3.2687174047620635,
+              "ms_per_read_mean": 3.3063646338628785,
+              "reads": 18680,
+              "reads_only": {
+                "max_ms": 3392.767176963389,
+                "mean_ms": 3088.1445680279285,
+                "median_ms": 3052.9820560477674,
+                "min_ms": 2845.1335481368005
+              },
+              "refreshes": 18680,
+              "with_apply": {
+                "max_ms": 3395.7315240986645,
+                "mean_ms": 3095.702432724647,
+                "median_ms": 3056.2412971630692,
+                "min_ms": 2847.8643968701363
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control": {
+              "apply_ms": {
+                "max_ms": 83.56335805729032,
+                "mean_ms": 7.5217901496216655,
+                "median_ms": 2.9710731469094753,
+                "min_ms": 2.6344978250563145
+              },
+              "batches": 20,
+              "k_effective": 934,
+              "median_ms_per_read": 0.9314514585916248,
+              "ms_per_read_mean": 1.0272490758073918,
+              "reads": 18680,
+              "reads_only": {
+                "max_ms": 1677.8219700790942,
+                "mean_ms": 959.4506368041039,
+                "median_ms": 869.9756623245776,
+                "min_ms": 484.4565619714558
+              },
+              "refreshes": 4867,
+              "with_apply": {
+                "max_ms": 1680.7249342091382,
+                "mean_ms": 966.9724269537255,
+                "median_ms": 872.8865024168044,
+                "min_ms": 487.98940423876047
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control_vs_record_median_reads_only": 1.004659698817897,
+            "check_record": {
+              "batches": 20,
+              "k_effective": 934,
+              "median_ms_per_read": 0.9271313059412949,
+              "ms_per_read_mean": 1.0394838609188253,
+              "reads": 18680,
+              "reads_only": {
+                "max_ms": 1728.263062890619,
+                "mean_ms": 970.8779260981828,
+                "median_ms": 865.9406397491693,
+                "min_ms": 496.5019500814378
+              },
+              "refreshes": 4867,
+              "with_apply": {
+                "max_ms": 1731.1139120720327,
+                "mean_ms": 977.7978124562651,
+                "median_ms": 868.717847391963,
+                "min_ms": 500.7677301764488
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 934,
+            "ratio_always_to_check_median_reads_only": 3.525625101660666
+          }
+        },
+        "per_read_at_n": {
+          "ratio_recompute_to_tgms": 3.5256251016606655,
+          "ratio_recompute_to_tgms_mean": 3.1807753426208096,
+          "recompute_on_read_mean": 3.3063646338628785,
+          "recompute_on_read_median": 3.2687174047620635,
+          "tgms_check_record_mean": 1.0394838609188253,
+          "tgms_check_record_median": 0.9271313059412949
+        },
+        "view_per_burst": {
+          "bursts": 20,
+          "max_ms": 60.191868,
+          "mean_ms": 11.0778313,
+          "median_ms": 6.1277455,
+          "min_ms": 2.3998839999999997
+        }
+      },
+      "synth-iv-60k-c1-none-n1000-s0": {
+        "crossover": {
+          "reads_only": {
+            "recompute_on_read": {
+              "mean": {
+                "between": [
+                  10,
+                  100
+                ],
+                "k_star": 14.103708880887964,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 9.42971123615545,
+                "kind": "interpolated"
+              }
+            },
+            "regime_gain": {
+              "mean": {
+                "kind": "ratio",
+                "value": 2.424171014167577
+              },
+              "median": {
+                "kind": "ratio",
+                "value": 2.690811310953501
+              }
+            },
+            "tgms_check": {
+              "mean": {
+                "between": [
+                  10,
+                  100
+                ],
+                "k_star": 34.18980226130644,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  10,
+                  100
+                ],
+                "k_star": 25.373573653272402,
+                "kind": "interpolated"
+              }
+            }
+          },
+          "with_apply": {
+            "recompute_on_read": {
+              "mean": {
+                "between": [
+                  10,
+                  100
+                ],
+                "k_star": 13.61498581570913,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  1,
+                  10
+                ],
+                "k_star": 8.836555712079107,
+                "kind": "interpolated"
+              }
+            },
+            "regime_gain": {
+              "mean": {
+                "kind": "ratio",
+                "value": 2.4086082687991874
+              },
+              "median": {
+                "kind": "ratio",
+                "value": 2.7906618844778364
+              }
+            },
+            "tgms_check": {
+              "mean": {
+                "between": [
+                  10,
+                  100
+                ],
+                "k_star": 32.79316741530066,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  10,
+                  100
+                ],
+                "k_star": 24.65983921576407,
+                "kind": "interpolated"
+              }
+            }
+          },
+          "with_apply_tgms_kind": "estimate (record on_demand_ms + reference apply)"
+        },
+        "n_registered": 884,
+        "per_k": {
+          "1": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 80.89342713356018,
+                "mean_ms": 7.320307218469679,
+                "median_ms": 3.3353446051478386,
+                "min_ms": 2.7168886736035347
+              },
+              "batches": 20,
+              "k_effective": 1,
+              "median_ms_per_read": 5.920427851378918,
+              "ms_per_read_mean": 20.957258413545787,
+              "reads": 20,
+              "reads_only": {
+                "max_ms": 135.81377314403653,
+                "mean_ms": 20.957258413545787,
+                "median_ms": 5.920427851378918,
+                "min_ms": 2.7911891229450703
+              },
+              "refreshes": 20,
+              "with_apply": {
+                "max_ms": 138.87693919241428,
+                "mean_ms": 28.277565632015467,
+                "median_ms": 9.812646778300405,
+                "min_ms": 6.091077346354723
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control": {
+              "apply_ms": {
+                "max_ms": 78.33806239068508,
+                "mean_ms": 6.997423362918198,
+                "median_ms": 3.0254230368882418,
+                "min_ms": 2.6554837822914124
+              },
+              "batches": 20,
+              "k_effective": 1,
+              "median_ms_per_read": 4.3340991251170635,
+              "ms_per_read_mean": 8.440288971178234,
+              "reads": 20,
+              "reads_only": {
+                "max_ms": 54.507213179022074,
+                "mean_ms": 8.440288971178234,
+                "median_ms": 4.3340991251170635,
+                "min_ms": 3.445412963628769
+              },
+              "refreshes": 6,
+              "with_apply": {
+                "max_ms": 88.57987029477954,
+                "mean_ms": 15.437712334096432,
+                "median_ms": 7.753165904432535,
+                "min_ms": 6.161012686789036
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control_vs_record_median_reads_only": 0.8900447819162897,
+            "check_record": {
+              "batches": 20,
+              "k_effective": 1,
+              "median_ms_per_read": 4.869529278948903,
+              "ms_per_read_mean": 8.185176458209753,
+              "reads": 20,
+              "reads_only": {
+                "max_ms": 54.76888222619891,
+                "mean_ms": 8.185176458209753,
+                "median_ms": 4.869529278948903,
+                "min_ms": 3.38187487795949
+              },
+              "refreshes": 6,
+              "with_apply": {
+                "max_ms": 88.57814129441977,
+                "mean_ms": 15.182599821127951,
+                "median_ms": 8.148056920617819,
+                "min_ms": 6.143427919596434
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 1,
+            "ratio_always_to_check_median_reads_only": 1.215811120999534
+          },
+          "10": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 75.59888111427426,
+                "mean_ms": 7.0895291632041335,
+                "median_ms": 3.4731298219412565,
+                "min_ms": 2.8108819387853146
+              },
+              "batches": 20,
+              "k_effective": 10,
+              "median_ms_per_read": 12.073794659227133,
+              "ms_per_read_mean": 13.97108499892056,
+              "reads": 200,
+              "reads_only": {
+                "max_ms": 475.44493805617094,
+                "mean_ms": 139.7108499892056,
+                "median_ms": 120.73794659227133,
+                "min_ms": 46.08237696811557
+              },
+              "refreshes": 200,
+              "with_apply": {
+                "max_ms": 478.47642097622156,
+                "mean_ms": 146.80037915240973,
+                "median_ms": 128.85072827339172,
+                "min_ms": 49.13145815953612
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 20,
+              "k_effective": 10,
+              "median_ms_per_read": 4.8384747467935085,
+              "ms_per_read_mean": 7.801081307698041,
+              "reads": 200,
+              "reads_only": {
+                "max_ms": 440.3961356729269,
+                "mean_ms": 78.01081307698041,
+                "median_ms": 48.384747467935085,
+                "min_ms": 5.2914367988705635
+              },
+              "refreshes": 58,
+              "with_apply": {
+                "max_ms": 443.7333485111594,
+                "mean_ms": 85.00823643989861,
+                "median_ms": 51.19234626181424,
+                "min_ms": 9.443271905183792
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 10,
+            "ratio_always_to_check_median_reads_only": 2.4953720523659904
+          },
+          "100": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 78.28778121620417,
+                "mean_ms": 6.9899816531687975,
+                "median_ms": 3.231543581932783,
+                "min_ms": 2.6682079769670963
+              },
+              "batches": 20,
+              "k_effective": 100,
+              "median_ms_per_read": 13.701064446941018,
+              "ms_per_read_mean": 14.445352122653276,
+              "reads": 2000,
+              "reads_only": {
+                "max_ms": 1893.9724899828434,
+                "mean_ms": 1444.5352122653276,
+                "median_ms": 1370.1064446941018,
+                "min_ms": 924.2519638501108
+              },
+              "refreshes": 2000,
+              "with_apply": {
+                "max_ms": 1896.6406979598105,
+                "mean_ms": 1451.5251939184964,
+                "median_ms": 1373.4733483288437,
+                "min_ms": 927.1910800598562
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 20,
+              "k_effective": 100,
+              "median_ms_per_read": 4.293629536405206,
+              "ms_per_read_mean": 5.289290358778089,
+              "reads": 2000,
+              "reads_only": {
+                "max_ms": 1312.1334500610828,
+                "mean_ms": 528.9290358778089,
+                "median_ms": 429.3629536405206,
+                "min_ms": 113.15783392637968
+              },
+              "refreshes": 488,
+              "with_apply": {
+                "max_ms": 1315.4706628993154,
+                "mean_ms": 535.9264592407271,
+                "median_ms": 433.48252959549427,
+                "min_ms": 116.15764582529664
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 100,
+            "ratio_always_to_check_median_reads_only": 3.1910215659667935
+          },
+          "1000": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 75.87648509070277,
+                "mean_ms": 6.812250637449324,
+                "median_ms": 3.1590808648616076,
+                "min_ms": 2.3795408196747303
+              },
+              "batches": 20,
+              "k_effective": 884,
+              "median_ms_per_read": 15.292119310654666,
+              "ms_per_read_mean": 15.279274570810443,
+              "reads": 17680,
+              "reads_only": {
+                "max_ms": 13656.890044920146,
+                "mean_ms": 13506.878720596433,
+                "median_ms": 13518.233470618725,
+                "min_ms": 13304.08649891615
+              },
+              "refreshes": 17680,
+              "with_apply": {
+                "max_ms": 13659.81444902718,
+                "mean_ms": 13513.690971233882,
+                "median_ms": 13521.462941076607,
+                "min_ms": 13306.639663875103
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control": {
+              "apply_ms": {
+                "max_ms": 76.87491085380316,
+                "mean_ms": 7.027988648042083,
+                "median_ms": 3.388794371858239,
+                "min_ms": 2.3376229219138622
+              },
+              "batches": 20,
+              "k_effective": 884,
+              "median_ms_per_read": 6.424110541088565,
+              "ms_per_read_mean": 5.91382639992527,
+              "reads": 17680,
+              "reads_only": {
+                "max_ms": 9405.958125833422,
+                "mean_ms": 5227.822537533939,
+                "median_ms": 5678.913718322292,
+                "min_ms": 1176.3727078214288
+              },
+              "refreshes": 4316,
+              "with_apply": {
+                "max_ms": 9482.833036687225,
+                "mean_ms": 5234.850526181981,
+                "median_ms": 5682.0687090512365,
+                "min_ms": 1179.389776661992
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_control_vs_record_median_reads_only": 1.0191375616828104,
+            "check_record": {
+              "batches": 20,
+              "k_effective": 884,
+              "median_ms_per_read": 6.30347735440249,
+              "ms_per_read_mean": 5.782781128520862,
+              "reads": 17680,
+              "reads_only": {
+                "max_ms": 9229.463913943619,
+                "mean_ms": 5111.978517612442,
+                "median_ms": 5572.273981291801,
+                "min_ms": 1155.6357420049608
+              },
+              "refreshes": 4316,
+              "with_apply": {
+                "max_ms": 9307.801976334304,
+                "mean_ms": 5118.975940975361,
+                "median_ms": 5575.542206643149,
+                "min_ms": 1158.6132748052478
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 884,
+            "ratio_always_to_check_median_reads_only": 2.425981478298531
+          }
+        },
+        "per_read_at_n": {
+          "ratio_recompute_to_tgms": 2.425981478298531,
+          "ratio_recompute_to_tgms_mean": 2.6422017764865022,
+          "recompute_on_read_mean": 15.279274570810443,
+          "recompute_on_read_median": 15.292119310654666,
+          "tgms_check_record_mean": 5.782781128520862,
+          "tgms_check_record_median": 6.30347735440249
+        },
+        "view_per_burst": {
+          "bursts": 20,
+          "max_ms": 822.603249,
+          "mean_ms": 199.20662025000001,
+          "median_ms": 113.4624865,
+          "min_ms": 4.5345200000000006
+        }
+      },
+      "synth-iv-60k-c1-none-n10000-s0": {
+        "crossover": {
+          "reads_only": {
+            "recompute_on_read": {
+              "mean": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 335.4915118957134,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 337.2014991022936,
+                "kind": "interpolated"
+              }
+            },
+            "regime_gain": {
+              "mean": {
+                "kind": "ratio",
+                "value": 2.1019362951279974
+              },
+              "median": {
+                "kind": "ratio",
+                "value": 1.6076701360830057
+              }
+            },
+            "tgms_check": {
+              "mean": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 705.1817855609663,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 542.1087799491779,
+                "kind": "interpolated"
+              }
+            }
+          },
+          "with_apply": {
+            "recompute_on_read": {
+              "mean": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 334.3904762566849,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 335.1600856765647,
+                "kind": "interpolated"
+              }
+            },
+            "regime_gain": {
+              "mean": {
+                "kind": "ratio",
+                "value": 2.1018822928171024
+              },
+              "median": {
+                "kind": "ratio",
+                "value": 1.6058038449952687
+              }
+            },
+            "tgms_check": {
+              "mean": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 702.8494209306036,
+                "kind": "interpolated"
+              },
+              "median": {
+                "between": [
+                  100,
+                  1000
+                ],
+                "k_star": 538.2013542683712,
+                "kind": "interpolated"
+              }
+            }
+          },
+          "with_apply_tgms_kind": "estimate (record on_demand_ms + reference apply)"
+        },
+        "n_registered": 8922,
+        "per_k": {
+          "1": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 77.20856973901391,
+                "mean_ms": 17.827808298170567,
+                "median_ms": 3.1230831518769264,
+                "min_ms": 2.6367097161710262
+              },
+              "batches": 5,
+              "k_effective": 1,
+              "median_ms_per_read": 7.573970127850771,
+              "ms_per_read_mean": 13.060513604432344,
+              "reads": 5,
+              "reads_only": {
+                "max_ms": 34.182545728981495,
+                "mean_ms": 13.060513604432344,
+                "median_ms": 7.573970127850771,
+                "min_ms": 5.830596201121807
+              },
+              "refreshes": 5,
+              "with_apply": {
+                "max_ms": 88.13846064731479,
+                "mean_ms": 30.88832190260291,
+                "median_ms": 10.697053279727697,
+                "min_ms": 8.82697431370616
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 5,
+              "k_effective": 1,
+              "median_ms_per_read": 4.982191137969494,
+              "ms_per_read_mean": 5.0208901055157185,
+              "reads": 5,
+              "reads_only": {
+                "max_ms": 5.413805600255728,
+                "mean_ms": 5.0208901055157185,
+                "median_ms": 4.982191137969494,
+                "min_ms": 4.794260952621698
+              },
+              "refreshes": 0,
+              "with_apply": {
+                "max_ms": 82.00283069163561,
+                "mean_ms": 22.848698403686285,
+                "median_ms": 7.993446197360754,
+                "min_ms": 7.680539507418871
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 1,
+            "ratio_always_to_check_median_reads_only": 1.5202086628369629
+          },
+          "10": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 79.48180427774787,
+                "mean_ms": 18.535144720226526,
+                "median_ms": 3.1876591965556145,
+                "min_ms": 2.752893138676882
+              },
+              "batches": 5,
+              "k_effective": 10,
+              "median_ms_per_read": 9.705244936048985,
+              "ms_per_read_mean": 17.242159908637404,
+              "reads": 50,
+              "reads_only": {
+                "max_ms": 337.30481611564755,
+                "mean_ms": 172.42159908637404,
+                "median_ms": 97.05244936048985,
+                "min_ms": 81.69828308746219
+              },
+              "refreshes": 50,
+              "with_apply": {
+                "max_ms": 340.31643718481064,
+                "mean_ms": 190.95674380660057,
+                "median_ms": 161.89476614817977,
+                "min_ms": 84.45117622613907
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 5,
+              "k_effective": 10,
+              "median_ms_per_read": 2.9657650738954544,
+              "ms_per_read_mean": 8.650878863409162,
+              "reads": 50,
+              "reads_only": {
+                "max_ms": 320.7137491554022,
+                "mean_ms": 86.50878863409162,
+                "median_ms": 29.657650738954544,
+                "min_ms": 15.797993168234825
+              },
+              "refreshes": 11,
+              "with_apply": {
+                "max_ms": 323.71012726798654,
+                "mean_ms": 104.33659693226218,
+                "median_ms": 43.988960795104504,
+                "min_ms": 28.196599800139666
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 10,
+            "ratio_always_to_check_median_reads_only": 3.272425392514789
+          },
+          "100": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 76.8892620690167,
+                "mean_ms": 18.055592011660337,
+                "median_ms": 3.3947331830859184,
+                "min_ms": 2.9011517763137817
+              },
+              "batches": 5,
+              "k_effective": 100,
+              "median_ms_per_read": 14.588233740068972,
+              "ms_per_read_mean": 15.88409649580717,
+              "reads": 500,
+              "reads_only": {
+                "max_ms": 2681.0208573006094,
+                "mean_ms": 1588.409649580717,
+                "median_ms": 1458.8233740068972,
+                "min_ms": 1049.186043906957
+              },
+              "refreshes": 500,
+              "with_apply": {
+                "max_ms": 2684.1424703598022,
+                "mean_ms": 1606.4652415923774,
+                "median_ms": 1502.9275505803525,
+                "min_ms": 1052.5807770900428
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 5,
+              "k_effective": 100,
+              "median_ms_per_read": 7.315871170721948,
+              "ms_per_read_mean": 8.33040788397193,
+              "reads": 500,
+              "reads_only": {
+                "max_ms": 2153.1296162866056,
+                "mean_ms": 833.040788397193,
+                "median_ms": 731.5871170721948,
+                "min_ms": 144.22751916572452
+              },
+              "refreshes": 114,
+              "with_apply": {
+                "max_ms": 2155.7663260027766,
+                "mean_ms": 850.8685966953635,
+                "median_ms": 808.7956868112087,
+                "min_ms": 147.35060231760144
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 100,
+            "ratio_always_to_check_median_reads_only": 1.9940528475201906
+          },
+          "1000": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 78.28249782323837,
+                "mean_ms": 18.211305234581232,
+                "median_ms": 3.085625823587179,
+                "min_ms": 2.8347261250019073
+              },
+              "batches": 5,
+              "k_effective": 1000,
+              "median_ms_per_read": 16.258094233926386,
+              "ms_per_read_mean": 16.380419943947345,
+              "reads": 5000,
+              "reads_only": {
+                "max_ms": 18134.654892142862,
+                "mean_ms": 16380.419943947345,
+                "median_ms": 16258.094233926386,
+                "min_ms": 14855.036473367363
+              },
+              "refreshes": 5000,
+              "with_apply": {
+                "max_ms": 18137.489618267864,
+                "mean_ms": 16398.631249181926,
+                "median_ms": 16261.875544209033,
+                "min_ms": 14858.108839485794
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 5,
+              "k_effective": 1000,
+              "median_ms_per_read": 10.152168778702617,
+              "ms_per_read_mean": 7.712337129749358,
+              "reads": 5000,
+              "reads_only": {
+                "max_ms": 12717.365037184209,
+                "mean_ms": 7712.337129749358,
+                "median_ms": 10152.168778702617,
+                "min_ms": 1526.8120258115232
+              },
+              "refreshes": 1214,
+              "with_apply": {
+                "max_ms": 12720.361415296793,
+                "mean_ms": 7730.164938047528,
+                "median_ms": 10154.805488418788,
+                "min_ms": 1529.9351089634001
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 1000,
+            "ratio_always_to_check_median_reads_only": 1.6014404989043205
+          },
+          "10000": {
+            "always": {
+              "apply_ms": {
+                "max_ms": 81.56579872593284,
+                "mean_ms": 18.665116000920534,
+                "median_ms": 2.8426400385797024,
+                "min_ms": 2.555444370955229
+              },
+              "batches": 5,
+              "k_effective": 8922,
+              "median_ms_per_read": 15.876404525107953,
+              "ms_per_read_mean": 15.875093588781725,
+              "reads": 44610,
+              "reads_only": {
+                "max_ms": 142181.53002718464,
+                "mean_ms": 141637.58499911055,
+                "median_ms": 141649.28117301315,
+                "min_ms": 141037.29557991028
+              },
+              "refreshes": 44610,
+              "with_apply": {
+                "max_ms": 142184.37266722322,
+                "mean_ms": 141656.25011511147,
+                "median_ms": 141651.93533711135,
+                "min_ms": 141041.0031126812
+              },
+              "with_apply_kind": "measured"
+            },
+            "check_record": {
+              "batches": 5,
+              "k_effective": 8922,
+              "median_ms_per_read": 10.5604857067617,
+              "ms_per_read_mean": 6.9217070158027365,
+              "reads": 44610,
+              "reads_only": {
+                "max_ms": 95041.81485902518,
+                "mean_ms": 61755.46999499202,
+                "median_ms": 94220.65347572789,
+                "min_ms": 12557.951793074608
+              },
+              "refreshes": 10813,
+              "with_apply": {
+                "max_ms": 95044.45156874135,
+                "mean_ms": 61773.29780329019,
+                "median_ms": 94223.64985384047,
+                "min_ms": 12561.126093845814
+              },
+              "with_apply_kind": "estimate"
+            },
+            "k_effective": 8922,
+            "ratio_always_to_check_median_reads_only": 1.5033782503907525
+          }
+        },
+        "per_read_at_n": {
+          "ratio_recompute_to_tgms": 1.5033782503907525,
+          "ratio_recompute_to_tgms_mean": 2.2935229059158075,
+          "recompute_on_read_mean": 15.875093588781725,
+          "recompute_on_read_median": 15.876404525107953,
+          "tgms_check_record_mean": 6.9217070158027365,
+          "tgms_check_record_median": 10.5604857067617
+        },
+        "view_per_burst": {
+          "bursts": 5,
+          "max_ms": 7007.993114999999,
+          "mean_ms": 5458.8461698,
+          "median_ms": 5359.278078,
+          "min_ms": 4428.693572
+        }
+      }
+    },
+    "prediction_inputs": {
+      "collegemsg-c1-none-n1000-s0": {
+        "falsifier_per_k_recompute_over_tgms_median_reads_only": {
+          "1": 0.6429491863846202,
+          "10": 1.7869774542076857,
+          "100": 3.9031731760238757,
+          "1000": 3.525625101660666
+        },
+        "p1_recompute_ms_per_read_at_k_N": {
+          "band": [
+            0.7,
+            1.3
+          ],
+          "mean_total_over_reads": 3.3063646338628785,
+          "median_of_ratios": 3.2687174047620635,
+          "ratio_mean_to_reference": 0.9724601864302584,
+          "ratio_median_to_reference": 0.9613874719888422,
+          "reference_per_artifact_refresh_ms": 3.4
+        },
+        "p2_tgms_cheaper_per_read_at_k_N": {
+          "min_ratio": 2.5,
+          "recompute_over_tgms_ratio": 3.5256251016606655,
+          "recompute_over_tgms_ratio_mean": 3.1807753426208096,
+          "tgms_ms_per_read_on_record_per_preregistration": 0.93
+        },
+        "p3_per_burst_at_k_1_median_reads_only": {
+          "recompute_on_read_mean_ms": 3.1667946837842464,
+          "recompute_on_read_ms": 3.168663941323757,
+          "tgms_check_record_mean_ms": 5.343814636580646,
+          "tgms_check_record_ms": 4.928327165544033
+        },
+        "p4_crossover_and_gain_median_reads_only": {
+          "gain_bound": [
+            "below",
+            1.5
+          ],
+          "predicted_recompute_k_star": 1.8,
+          "recompute_on_read_k_star": {
+            "between": [
+              1,
+              10
+            ],
+            "k_star": 2.265606590238181,
+            "kind": "interpolated"
+          },
+          "regime_gain": {
+            "kind": "ratio",
+            "value": 0.9940958537934885
+          },
+          "tgms_check_k_star": {
+            "between": [
+              1,
+              10
+            ],
+            "k_star": 2.252230117682979,
+            "kind": "interpolated"
+          }
+        }
+      },
+      "synth-iv-60k-c1-none-n1000-s0": {
+        "falsifier_per_k_recompute_over_tgms_median_reads_only": {
+          "1": 1.215811120999534,
+          "10": 2.4953720523659904,
+          "100": 3.1910215659667935,
+          "1000": 2.425981478298531
+        },
+        "p1_recompute_ms_per_read_at_k_N": {
+          "band": [
+            0.7,
+            1.3
+          ],
+          "mean_total_over_reads": 15.279274570810443,
+          "median_of_ratios": 15.292119310654666,
+          "ratio_mean_to_reference": 0.9986453967849962,
+          "ratio_median_to_reference": 0.9994849222650108,
+          "reference_per_artifact_refresh_ms": 15.3
+        },
+        "p2_tgms_cheaper_per_read_at_k_N": {
+          "min_ratio": 2.0,
+          "recompute_over_tgms_ratio": 2.425981478298531,
+          "recompute_over_tgms_ratio_mean": 2.6422017764865022,
+          "tgms_ms_per_read_on_record_per_preregistration": 6.3
+        },
+        "p3_per_burst_at_k_1_median_reads_only": {
+          "recompute_on_read_mean_ms": 20.957258413545787,
+          "recompute_on_read_ms": 5.920427851378918,
+          "tgms_check_record_mean_ms": 8.185176458209753,
+          "tgms_check_record_ms": 4.869529278948903
+        },
+        "p4_crossover_and_gain_median_reads_only": {
+          "gain_bound": [
+            "at_least",
+            2.5
+          ],
+          "predicted_recompute_k_star": 7.0,
+          "recompute_on_read_k_star": {
+            "between": [
+              1,
+              10
+            ],
+            "k_star": 9.42971123615545,
+            "kind": "interpolated"
+          },
+          "regime_gain": {
+            "kind": "ratio",
+            "value": 2.690811310953501
+          },
+          "tgms_check_k_star": {
+            "between": [
+              10,
+              100
+            ],
+            "k_star": 25.373573653272402,
+            "kind": "interpolated"
+          }
+        }
+      },
+      "synth-iv-60k-c1-none-n10000-s0": {
+        "falsifier_per_k_recompute_over_tgms_median_reads_only": {
+          "1": 1.5202086628369629,
+          "10": 3.272425392514789,
+          "100": 1.9940528475201906,
+          "1000": 1.6014404989043205,
+          "10000": 1.5033782503907525
+        },
+        "p1_recompute_ms_per_read_at_k_N": {
+          "band": [
+            0.7,
+            1.3
+          ],
+          "mean_total_over_reads": 15.875093588781725,
+          "median_of_ratios": 15.876404525107953,
+          "ratio_mean_to_reference": 1.01438297691896,
+          "ratio_median_to_reference": 1.0144667428183995,
+          "reference_per_artifact_refresh_ms": 15.65
+        },
+        "p2_tgms_cheaper_per_read_at_k_N": {
+          "min_ratio": 2.0,
+          "recompute_over_tgms_ratio": 1.5033782503907525,
+          "recompute_over_tgms_ratio_mean": 2.2935229059158075,
+          "tgms_ms_per_read_on_record_per_preregistration": 10.56
+        },
+        "p3_per_burst_at_k_1_median_reads_only": {
+          "recompute_on_read_mean_ms": 13.060513604432344,
+          "recompute_on_read_ms": 7.573970127850771,
+          "tgms_check_record_mean_ms": 5.0208901055157185,
+          "tgms_check_record_ms": 4.982191137969494
+        },
+        "p4_crossover_and_gain_median_reads_only": {
+          "gain_bound": [
+            "at_least",
+            1.5
+          ],
+          "predicted_recompute_k_star": 340.0,
+          "recompute_on_read_k_star": {
+            "between": [
+              100,
+              1000
+            ],
+            "k_star": 337.2014991022936,
+            "kind": "interpolated"
+          },
+          "regime_gain": {
+            "kind": "ratio",
+            "value": 1.6076701360830057
+          },
+          "tgms_check_k_star": {
+            "between": [
+              100,
+              1000
+            ],
+            "k_star": 542.1087799491779,
+            "kind": "interpolated"
+          }
+        }
+      }
+    },
+    "same_log_digest_across_the_cells_runs": {
+      "store collegemsg (collegemsg-c1-none-n1000-s0, eventlog sha256 at run end)": true,
+      "store synth-iv-60k (synth-iv-60k-c1-none-n1000-s0, eventlog sha256 at run end)": true,
+      "store synth-iv-60k (synth-iv-60k-c1-none-n10000-s0, eventlog sha256 at run end)": true
+    },
+    "smoke_untimed": {
+      "always": {
+        "k1": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 0,
+            "correction_apply_ms": 13.648726046085358,
+            "on_demand_ms": 3.218831028789282,
+            "reads": 1,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 0,
+            "correction_apply_ms": 3.0195051804184914,
+            "on_demand_ms": 2.98104016110301,
+            "reads": 1,
+            "refreshes": 1
+          }
+        ],
+        "k10": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 0,
+            "correction_apply_ms": 13.585933018475771,
+            "on_demand_ms": 34.87659525126219,
+            "reads": 10,
+            "refreshes": 10
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 0,
+            "correction_apply_ms": 3.174116834998131,
+            "on_demand_ms": 36.14889783784747,
+            "reads": 10,
+            "refreshes": 10
+          }
+        ]
+      },
+      "check": {
+        "k1": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "correction_apply_ms": 13.47628328949213,
+            "on_demand_ms": 6.1874110251665115,
+            "reads": 1,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "correction_apply_ms": 3.3082659356296062,
+            "on_demand_ms": 3.5758824087679386,
+            "reads": 1,
+            "refreshes": 0
+          }
+        ],
+        "k10": [
+          {
+            "batch_index": 0,
+            "check_cache_misses": 1,
+            "correction_apply_ms": 13.48907221108675,
+            "on_demand_ms": 8.762059733271599,
+            "reads": 10,
+            "refreshes": 1
+          },
+          {
+            "batch_index": 1,
+            "check_cache_misses": 1,
+            "correction_apply_ms": 3.793490119278431,
+            "on_demand_ms": 12.242753989994526,
+            "reads": 10,
+            "refreshes": 2
+          }
+        ]
+      },
+      "note": "untimed (nice 19), collegemsg N = 10^3, 2 batches, the committed flags; not the record's measurement. Under the check policy the counts reproduce the axis B smoke (refreshes 1, 0 at k = 1; 1, 2 at k = 10); under always every drawn artifact is refreshed (k per batch) and no check runs."
+    }
+  },
+  "timestamp_utc": "2026-10-30T10:58:58Z"
+}
