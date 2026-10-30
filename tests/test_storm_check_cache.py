@@ -36,13 +36,16 @@ BACKEND = "native"
 ROOT = Path(__file__).resolve().parent.parent
 N_ARTIFACTS, SEED, N_BATCHES = 15, 4, 4
 
-#: `BatchResult.to_json()`'s top-level keys before the setting existed.
+#: `BatchResult.to_json()`'s top-level keys before the setting existed, plus
+#: `correction_apply_ms` (the correction's own write timing, on every row
+#: since the on-demand read policy landed; a timing, so scrubbed below).
 PRE_SETTING_ROW_KEYS = {
     "batch_index", "correction_class", "correction_generator", "correction_placement",
     "n_registered", "intersects_calls", "candidate_survivors", "lookup_wall_ms",
     "global_recompute_wall_ms", "changed_count", "changed", "refused_count", "arms",
     "ttf_mode", "age_vt_meaningful", "log_bytes", "log_records", "registry_bytes",
     "correction_identities", "correction_vt", "correction_disc", "correction_eid",
+    "correction_apply_ms",
 }
 
 
@@ -76,7 +79,7 @@ def _copy(pristine: Path) -> Path:
 def _non_timing(row: dict[str, Any]) -> dict[str, Any]:
     out = {k: v for k, v in row.items()
            if k not in ("lookup_wall_ms", "global_recompute_wall_ms",
-                        "check_cache", "check_cache_misses")}
+                        "correction_apply_ms", "check_cache", "check_cache_misses")}
     out["arms"] = {
         arm: {k: (v is None if k == "ttf_ms" else v) for k, v in a.items()
               if k not in ("check_wall_ms", "refresh_wall_ms")}

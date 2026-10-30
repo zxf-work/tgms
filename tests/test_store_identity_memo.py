@@ -239,7 +239,7 @@ def _build_fixture(store_dir: Path) -> None:
 
 def _non_timing(row: dict[str, Any]) -> dict[str, Any]:
     out = {k: v for k, v in row.items()
-           if k not in ("lookup_wall_ms", "global_recompute_wall_ms")}
+           if k not in ("lookup_wall_ms", "global_recompute_wall_ms", "correction_apply_ms")}
     out["arms"] = {
         arm: {k: (v is None if k == "ttf_ms" else v) for k, v in a.items()
               if k not in ("check_wall_ms", "refresh_wall_ms")}

@@ -18,7 +18,16 @@ pins:
 4. at k = every registered artifact, the mode refreshes exactly the
    artifacts the tgms-L1 arm invalidates (the pre-filter's non-survivors
    all check fresh);
-5. k < 1 is refused, and k above the registered count is clamped.
+5. k < 1 is refused, and k above the registered count is clamped;
+6. the read policy (`refresh_on_read_policy`, CLI
+   `--refresh-on-read-policy`): `"check"` (the default) writes rows with
+   exactly the fields and bytes the mode had before the policy existed, and
+   `"always"` (recompute on read) refreshes every drawn artifact without a
+   single `check_artifact` call, changes nothing else, and adds only
+   `on_demand_policy`;
+7. `correction_apply_ms` (the correction's own write, outside every other
+   interval) is on every row, mode on or off, and is the only field a
+   mode-off row gained.
 """
 
 from __future__ import annotations
@@ -39,6 +48,9 @@ N_ARTIFACTS, SEED, N_BATCHES = 15, 4, 4
 
 ON_DEMAND_KEYS = {"on_demand_k", "on_demand_ms", "on_demand_reads", "on_demand_refreshes",
                   "on_demand_refresh_errors", "on_demand_check_cache_misses"}
+POLICY_KEYS = {"on_demand_policy"}
+#: the one field every row gained with the policy (a timing, never a digest input)
+APPLY_KEY = "correction_apply_ms"
 
 
 def _build_fixture(store_dir: Path) -> None:
@@ -70,8 +82,9 @@ def _copy(pristine: Path) -> Path:
 
 def _non_timing(row: dict[str, Any]) -> dict[str, Any]:
     out = {k: v for k, v in row.items()
-           if k not in ("lookup_wall_ms", "global_recompute_wall_ms", "check_cache_misses")
-           and k not in ON_DEMAND_KEYS}
+           if k not in ("lookup_wall_ms", "global_recompute_wall_ms", "check_cache_misses",
+                        APPLY_KEY)
+           and k not in ON_DEMAND_KEYS and k not in POLICY_KEYS}
     out["arms"] = {
         arm: {k: (v is None if k == "ttf_ms" else v) for k, v in a.items()
               if k not in ("check_wall_ms", "refresh_wall_ms")}
@@ -82,9 +95,11 @@ def _non_timing(row: dict[str, Any]) -> dict[str, Any]:
 
 def _run(pristine: Path, *, k: int | None, measure_ttf: str = "sum",
          check_cache: str = "none", n_artifacts: int = N_ARTIFACTS,
+         policy: str | None = None,
          ) -> tuple[list[dict[str, Any]], bytes, bytes, Storm]:
+    extra = {} if policy is None else {"refresh_on_read_policy": policy}
     storm = Storm(_copy(pristine), n_artifacts=n_artifacts, seed=SEED, backend=BACKEND,
-                  measure_ttf=measure_ttf, check_cache=check_cache, refresh_on_read=k)
+                  measure_ttf=measure_ttf, check_cache=check_cache, refresh_on_read=k, **extra)
     try:
         results = storm.run(N_BATCHES)
         rows = [r.to_json() for r in results]
@@ -113,6 +128,7 @@ def test_the_mode_changes_nothing_but_its_own_fields(
     assert log_on == log_off
     for r_on, r_off in zip(on, off):
         assert set(r_on) - set(r_off) <= ON_DEMAND_KEYS
+        assert APPLY_KEY in r_on and APPLY_KEY in r_off
         assert set(r_off) <= set(r_on)
     assert storm_off.on_demand_cache is None
 
@@ -120,7 +136,7 @@ def test_the_mode_changes_nothing_but_its_own_fields(
 def test_mode_off_rows_and_summary_carry_no_new_keys(pristine_store: Path) -> None:
     rows, _, _, storm = _run(pristine_store, k=None)
     for row in rows:
-        assert not (set(row) & ON_DEMAND_KEYS)
+        assert not (set(row) & (ON_DEMAND_KEYS | POLICY_KEYS))
     assert "on_demand" not in storm.summary  # type: ignore[attr-defined]
 
 
@@ -173,3 +189,120 @@ def test_the_reads_of_one_interval_share_one_validation_per_log_state(
     assert reads >= 4 * N_BATCHES
     assert cache.fingerprints <= 2 * N_BATCHES + 2
     assert cache.hits >= reads - N_BATCHES
+
+
+# -- the read policy (recompute on read) ---------------------------------------
+
+
+def _count_checks(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Patch `check_artifact` (as the storm module sees it) to count its
+    calls into the returned one-element list, which the caller resets."""
+    import tgms.eval.storm as storm_mod
+
+    count = [0]
+    real = storm_mod.check_artifact
+
+    def counting(*a: Any, **kw: Any) -> Any:
+        count[0] += 1
+        return real(*a, **kw)
+
+    monkeypatch.setattr(storm_mod, "check_artifact", counting)
+    return count
+
+
+@pytest.mark.parametrize("measure_ttf,check_cache", [("sum", "none"), ("end-to-end", "chain")])
+def test_the_default_policy_writes_the_rows_the_mode_always_wrote(
+    pristine_store: Path, measure_ttf: str, check_cache: str,
+) -> None:
+    implicit, reg_a, log_a, _ = _run(pristine_store, k=5, measure_ttf=measure_ttf,
+                                     check_cache=check_cache)
+    explicit, reg_b, log_b, _ = _run(pristine_store, k=5, measure_ttf=measure_ttf,
+                                     check_cache=check_cache, policy="check")
+    assert reg_a == reg_b and log_a == log_b
+    for a, b in zip(implicit, explicit):
+        # same keys in the same order, no policy key, every non-timing value equal
+        assert list(a) == list(b)
+        assert not (set(a) & POLICY_KEYS)
+        for key in ("on_demand_k", "on_demand_reads", "on_demand_refreshes",
+                    "on_demand_refresh_errors"):
+            assert a[key] == b[key]
+        assert _non_timing(a) == _non_timing(b)
+    # and the keys are exactly the pre-policy ones plus the one apply timing
+    off, _, _, _ = _run(pristine_store, k=None, measure_ttf=measure_ttf, check_cache=check_cache)
+    assert set(implicit[0]) - set(off[0]) == ON_DEMAND_KEYS - (
+        set() if check_cache == "chain" else {"on_demand_check_cache_misses"})
+
+
+def test_always_refreshes_every_read_without_a_check_and_changes_nothing_else(
+    pristine_store: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    count = _count_checks(monkeypatch)
+    check, reg_c, log_c, _ = _run(pristine_store, k=5, check_cache="chain")
+    n_check_policy = count[0]
+    count[0] = 0
+    always, reg_a, log_a, storm = _run(pristine_store, k=5, check_cache="chain",
+                                       policy="always")
+    n_always_policy = count[0]
+    count[0] = 0
+    _run(pristine_store, k=None, check_cache="chain")
+    n_mode_off = count[0]
+    n_reg = len(storm.artifacts)
+    assert len(always) == len(check) == N_BATCHES
+    assert reg_a == reg_c and log_a == log_c
+    assert [_non_timing(r) for r in always] == [_non_timing(r) for r in check]
+    for r in always:
+        assert r["on_demand_policy"] == "always"
+        assert r["on_demand_reads"] == min(5, n_reg)
+        assert r["on_demand_refreshes"] == r["on_demand_reads"]  # every read, unconditionally
+        assert r["on_demand_refresh_errors"] == 0
+        assert r["on_demand_check_cache_misses"] == 0  # the interval never touches the cache
+        assert set(r) - set(check[0]) == POLICY_KEYS
+    # the same names are read: the draw does not depend on the policy
+    assert [r["on_demand_reads"] for r in always] == [r["on_demand_reads"] for r in check]
+    assert storm.summary["on_demand"]["policy"] == "always"  # type: ignore[attr-defined]
+    # not one check_artifact call in the interval: only the tgms arms' own
+    # (which run before it, and are the mode-off count) are left, while the
+    # "check" policy adds one call per read
+    assert n_always_policy == n_mode_off
+    assert n_check_policy == n_mode_off + sum(r["on_demand_reads"] for r in check)
+
+
+def test_always_at_every_artifact_is_never_cheaper_in_work_than_check(
+    pristine_store: Path,
+) -> None:
+    check, _, _, storm = _run(pristine_store, k=10_000, check_cache="chain")
+    always, _, _, _ = _run(pristine_store, k=10_000, check_cache="chain", policy="always")
+    n_reg = len(storm.artifacts)
+    for c, a in zip(check, always):
+        assert a["on_demand_refreshes"] == n_reg
+        assert c["on_demand_refreshes"] <= a["on_demand_refreshes"]
+
+
+def test_the_policy_is_validated(pristine_store: Path) -> None:
+    with pytest.raises(ValueError, match="refresh_on_read_policy"):
+        Storm(_copy(pristine_store), n_artifacts=2, seed=0, backend=BACKEND,
+              refresh_on_read=3, refresh_on_read_policy="sometimes")
+
+
+# -- the correction's own timing -----------------------------------------------
+
+
+def test_every_row_carries_the_correction_apply_timing(pristine_store: Path) -> None:
+    for k in (None, 5):
+        rows, _, _, _ = _run(pristine_store, k=k)
+        for row in rows:
+            assert isinstance(row[APPLY_KEY], float) and row[APPLY_KEY] > 0.0
+    # a BatchResult built without the field keeps its bytes (no key, not null)
+    from tgms.eval.storm import BatchResult
+
+    assert BatchResult.__dataclass_fields__[APPLY_KEY].default is None
+
+
+def test_the_apply_timing_is_zero_when_timing_is_off(pristine_store: Path) -> None:
+    storm = Storm(_copy(pristine_store), n_artifacts=N_ARTIFACTS, seed=SEED, backend=BACKEND,
+                  collect_timing=False)
+    try:
+        rows = [r.to_json() for r in storm.run(2)]
+    finally:
+        storm.close()
+    assert all(r[APPLY_KEY] == 0.0 for r in rows)
