@@ -62,6 +62,12 @@ skeleton --
       compute_axes_on_demand: axis B, the timed --refresh-on-read k runs and the
       crossover k* against the view's median per-burst cost; recAxesCrossoverK*,
       recAxesOnDemandMsPerRead*, recAxesOnDemandFirstCheckMs, recAxesViewPerBurstMs*
+  C7-ROR  benchmarks/external-v1/axes-recompute-on-read-2026-10-30.json (+ rows),
+      compute_axes_recompute_on_read: P-ROR, recompute on read (every read artifact
+      re-run and republished, no check) on the axis B protocol beside TGMS on demand;
+      recRorMsPerRead*, recRorCrossoverK{,Mean}*, recRorPerBurstMs{K1,KN}*,
+      recRorRegimeGain*, and from the axis B record recAxesCrossoverKMean* and, from the
+      same-day check controls, recAxesOnDemandWithAppendMs{K1,KN}*
   C7-R1C  benchmarks/external-v1/tgms-control-2026-10-30-r1c.json (+ rows, batches,
       checks), compute_external_r1c: the 19-cell same-host control re-run at the engine
       check-path changes (P-ENG2); recExt1ControlROneC* mirror the recExt1ControlArcFive*
@@ -594,6 +600,11 @@ EXTERNAL_AXES_STANDING_ROWS = EXTERNAL_V1 / "axes-standing-state-2026-10-30-rows
 # (P-AXES axis B, 2026-10-30)" section.
 EXTERNAL_AXES_ON_DEMAND = EXTERNAL_V1 / "axes-on-demand-2026-10-30.json"
 EXTERNAL_AXES_ON_DEMAND_ROWS = EXTERNAL_V1 / "axes-on-demand-2026-10-30-rows.jsonl"
+# P-ROR (2026-10-30, frozen 2026-10-30T07:56:05Z): recompute on read on the axis B
+# protocol (scripts/axes_recompute_on_read_record.py). See
+# benchmarks/external-v1/README.md's "Recompute on read (P-ROR, 2026-10-30)" section.
+EXTERNAL_AXES_ROR = EXTERNAL_V1 / "axes-recompute-on-read-2026-10-30.json"
+EXTERNAL_AXES_ROR_ROWS = EXTERNAL_V1 / "axes-recompute-on-read-2026-10-30-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 # Lane W2af: the per-cell equality-manifest sidecar (never read by any
 # function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
@@ -11676,6 +11687,164 @@ def compute_axes_on_demand(m: Macros) -> None:
           f"{where}: largest of the three cells' median on_demand_ms at k = 1")
 
 
+def _ror_ms_text(x: float) -> str:
+    return f"{x:.1f}" if x < 100 else tex_num(round(x), 4)
+
+
+def _ror_gain_text(tgms: tuple[str, float | None], ror: tuple[str, float | None]) -> str:
+    if tgms[0] == "interpolated" and ror[0] == "interpolated":
+        assert tgms[1] is not None and ror[1] is not None
+        g = tgms[1] / ror[1]
+        return f"{g:.1f}" if g < 100 else tex_num(round(g), 4)
+    return "undefined"
+
+
+def compute_axes_recompute_on_read(m: Macros) -> None:
+    """P-ROR: recompute on read (`--refresh-on-read-policy always`) beside TGMS on
+    demand on the axis B protocol. Recomputed from the rows of both records and the
+    view's rows, gated on all five files' sha256 and on the axis B record's own
+    crossover_mean. The check-policy numbers on the k grid are the axis B record's;
+    the same-day `check` controls (k = 1 and k = N on the two N = 10^3 cells) supply
+    the reads-plus-apply scope."""
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_AXES_ROR, EXTERNAL_AXES_ROR_ROWS, EXTERNAL_AXES_ON_DEMAND,
+                 EXTERNAL_AXES_ON_DEMAND_ROWS, EXTERNAL_IVM_ROWS):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry")
+    record = json.loads(EXTERNAL_AXES_ROR.read_text(encoding="utf-8"))
+    where = relpath(EXTERNAL_AXES_ROR)
+    eq(record["config"]["campaign"], "axes-recompute-on-read", f"{where}: config.campaign")
+    rows = load_jsonl(EXTERNAL_AXES_ROR_ROWS)
+    eq(record["result_digest"],
+       hashlib.sha256(json.dumps(rows, sort_keys=True).encode("utf-8")).hexdigest(),
+       f"{where}: result_digest == sha256 of the rows")
+    axes_record = json.loads(EXTERNAL_AXES_ON_DEMAND.read_text(encoding="utf-8"))
+    axes_rows = load_jsonl(EXTERNAL_AXES_ON_DEMAND_ROWS)
+    for key, path in (("axes_record", EXTERNAL_AXES_ON_DEMAND),
+                      ("axes_rows", EXTERNAL_AXES_ON_DEMAND_ROWS),
+                      ("view_rows", EXTERNAL_IVM_ROWS)):
+        eq(record["config"]["inputs_sha256"][key], sha256_file(path),
+           f"{where}: the {key} the record was assembled from is the one on file")
+    ivm = {r["cell_id"]: r for r in load_jsonl(EXTERNAL_IVM_ROWS)}
+    pc = record["summary"]["per_cell"]
+    apc = axes_record["summary"]["per_cell"]
+    out: dict[str, dict] = {}
+    for cell_id, grid in AXES_K_GRIDS.items():
+        w = f"{where}: {cell_id}"
+        view_vals = [b["refresh_plus_publish_ms"] for b in ivm[cell_id]["result"]["per_burst"]]
+        v_med, v_mean = statistics.median(view_vals), statistics.fmean(view_vals)
+        close_rel(pc[cell_id]["view_per_burst"]["median_ms"], v_med, 1e-12,
+                  f"{w}: view median per-burst cost == the view record's")
+        ks, a_med, a_mean, c_med, c_mean = [], [], [], [], []
+        a_per_read_at_n = c_per_read_at_n = None
+        for k in grid:
+            al = [r for r in rows if r["cell_id"] == cell_id and r["policy"] == "always"
+                  and r["k"] == k]
+            ck = [r for r in axes_rows if r["cell_id"] == cell_id and r["k"] == k]
+            require(len(al) > 0 and len(ck) > 0, f"{w}: rows for k={k}")
+            if not al or not ck:
+                return
+            for r in al:
+                require(r["on_demand_reads"] == min(k, r["n_registered"]),
+                        f"{w}: always k={k} batch {r['batch_index']} reads == min(k, registered)")
+                require(r["on_demand_refreshes"] == r["on_demand_reads"],
+                        f"{w}: always k={k} every read refreshed")
+                require(r["on_demand_refresh_errors"] == 0, f"{w}: always k={k} no refresh errors")
+                require(r["correction_apply_ms"] > 0, f"{w}: always k={k} apply timing present")
+            ks.append(al[0]["on_demand_reads"])
+            a_ms = [r["on_demand_ms"] for r in al]
+            c_ms = [r["on_demand_ms"] for r in ck]
+            a_med.append(statistics.median(a_ms))
+            a_mean.append(statistics.fmean(a_ms))
+            c_med.append(statistics.median(c_ms))
+            c_mean.append(statistics.fmean(c_ms))
+            close_rel(pc[cell_id]["per_k"][str(k)]["always"]["reads_only"]["median_ms"],
+                      a_med[-1], 1e-12, f"{w}: always k={k} median per-burst cost")
+            close_rel(apc[cell_id]["per_k"][str(k)]["median_ms"], c_med[-1], 1e-12,
+                      f"{w}: check k={k} median per-burst cost == the axis B record's")
+            if k == grid[-1]:
+                a_per_read_at_n = statistics.median(
+                    [r["on_demand_ms"] / r["on_demand_reads"] for r in al])
+                c_per_read_at_n = statistics.median(
+                    [r["on_demand_ms"] / r["on_demand_reads"] for r in ck])
+        kind_a, k_a = _axes_crossover(ks, a_med, v_med)
+        kind_am, k_am = _axes_crossover(ks, a_mean, v_mean)
+        kind_c, k_c = _axes_crossover(ks, c_med, v_med)
+        kind_cm, k_cm = _axes_crossover(ks, c_mean, v_mean)
+        sa = pc[cell_id]["crossover"]["reads_only"]["recompute_on_read"]
+        eq(sa["median"]["kind"], kind_a, f"{w}: recompute-on-read crossover kind (median basis)")
+        eq(sa["mean"]["kind"], kind_am, f"{w}: recompute-on-read crossover kind (mean basis)")
+        if kind_a == "interpolated":
+            close_rel(sa["median"]["k_star"], k_a, 1e-12, f"{w}: recompute-on-read k* (median)")
+        if kind_am == "interpolated":
+            close_rel(sa["mean"]["k_star"], k_am, 1e-12, f"{w}: recompute-on-read k* (mean)")
+        eq(apc[cell_id]["crossover_median"]["kind"], kind_c, f"{w}: check crossover kind (median)")
+        eq(apc[cell_id]["crossover_mean"]["kind"], kind_cm, f"{w}: check crossover kind (mean)")
+        if kind_c == "interpolated":
+            close_rel(apc[cell_id]["crossover_median"]["k_star"], k_c, 1e-12,
+                      f"{w}: check k* (median) == the axis B record's")
+        if kind_cm == "interpolated":
+            close_rel(apc[cell_id]["crossover_mean"]["k_star"], k_cm, 1e-12,
+                      f"{w}: check k* (mean) == the axis B record's")
+        # the same-day check controls: reads plus the burst's own apply, k = 1 and k = N
+        ctrl: dict[str, float] = {}
+        if cell_id != AXES_N10K_CELL:
+            for tag, k in (("k1", grid[0]), ("kn", grid[-1])):
+                cr = [r for r in rows if r["cell_id"] == cell_id and r["policy"] == "check"
+                      and r["k"] == k]
+                require(len(cr) > 0, f"{w}: check control rows for k={k}")
+                if not cr:
+                    return
+                for r in cr:
+                    require(r["on_demand_reads"] == min(k, r["n_registered"]),
+                            f"{w}: control k={k} reads == min(k, registered)")
+                    require(r["on_demand_refresh_errors"] == 0, f"{w}: control k={k} no errors")
+                    require(r["correction_apply_ms"] > 0, f"{w}: control k={k} apply timing")
+                ctrl[tag] = statistics.median(
+                    [r["on_demand_ms"] + r["correction_apply_ms"] for r in cr])
+        n_reg = {r["n_registered"] for r in rows if r["cell_id"] == cell_id}
+        eq(len(n_reg), 1, f"{w}: one registered count across the cell's runs")
+        out[cell_id] = {
+            "ror": (kind_a, k_a), "ror_mean": (kind_am, k_am), "tgms": (kind_c, k_c),
+            "tgms_mean": (kind_cm, k_cm), "a_per_read_at_n": a_per_read_at_n,
+            "c_per_read_at_n": c_per_read_at_n, "a_k1": a_med[0], "a_kn": a_med[-1],
+            "ctrl": ctrl}
+        require(grid[0] == 1, f"{w}: the k grid starts at 1")
+
+    lo, hi, col = out[AXES_N1K_CELL], out[AXES_N10K_CELL], out[AXES_COLLEGEMSG_CELL]
+    toks = (("N1k", AXES_N1K_CELL, lo), ("N10k", AXES_N10K_CELL, hi),
+            ("CollegeMsg", AXES_COLLEGEMSG_CELL, col))
+    for tok, cell, d in toks:
+        m.add(f"recRorMsPerRead{tok}", f"{d['a_per_read_at_n']:.2f}",
+              f"{where}: {cell} recompute on read at k = N, median over bursts of "
+              "on_demand_ms / reads")
+        m.add(f"recRorCrossoverK{tok}", _axes_k_text(*d["ror"]),
+              f"{where}: {cell} recompute-on-read k* vs the view's median per-burst cost "
+              "(reads-only scope, linear interpolation on the k grid)")
+        m.add(f"recRorCrossoverKMean{tok}", _axes_k_text(*d["ror_mean"]),
+              f"{where}: {cell} recompute-on-read k* vs the view's mean per-burst cost "
+              "(reads-only scope)")
+        m.add(f"recRorPerBurstMsK1{tok}", _ror_ms_text(d["a_k1"]),
+              f"{where}: {cell} recompute on read at k = 1, median on_demand_ms")
+        m.add(f"recRorPerBurstMsKN{tok}", _ror_ms_text(d["a_kn"]),
+              f"{where}: {cell} recompute on read at k = N, median on_demand_ms")
+        m.add(f"recAxesCrossoverKMean{tok}", _axes_k_text(*d["tgms_mean"]),
+              f"{relpath(EXTERNAL_AXES_ON_DEMAND)}: {cell} TGMS on-demand k* vs the view's "
+              "mean per-burst cost (reads-only scope)")
+        m.add(f"recRorRegimeGain{tok}", _ror_gain_text(d["tgms"], d["ror"]),
+              f"{where}: {cell} TGMS on-demand k* / recompute-on-read k*, both against the "
+              "view's median per-burst cost (reads-only scope)")
+    for tok, cell, d in toks:
+        if tok == "N10k":
+            continue
+        m.add(f"recAxesOnDemandWithAppendMsK1{tok}", _ror_ms_text(d["ctrl"]["k1"]),
+              f"{where}: {cell} same-day TGMS on-demand control at k = 1, median over bursts of "
+              "on_demand_ms + correction_apply_ms")
+        m.add(f"recAxesOnDemandWithAppendMsKN{tok}", _ror_ms_text(d["ctrl"]["kn"]),
+              f"{where}: {cell} same-day TGMS on-demand control at k = N, median over bursts of "
+              "on_demand_ms + correction_apply_ms")
+
+
 # --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
@@ -11789,6 +11958,7 @@ def main() -> int:
     compute_external_withheld_symmetric(m)
     compute_axes_standing_state(m)
     compute_axes_on_demand(m)
+    compute_axes_recompute_on_read(m)
     compute_c8_f18(m)
     compute_refresh_cost_attribution(m)
     add_pending_stubs(m)
