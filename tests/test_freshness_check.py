@@ -5,7 +5,9 @@ The gate this file discharges (M4_IMPLEMENTATION_PLAN §6, M4.2 row):
 (a) **§13.6's worked example reproduced with its exact witness list** — the
     three-step plan on `S₀`, the two-op batch, four footprints, the eight-row
     intersection table, and two witnesses after dedup;
-(b) **all six `UNDECIDABLE` reasons reachable** by a test;
+(b) **every `UNDECIDABLE` reason reachable** by a test — the six D13.24
+    names here, and the seventh, `known-overlap` (step 7b, P-ENG2), in
+    `tests/test_check_known_overlap.py`;
 (c) **∅-scope ⇒ `FRESH`**;
 (d) **a pinned scope still scans** — FF-4's cell, and the one shortcut D13.24
     forbids by name;
@@ -478,10 +480,13 @@ def test_a_record_the_footprint_builder_cannot_read_refuses():
 
 
 def test_every_declared_reason_is_reachable():
-    """The list is closed at six. A seventh would mean the frozen algorithm
-    grew a step, which is an escalation rather than a commit."""
+    """The list is closed. It was closed at six; the seventh, `known-overlap`,
+    is step 7b — pre-registered engine change P-ENG2, the escalation this test
+    said a new reason would need, and reached by
+    `tests/test_check_known_overlap.py`. An eighth needs the same."""
     assert set(REASONS) == {"scope-version", "unknown-enum", "store-mismatch",
-                            "no-tt_q", "log-rewritten", "log-unreadable"}
+                            "no-tt_q", "log-rewritten", "log-unreadable",
+                            "known-overlap"}
 
 
 # ---------------------------------------------------------------------------
