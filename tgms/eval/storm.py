@@ -1227,19 +1227,27 @@ class Storm:
             od_mark = _registry_mark(self.registry)
 
             def _run_on_demand(names=drawn, counts=od_counts) -> None:
-                for name in names:
-                    record = self.registry.current(name)
-                    if record is None:
-                        continue
-                    counts["reads"] += 1
-                    verdict = check_artifact(record, self.store.eventlog, level1=True,
-                                             chain_cache=self.on_demand_cache)
-                    if not verdict.actionable_fresh and verdict.refresh is not None:
-                        counts["refreshes"] += 1
-                        try:
-                            refresh(record, verdict.refresh, self.store, self.registry)
-                        except TgmsError:
-                            counts["errors"] += 1
+                # The k reads are one block between two appends, like the
+                # end-to-end intervals above, so they share one whole-log
+                # validation and one genesis compare per log state
+                # (`ChainCache.burst`, `Registry.burst`; failure ledger
+                # `check-fingerprint-per-check`) on the interval's own cache.
+                od_burst = (self.on_demand_cache.burst() if self.on_demand_cache is not None
+                            else nullcontext())
+                with od_burst, self.registry.burst():
+                    for name in names:
+                        record = self.registry.current(name)
+                        if record is None:
+                            continue
+                        counts["reads"] += 1
+                        verdict = check_artifact(record, self.store.eventlog, level1=True,
+                                                 chain_cache=self.on_demand_cache)
+                        if not verdict.actionable_fresh and verdict.refresh is not None:
+                            counts["refreshes"] += 1
+                            try:
+                                refresh(record, verdict.refresh, self.store, self.registry)
+                            except TgmsError:
+                                counts["errors"] += 1
 
             _unused, od_ms = self._timed(_run_on_demand)
             _registry_rollback(self.registry, od_mark)
