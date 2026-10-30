@@ -1640,3 +1640,234 @@ files' sha256 and cross-checked against the stored summaries):
 | `recAxesCrossoverKMeanN1k` / `…N10k` / `…CollegeMsg` | 34 / 705 / 4.4 | axis B's TGMS on-demand k\*, mean basis (its record's `crossover_mean`) |
 | `recAxesOnDemandWithAppendMsK1N1k` / `…K1CollegeMsg` | 7.8 / 7.3 | same-day `check` control at k = 1, median of `on_demand_ms + correction_apply_ms`, ms |
 | `recAxesOnDemandWithAppendMsKNN1k` / `…KNCollegeMsg` | 5,682 / 873 | the same at k = N |
+
+## Control re-measurement with the coarse lineage (COARSE, 2026-10-30)
+
+**Provenance.** Lane COARSE replays the R1c loop (above) with the lineage the
+first storm campaign ran on, on the same final build, so the comparison of
+today's lineage with the coarse one is same-build. The code is public main
+`ac24a913` plus three commits of this lane (the `--leaf-scopes` harness flag
+`b83af479`, its tests `1783b972`, and the driver `31f026ff`), measured at
+`31f026ff4a1b2eb6f2b8f40be1801ed5369a6807` (each cell manifest's `git_commit`;
+the worktree was clean). Worktree `work/tgms-xz-coarse` on xzgpu; `crates/` is
+unchanged since `b6cdde0` (`git diff --stat b6cdde0 HEAD -- crates/` is empty),
+so the engine `.so` (sha256
+`d48ae71caca80d9f3ea9f360b2e7a2f242f3e9e03ee223d69c4f8aff08b7faca`, checked
+after the copy) was copied in from `work/tgms-xz-ed4a83d6` rather than rebuilt:
+it is the R1c engine. Outputs under a fresh `external-v1/coarse/`; the stores
+are fresh copies under `external-v1/coarse-stores/`, taken from the same
+read-only source R1c copied from (`external-v1/t1-stores/`). Nothing under
+`external-v1/{export,t1,t1b,t1-stores,t1b-stores,n1,n1b,d1,dw,whsym,r1c,
+r1c-stores,r1c-smoke}/` was touched.
+
+**Pre-registration** (P-COARSE, frozen 2026-10-30T12:03:28Z), verbatim: "Measure
+the same lineage on the final build: a harness flag `--leaf-scopes
+{current,storm-v1}` that removes the ten later `LEAF_SCOPES` entries in-process
+before registration (keeping entity_history, neighborhood_evolution with its
+existence pair, aggregate_events as derived today; widening is always sound),
+recorded in the manifest, on the R1c protocol (18 seed-0 N = 10³ cells,
+`ed4a83d6`-equivalent engine, Memgraph stopped). Built-in control: the oracle's
+`changed` counts and the global-recompute configuration must be identical to
+R1c's rows; only the TGMS configurations' nominated counts and timings may
+move. Prediction: the coarse configuration no longer loses but gains little —
+median internal speedup 1.0–1.2× on synth and 1.2–1.6× on collegemsg, against
+2.54× / 5.20× with today's lineage; the nominated share rises to ≈ 2/3 of the
+population. Falsifiers: coarse ≥ 2.0× on either store; coarse < 1.0× on either
+store. Record `benchmarks/external-v1/tgms-control-2026-10-31-coarse.json` (+
+rows, batches), macros `recExt1ControlCoarse{Synth,CollegeMsg}SpeedupMedian` (+
+`Min`, `Max`), `recExt1ControlCoarseNominatedShare{Synth,CollegeMsg}`,
+`recCoarseNarrowingOps` (3)."
+
+The record carries the date of the run, `2026-10-30` (the window ended at
+15:24Z on the day it began), not the `2026-10-31` the pre-registration names;
+nothing else about the names differs.
+
+**The flag.** `scripts/bench_correction_storm.py --leaf-scopes {current,storm-v1}`
+(default `current`: nothing is touched and a default run is unchanged, rows and
+registry file byte for byte, checked by `tests/test_storm_leaf_scopes.py`).
+With `storm-v1` the process deletes from `tgms.tgir.leaves.LEAF_SCOPES`, before
+anything is registered, the ten operators `count_temporal_motifs`,
+`find_temporal_motif_instances`, `temporal_reachability`, `temporal_paths`,
+`burst_detection`, `graph_metric_timeseries`, `co_active`, `diff_snapshots`,
+`version_history` and `snapshot_subgraph`; `entity_history`,
+`neighborhood_evolution` and `aggregate_events` keep today's derivations. That
+is the table of the first storm campaign's commit (`8962b78`, whose
+`LEAF_SCOPES` has exactly those three entries); the other ten take the coarse
+scope, which only widens what is nominated. Off the default the manifest's
+`config` carries `leaf_scopes` (`storm-v1`), `leaf_scopes_removed` (10),
+`leaf_scopes_removed_ops` and `leaf_scopes_kept_ops` (3); every one of the 18
+cells' manifests says so. Of the harness's 14 query templates, 3 keep a derived
+scope under `storm-v1`, 10 are on the coarse scope and `compute` (the empty-scope
+anchor) is unchanged; with today's table 13 are derived. Storm-related tests
+(`test_storm_leaf_scopes`, `test_storm_narrowing_coverage`,
+`test_storm_check_cache`, `test_storm`, `test_storm_on_demand`: 39 tests) pass on
+xzgpu with the native backend.
+
+**Driver.** `scripts/coarse_control.sh` is `scripts/r1c_control.sh` with paths
+and labels changed, `--leaf-scopes storm-v1` added to the harness call, and the
+N = 10⁴ probe cell dropped; every other line is the same (cell order, flags
+including `--check-cache chain`, `--measure-ttf end-to-end`, age cells last, the
+same equality check against the same `external-v1/export/` bundles, via
+`external-v1/coarse_equality_check.py`, a byte copy of R1c's). The diff of the
+code lines (the header comment is rewritten; log strings read COARSE for R1C):
+
+```diff
+-WORKTREE="$ROOT/work/tgms-xz-ed4a83d6"
++WORKTREE="$ROOT/work/tgms-xz-coarse"
+-R1C="$EXT/r1c"
+-R1CSTORES="$EXT/r1c-stores"
+-EQCHECK="$EXT/r1c_equality_check.py"
++COARSE="$EXT/coarse"
++COARSESTORES="$EXT/coarse-stores"
++EQCHECK="$EXT/coarse_equality_check.py"
+-HOSTLOG="$EXT/HOST-R1C.log"
+-PROGRESS="$R1C/PROGRESS.log"
++HOSTLOG="$EXT/HOST-COARSE.log"
++PROGRESS="$COARSE/PROGRESS.log"
+-  "synth-iv-60k|c1|none|10000|5|sum|1|1"
++      --leaf-scopes storm-v1 \
+```
+
+**Host protocol.** xzgpu, one cell at a time, no `nice`. An untimed smoke of one
+collegemsg cell (`c3`, `none`, N = 10³, 2 batches, seed 0) under each setting
+ran first (`external-v1/coarse-smoke/{current,storm-v1}/`, 12:06Z): the oracle's
+`changed_count` (55, 29), the global-recompute configuration's counts, the
+log record count and size and the correction identities were equal under the two settings, and the
+nominated counts rose from 258 / 250 to 656 / 649 of the 934 registered
+artifacts. Pre-flight at 12:07:49Z (`pgrep -fa 'bench_|pytest|cargo|ivm|neo4j'`,
+then the driver's own check for `bench_correction_storm`, `ext_export`,
+`export_storm_workload`, `ivm-dd` and `neo4j`) found no benchmark, test, build,
+IVM or Neo4j process; the 1-minute load average was 0.41, the only other
+busy-looking processes being another user's idle interactive session (about
+0.5 % of one core) and the database daemon (0.5 %). Memgraph was up (for about an
+hour) when pre-flight began and was stopped for the window (`docker stop`
+issued `2026-10-30T12:07:50Z`) and restarted by the driver at completion
+(`docker start` at `2026-10-30T15:24:38Z`, up at `15:24:41Z`). Timed window:
+`2026-10-30T12:07:49Z` to `15:24:41Z` (3 h 17 min; the 18 cell walls sum to
+11,793.0 s, 3.28 h; the R1c loop's 19 cells took 2.07 h, its 18 N = 10³ cells
+6,418.9 s). Per-cell 1-minute load averages in the host snapshots before and
+after each cell were 0.41–1.36. `HOST-COARSE.log` is the host log;
+`external-v1/coarse/PROGRESS.log` has one line per cell, all `equality=L2`.
+No cell failed, none was retried, and nothing in the loop was edited while it
+ran.
+
+**The control check: what must not move did not.** All 18 cells report
+`verdict: "L2"` against the export bundles (`l1_eventlog_sha_match: false` for
+the reason Addendum ARC5-B states), 20/20 batches matching on correction class,
+generator, placement and `changed`. Against the R1c rows of the same 18 cells,
+over all 360 batches, in the raw per-batch rows: the correction class,
+generator, placement, identities, valid time, `disc` and `eid`; `changed` (the
+oracle's set) and `changed_count` (summed over the 360 batches: 16,661 in both
+loops); `n_registered`; `log_records` and `log_bytes`; `ttf_mode`;
+`refused_count`; and, for the four configurations that do not read the lineage
+(`global-recompute`, `entity-touch`, `row-touch`, `window-overlap`), each one's
+`invalidated_count`, `false_fresh_count` and `false_stale_count` are equal on
+all 360 batches (0 differences in any of them); each cell's final event-log
+sha256 equals R1c's. What moved is what the pre-registration says may move:
+`candidate_survivors` and `intersects_calls` differ on all 360 batches, and the
+`tgms-L0` and `tgms-L1` `invalidated_count` summed over the 360 batches is
+224,974 (coarse) against 78,729 (R1c). On no batch does the coarse lineage
+nominate fewer artifacts than R1c's, both TGMS configurations nominate the same
+set size on every batch, and their `false_fresh_count` is 0 on every batch
+(widening is sound). The comparison script is not committed; its output is the
+numbers in this paragraph.
+
+**Internal speedup, per store.** Median over the nine N = 10³ cells of each
+store of `arms.global-recompute.ttf_p50_ms` ÷ `arms.tgms-L1.ttf_p50_ms` (the
+convention of `recExt1ControlROneC{Synth,CollegeMsg}SpeedupMedian`):
+
+| store | R1c, today's lineage (13 derived scopes) | coarse lineage (3 derived scopes) | R1c range over the 9 cells | coarse range over the 9 cells |
+|---|---:|---:|---|---|
+| synth-iv-60k | 2.54 | 1.06 | 2.42–7.76 | 1.05–1.07 |
+| collegemsg | 5.20 | 1.18 | 4.29–5.49 | 1.17–1.21 |
+
+Over all 18 cells the median is 1.12 (coarse) and 4.39 (R1c). Per cell (the
+last two columns of the per-cell table are the nominated share, the median over
+batches of `candidate_survivors` ÷ `n_registered`, and the cell wall):
+
+| cell_id | speedup R1c | speedup coarse | `global-recompute` p50 R1c / coarse (ms) | `tgms-L1` p50 R1c / coarse (ms) | nominated share R1c / coarse | wall R1c / coarse (s) |
+|---|---:|---:|---:|---:|---:|---:|
+| `collegemsg-c1-deep-n1000-s0` | 5.25 | 1.18 | 3142.9 / 2969.8 | 599.1 / 2515.5 | 0.250 / 0.695 | 102.7 / 174.4 |
+| `collegemsg-c1-none-n1000-s0` | 4.29 | 1.18 | 2966.9 / 2991.3 | 691.2 / 2542.9 | 0.274 / 0.702 | 103.1 / 177.0 |
+| `collegemsg-c3-days-n1000-s0` | 5.20 | 1.17 | 2988.2 / 2943.9 | 574.5 / 2515.9 | 0.263 / 0.695 | 98.6 / 172.0 |
+| `collegemsg-c3-deep-n1000-s0` | 4.67 | 1.17 | 3150.4 / 2918.4 | 674.7 / 2484.4 | 0.272 / 0.700 | 104.1 / 171.2 |
+| `collegemsg-c3-hours-n1000-s0` | 4.49 | 1.17 | 3181.2 / 2866.8 | 708.7 / 2458.5 | 0.278 / 0.701 | 106.6 / 170.6 |
+| `collegemsg-c3-none-n1000-s0` | 5.05 | 1.18 | 3114.7 / 2976.1 | 616.7 / 2526.0 | 0.262 / 0.695 | 104.3 / 173.8 |
+| `collegemsg-c3-recent-n1000-s0` | 5.49 | 1.21 | 3013.4 / 2941.6 | 548.8 / 2434.1 | 0.232 / 0.694 | 101.3 / 173.8 |
+| `collegemsg-c4-deep-n1000-s0` | 5.37 | 1.17 | 3221.6 / 2933.6 | 600.0 / 2498.7 | 0.256 / 0.693 | 373.7 / 913.6 |
+| `collegemsg-c4-none-n1000-s0` | 5.42 | 1.20 | 3239.8 / 3147.8 | 598.2 / 2633.2 | 0.246 / 0.695 | 373.8 / 918.9 |
+| `synth-iv-60k-c1-deep-n1000-s0` | 2.42 | 1.06 | 13513.5 / 13375.9 | 5578.5 / 12653.1 | 0.260 / 0.671 | 526.3 / 814.9 |
+| `synth-iv-60k-c1-none-n1000-s0` | 2.45 | 1.05 | 13473.8 / 13362.3 | 5509.2 / 12707.7 | 0.270 / 0.680 | 507.6 / 818.2 |
+| `synth-iv-60k-c3-days-n1000-s0` | 2.63 | 1.06 | 13493.2 / 13403.3 | 5134.8 / 12623.5 | 0.258 / 0.667 | 470.9 / 815.4 |
+| `synth-iv-60k-c3-deep-n1000-s0` | 2.51 | 1.07 | 13389.4 / 13462.6 | 5335.1 / 12634.6 | 0.265 / 0.672 | 487.0 / 818.3 |
+| `synth-iv-60k-c3-hours-n1000-s0` | 2.54 | 1.06 | 13589.1 / 13437.4 | 5348.8 / 12620.5 | 0.245 / 0.671 | 501.5 / 815.7 |
+| `synth-iv-60k-c3-none-n1000-s0` | 3.02 | 1.06 | 13692.7 / 13389.4 | 4531.5 / 12620.4 | 0.239 / 0.666 | 485.6 / 816.3 |
+| `synth-iv-60k-c3-recent-n1000-s0` | 2.52 | 1.06 | 13527.3 / 13445.0 | 5365.3 / 12674.5 | 0.268 / 0.675 | 509.7 / 823.4 |
+| `synth-iv-60k-c4-deep-n1000-s0` | 2.56 | 1.07 | 13728.7 / 13676.9 | 5363.5 / 12757.3 | 0.249 / 0.671 | 746.2 / 1508.5 |
+| `synth-iv-60k-c4-none-n1000-s0` | 7.76 | 1.06 | 13802.6 / 13603.4 | 1778.6 / 12845.3 | 0.186 / 0.658 | 716.0 / 1517.1 |
+
+**Nominated share, per store.** Median over the nine cells of each store of the
+cell's median-over-batches `candidate_survivors` ÷ `n_registered` (934 on
+collegemsg, 884 on synth):
+
+| store | R1c, today's lineage | coarse lineage |
+|---|---:|---:|
+| synth-iv-60k | 0.258 | 0.671 |
+| collegemsg | 0.262 | 0.695 |
+
+**Where the time went (phases of `tgms-L1`, per batch).** The same two-level
+median as the R1c section: median over the nine cells of each store of that
+cell's median-over-batches `check_wall_ms` and `refresh_wall_ms` of the
+`tgms-L1` arm (`ttf_mode` end-to-end, so the time to fresh is the check plus
+the refresh):
+
+| store | check, R1c → coarse (ms) | refresh, R1c → coarse (ms) |
+|---|---:|---:|
+| synth-iv-60k | 50.9 → 97.0 | 5,201.2 → 12,482.6 |
+| collegemsg | 54.3 → 106.8 | 514.1 → 2,366.7 |
+
+**Per-check and per-artifact publish cost, and the other columns.** Per-check is
+the median over the nine cells of each cell's median-over-batches
+`tgms-L0.check_wall_ms` ÷ `candidate_survivors`; per-artifact publish the median
+of each cell's median-over-batches `global_recompute_wall_ms` ÷ `n_registered`:
+
+| store | per-check (ms): R1c → coarse | per-artifact publish (ms): R1c → coarse | `global-recompute` p50 (s): R1c → coarse | `tgms-L1` p50 (s): R1c → coarse | summed wall of the 9 cells (s): R1c → coarse |
+|---|---:|---:|---:|---:|---:|
+| synth-iv-60k | 0.24 → 0.17 | 15.3 → 15.2 | 13.53 → 13.44 | 5.35 → 12.65 | 4,950.9 → 8,747.7 |
+| collegemsg | 0.24 → 0.17 | 3.4 → 3.2 | 3.14 → 2.94 | 0.60 → 2.52 | 1,468.1 → 3,045.3 |
+
+Per-check cost is per nominated artifact, so it does not grow with the
+nominated count; the per-store check phase roughly doubles (the nominated
+count is 2.6–2.7 times R1c's) and the refresh phase grows 2.4× on synth and
+4.6× on collegemsg. The `global-recompute` configuration, which the control
+check shows is the same work, is within 1 % (synth) and 7 % (collegemsg) of its
+R1c time per store (13.44 s against 13.53 s, 2.94 s against 3.14 s).
+
+**Reading, anomalies.**
+
+- *`synth-iv-60k-c4-none-n1000-s0`*, the one synth cell far from the rest under
+  today's lineage (R1c speedup 7.76, `tgms-L1` p50 1,778.6 ms), is not apart under
+  the coarse lineage (1.06; `tgms-L1` p50 12,845.3 ms against 12,620–12,757 ms
+  on the other eight); its nominated share, 0.658, is the lowest of the nine.
+- The spread of the nine per-cell speedups is 1.05–1.07 on synth and 1.17–1.21
+  on collegemsg: every cell of a store lands within a few percent of the same
+  value, the nominated share being 0.658–0.680 and 0.693–0.702.
+- The coarse loop took 11,793.0 s against R1c's 6,418.9 s over the same 18
+  cells (1.84×); the `c4` cells are the longest in both loops, 913.6–918.9 s on
+  collegemsg and 1,508.5–1,517.1 s on synth in this one.
+- Memgraph was up (for about an hour) when pre-flight began; it was stopped for
+  the whole window.
+
+No verdict on the prediction is drawn here; the coordinator scores it.
+
+**Records.** `tgms-control-2026-10-30-coarse.json` + `-rows.jsonl`, assembled
+with `scripts/external_record.py --campaign tgms-control --date
+2026-10-30-coarse` over the 18 cell directories, `--git-commit` the full
+`31f026ff…` sha. `scripts/check_result_manifest.py` passes on it.
+`tgms-control-2026-10-30-coarse-batches.jsonl` + `.SOURCES.txt` and
+`tgms-control-checks-2026-10-30-coarse.jsonl` + `.SOURCES.txt` have the same
+shape as R1c's (one line per batch, byte-exact values, 360 lines each, 18 source
+files each with its sha256 and xzgpu path; `control` = `2026-10-30-coarse`). The
+builder (a few lines, not committed) was checked first by regenerating R1c's
+four files from `external-v1/r1c/`: byte-identical to the committed ones. The
+sha256 of all six files is in `SHA256SUMS.txt`.
