@@ -2410,12 +2410,12 @@ def plot_ldbc(data: dict) -> None:
         yc = ypos[4]
         axa.barh(yc, v["recLdbcCertifiedUnordered"], height=0.62, color=GREY_RAMP[3], lw=0)
         axa.barh(yc, v["recLdbcCertifiedOrdered"], height=0.62, color=GREY_RAMP[1], lw=0)
-        _note(axa, v["recLdbcCertifiedOrdered"] + 0.6, yc,
+        _note(axa, v["recLdbcCertifiedOrdered"] + 0.4, yc,
               f"full contract {v['recLdbcCertifiedOrdered']:.0f}", color="#000000", va="center",
               fontsize=6.0)
         _note(axa, v["recLdbcCertifiedUnordered"] + 0.6, yc,
               f"{v['recLdbcCertifiedUnordered']:.0f}", va="center", color="#000000")
-        _note(axa, v["recLdbcCertifiedUnordered"] - 0.6, yc, "unordered", ha="right",
+        _note(axa, v["recLdbcCertifiedUnordered"] - 0.4, yc, "unordered", ha="right",
               va="center", fontsize=6.0)
         yv = ypos[5]
         left = 0.0
@@ -2441,7 +2441,7 @@ def plot_ldbc(data: dict) -> None:
                    borderaxespad=0.0)
         axa.set_yticks(ypos, labels)
         axa.tick_params(axis="y", length=0)
-        axa.set_xlim(0, total * 1.12)
+        axa.set_xlim(0, total * 1.06)
         axa.set_ylim(-0.5, len(labels) - 0.5)
         axa.set_xticks([])
         axa.spines["left"].set_visible(False)
