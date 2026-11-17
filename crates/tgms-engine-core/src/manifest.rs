@@ -691,9 +691,10 @@ impl Manifest {
         {
             return Err(EngineError::corrupt(format!(
                 "manifest format {} is not supported by this build \
-                 (expected {MANIFEST_FORMAT_VERSION}, or {} read-only)",
+                 (expected {MANIFEST_FORMAT_VERSION}, or {} read-only): {}",
                 self.format,
-                read_only_list()
+                read_only_list(),
+                crate::segment::NEWER_WRITER_REMEDY
             )));
         }
         let expected = self.digest();

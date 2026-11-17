@@ -41,6 +41,48 @@ use crate::manifest::SHA_HEX_LEN;
 use crate::row::{EdgeRow, Lane, NodeRow, RowKind};
 use crate::FORMAT_VERSION;
 
+/// 0.8.1 guard: the remedy every "written by a newer build" refusal names.
+pub const NEWER_WRITER_REMEDY: &str = "this store was written by a newer TGMS build and this build cannot read it correctly; open it with that newer build, or rebuild it with this build from its event log: `tgms replay <store>/eventlog.jsonl --store <new-path>`";
+
+/// 0.8.1 guard: the header and column keys this build reads. A key outside
+/// these lists comes from a newer writer and may change what the bytes mean
+/// (a `base`/`divisor` scale, a `tt_s` dictionary instead of `tt_s_runs`), so
+/// the segment is refused instead of decoded without it.
+const KNOWN_HEADER_KEYS: &[&str] = &[
+    "format", "kind", "lane", "rows", "block_rows", "key_lo", "key_hi", "vt_min",
+    "vt_max", "vt_e_max", "tt_s_runs", "rel_types", "columns", "vt_e_elided",
+    "strings_offset", "strings_bytes", "strings_count", "closed_rows",
+];
+const KNOWN_COLUMN_KEYS: &[&str] = &["name", "dtype", "offset", "bytes", "codec"];
+
+#[derive(Deserialize)]
+struct HeaderKeys {
+    #[serde(default)]
+    columns: Vec<std::collections::BTreeMap<String, serde::de::IgnoredAny>>,
+    #[serde(flatten)]
+    rest: std::collections::BTreeMap<String, serde::de::IgnoredAny>,
+}
+
+/// Keys in a segment header that this build does not know, sorted, deduplicated.
+fn unknown_header_keys(header_bytes: &[u8]) -> Result<Vec<String>> {
+    let k: HeaderKeys = serde_json::from_slice(header_bytes)
+        .map_err(|e| EngineError::corrupt(format!("segment header is invalid: {e}")))?;
+    let mut out: Vec<String> = k.rest.keys()
+        .filter(|n| !KNOWN_HEADER_KEYS.contains(&n.as_str()))
+        .cloned()
+        .collect();
+    for c in &k.columns {
+        for n in c.keys() {
+            if !KNOWN_COLUMN_KEYS.contains(&n.as_str()) {
+                out.push(format!("columns[].{n}"));
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    Ok(out)
+}
+
 const MAGIC: &[u8; 4] = b"TGSG";
 const FOOTER_MAGIC: &[u8; 4] = b"TGSE";
 const ALIGN: usize = 64;
@@ -756,7 +798,7 @@ impl<S: SegmentSource> Segment<S> {
         let format = read_u32(bytes, 4).map_err(at)?;
         if format != FORMAT_VERSION {
             return Err(at(EngineError::corrupt(format!(
-                "segment format {format} is not supported (expected {FORMAT_VERSION})"
+                "segment format {format} is not supported (expected {FORMAT_VERSION}): {NEWER_WRITER_REMEDY}"
             ))));
         }
         let header_len = read_u32(bytes, 8).map_err(at)? as usize;
@@ -766,6 +808,21 @@ impl<S: SegmentSource> Segment<S> {
             .ok_or_else(|| at(EngineError::corrupt("segment header is truncated")))?;
         let header: SegmentHeader = serde_json::from_slice(header_bytes)
             .map_err(|e| at(EngineError::corrupt(format!("segment header is invalid: {e}"))))?;
+        let unknown = unknown_header_keys(header_bytes).map_err(at)?;
+        if !unknown.is_empty() {
+            return Err(at(EngineError::corrupt(format!(
+                "segment header uses {} which this build does not understand: {NEWER_WRITER_REMEDY}",
+                unknown.join(", ")
+            ))));
+        }
+        if let Some(c) = header.columns.iter().find(|c| {
+            c.codec != crate::codec::CODEC_RAW && c.codec != crate::codec::CODEC_FOR
+        }) {
+            return Err(at(EngineError::corrupt(format!(
+                "column '{}' uses codec {} which this build cannot decode: {NEWER_WRITER_REMEDY}",
+                c.name, c.codec
+            ))));
+        }
         let data_start = align_up(header_end);
 
         let footer_len =
