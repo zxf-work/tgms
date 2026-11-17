@@ -1513,4 +1513,108 @@ mod tests {
             assert_eq!(seg.vt_e_at(i).unwrap(), crate::OPEN_END);
         }
     }
+
+    // --- segments from a newer writer ---------------------------------- //
+
+    /// Rewrite a written segment's header through `edit` and set its
+    /// preamble format word, keeping every data and footer byte. A newer
+    /// build writes headers this build has no field for; this is how such a
+    /// segment looks to this build. The body checksum no longer matches,
+    /// which does not matter here: the refusals run before any checksum.
+    fn rewrite_header(path: &Path, format: u32, edit: impl FnOnce(&mut serde_json::Value)) {
+        let b = fs::read(path).unwrap();
+        let header_len = read_u32(&b, 8).unwrap() as usize;
+        let data_start = align_up(PREAMBLE + header_len);
+        let mut header: serde_json::Value =
+            serde_json::from_slice(&b[PREAMBLE..PREAMBLE + header_len]).unwrap();
+        edit(&mut header);
+        let header = serde_json::to_vec(&header).unwrap();
+        let mut out = Vec::with_capacity(b.len() + 128);
+        out.extend_from_slice(MAGIC);
+        out.extend_from_slice(&format.to_le_bytes());
+        out.extend_from_slice(&(header.len() as u32).to_le_bytes());
+        out.extend_from_slice(&header);
+        let start = align_up(out.len());
+        pad_to(&mut out, start);
+        out.extend_from_slice(&b[data_start..]);
+        fs::write(path, out).unwrap();
+    }
+
+    fn refusal(path: &Path) -> String {
+        match Segment::open(path, MemorySource::load(path).unwrap(), false) {
+            Ok(_) => panic!("a segment from a newer writer was opened"),
+            Err(e) => {
+                assert_eq!(e.category, crate::error::Category::Corrupt);
+                e.to_string()
+            }
+        }
+    }
+
+    fn written(name: &str) -> PathBuf {
+        let path = tmp(name);
+        write_edge_segment(&path, &sorted_edges(200), &SegmentSpec::default()).unwrap();
+        path
+    }
+
+    const REMEDY: &str = "tgms replay <store>/eventlog.jsonl --store <new-path>";
+
+    #[test]
+    fn a_rewritten_header_without_edits_still_opens() {
+        // the control for the refusals below: the rewrite alone is not
+        // what they refuse
+        let path = written("guard-control");
+        let vt_s = open(&path).i64_column("vt_s").unwrap().to_vec();
+        rewrite_header(&path, FORMAT_VERSION, |_| {});
+        let seg = Segment::open(&path, MemorySource::load(&path).unwrap(), false).unwrap();
+        assert_eq!(seg.rows(), 200);
+        assert_eq!(seg.i64_column("vt_s").unwrap().to_vec(), vt_s);
+    }
+
+    #[test]
+    fn a_column_scale_from_a_newer_writer_is_refused() {
+        // a newer writer may store (v - base) / divisor; decoding those
+        // values without the scale would give wrong answers silently
+        let path = written("guard-scale");
+        rewrite_header(&path, FORMAT_VERSION, |h| {
+            let c = h["columns"][0].as_object_mut().unwrap();
+            c.insert("base".into(), 1_000.into());
+            c.insert("divisor".into(), 2.into());
+        });
+        let err = refusal(&path);
+        assert!(err.contains("segment header uses columns[].base, columns[].divisor"), "{err}");
+        assert!(err.contains("written by a newer TGMS build") && err.contains(REMEDY), "{err}");
+    }
+
+    #[test]
+    fn an_unknown_header_key_is_refused() {
+        let path = written("guard-key");
+        rewrite_header(&path, FORMAT_VERSION, |h| {
+            h.as_object_mut().unwrap().insert("tt_s_dict".into(), serde_json::json!([42]));
+        });
+        let err = refusal(&path);
+        assert!(err.contains("segment header uses tt_s_dict which this build does not understand"),
+                "{err}");
+        assert!(err.contains(REMEDY), "{err}");
+    }
+
+    #[test]
+    fn an_unknown_codec_is_refused() {
+        let path = written("guard-codec");
+        rewrite_header(&path, FORMAT_VERSION, |h| {
+            h["columns"][0]["codec"] = 2.into();
+        });
+        let err = refusal(&path);
+        assert!(err.contains("uses codec 2 which this build cannot decode"), "{err}");
+        assert!(err.contains(REMEDY), "{err}");
+    }
+
+    #[test]
+    fn an_unknown_segment_format_is_refused() {
+        let path = written("guard-format");
+        rewrite_header(&path, FORMAT_VERSION + 1, |_| {});
+        let err = refusal(&path);
+        assert!(err.contains(&format!("segment format {} is not supported", FORMAT_VERSION + 1)),
+                "{err}");
+        assert!(err.contains(REMEDY), "{err}");
+    }
 }
