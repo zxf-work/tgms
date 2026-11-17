@@ -340,6 +340,24 @@ def _store_verify(path: str, mode: str, as_json: bool) -> int:
     from pathlib import Path
 
     from tgms.storage.native import NativeAdapter
+    from tgms.store import detect_backend
+
+    # verify walks the native engine's files and nothing else. A DuckDB or
+    # Kuzu store has none of its own (a released v0.8.0 `store backup` may
+    # have left an empty `native/` beside them), so any verdict here would
+    # be about files that are not the store's data: say so, and exit 2,
+    # "not checked", rather than 0.
+    backend = detect_backend(Path(path))
+    if backend != "native":
+        reason = (f"{path} is a {backend} store; store verify checks native "
+                  f"stores only, so this store was not checked")
+        if as_json:
+            print(json.dumps({"store": path, "mode": mode, "readable": False,
+                              "backend": backend, "reason": reason},
+                             sort_keys=True))
+        else:
+            print(f"store verify: {reason}", file=sys.stderr)
+        return 2
 
     engine_dir = Path(path) / "native"
     try:
@@ -438,6 +456,15 @@ def _store_backup(src: str, dest: str | None) -> int:
     generation (`tgms/store.py::Store._recover`'s "recovery is a writer's
     act"), so backing up a store never mutates it — this snapshots exactly
     what is currently durable on disk, nothing more.
+
+    The store is opened with the backend it was written with
+    (`tgms.store.detect_backend`), so a DuckDB store is read as DuckDB and
+    nothing is created inside it. The logical digest is
+    `StorageAdapter.store_digest`, one definition for every backend, so a
+    restore (which builds a native store) can check a DuckDB store's backup
+    against it. `generation` and `manifest_sha` describe a native store's
+    published generation; a store of another backend has none, so both are
+    null in its manifest. `store restore` reads neither.
     """
     import hashlib
     import shutil
@@ -452,11 +479,13 @@ def _store_backup(src: str, dest: str | None) -> int:
     src_path, dest_path = Path(src), Path(dest)
     dest_path.mkdir(parents=True, exist_ok=True)
 
-    store = tgms.open(src_path, backend="native", read_only=True)
+    store = tgms.open(src_path, read_only=True)
     try:
         store_identity = store.store_identity
-        generation = store.adapter.generation
-        manifest_sha = store.adapter._store.manifest_sha()
+        generation = manifest_sha = None
+        if store.backend == "native":
+            generation = store.adapter.generation
+            manifest_sha = store.adapter._store.manifest_sha()
         logical_digest = store.digest()
     finally:
         store.close()
