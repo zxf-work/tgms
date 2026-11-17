@@ -1,5 +1,82 @@
 # Changelog
 
+## v0.8.1 — unreleased
+
+A maintenance release on the 0.8 line: two fixes for stores that 0.8.0
+handled wrongly, and the reader, recovery and freshness-check fixes made on
+`main` since v0.8.0. No on-disk format changes; a store written by 0.8.0 is
+read as before.
+
+**`tgms store backup` of a DuckDB store.** 0.8.0 opened every store as a
+native one, so a backup of a DuckDB store created an empty `native/` inside
+the store and recorded that empty store's digest, and the restore of that
+backup reported FAIL. Backup now opens a store with the backend it was
+written with, changes nothing in it, and records the logical digest, which
+is defined once for every backend, so the restore reports PASS.
+`generation` and `manifest_sha` are null in the manifest of a store that is
+not native. A DuckDB-store backup taken with 0.8.0 still fails its restore
+check: take it again. `tgms store verify` and `tgms check` examine native
+stores only; on another backend they now say so and exit 2 ("not checked")
+instead of judging an empty `native/`.
+
+**A store written by a newer build is refused, not misread.** A newer build
+may store a column with a scale or in an encoding 0.8.0 does not know, and
+0.8.0 ignored the header keys it did not recognize, so it could return
+wrong times, labels or properties without an error. A segment whose header
+carries a key this build does not read, a codec other than raw or
+frame-of-reference, or a segment format other than 1 is now refused. These
+refusals and the existing manifest-format refusal name the remedy: open the
+store with the newer build, or rebuild it with this one from its event log,
+`tgms replay <store>/eventlog.jsonl --store <new-path>`. Known limits: the
+check runs when a segment is decoded, so `tgms ingest` into such a store can
+append its batch to the event log before it refuses; and it refuses on
+unknown keys, so it also refuses some newer segments this build would have
+read correctly.
+
+**Readers keep the generation they opened.** A read-only handle now maps
+every segment of its generation when it opens and after each commit or
+compaction, instead of on first use, so `store gc` in another process can no
+longer remove a segment from under it (`TGMS_PIN_MAX_SEGMENTS` caps this and
+falls back to the old lazy path above the cap). If a file still disappears
+between resolving `CURRENT` and the read, the operator reopens the store at
+its latest generation and retries once. An engine error that comes from the
+file system carries the OS error number as the `OSError`'s `errno`.
+
+**Recovery.** A reader that meets an unfinished last record in the event
+log reads it once more before calling it torn, so a record a writer
+finishes in between is no longer reported as damage.
+
+**Freshness check** (`tgms trace check`, `tgms artifact check`). A seventh
+reason, `UNDECIDABLE("known-overlap")`: when a result's scope could have
+read an identity whose believed versions overlap in valid time, which
+`Store.ingest_events` can leave and `tgms check --full` reports, the check
+says so instead of assuming such overlaps never happen. The optional chain
+cache over the event-log walk is keyed on inode and ctime as well as size
+and mtime, and verifies a digest of the cached prefix on every hit, so an
+in-place rewrite within one clock tick is no longer answered from the stale
+entry; when the log has only grown, the walk is extended over the appended
+records instead of starting again. The store identity is memoized per
+registry and per event log, revalidated byte for byte, and
+`ChainCache.burst()` / `Registry.burst()` let the log's single writer share
+both across a block of checks.
+
+**Evaluation harness.** The correction-storm harness (`tgms/eval/storm.py`)
+gained an on-demand read mode with a recompute-on-read policy and an explicit
+check-cache setting, and fails loudly when every correction write is
+refused.
+
+**Records added since v0.8.0.** `benchmarks/ldbc-ref-v1/`: the LDBC SF1
+reference-correctness run against an independently loaded Neo4j reference,
+scored against predictions registered before it ran. `benchmarks/scale-v1/`:
+synthetic stores built at the 30M and 100M input sizes, with scale curves,
+full checks and recovery runs (input sizes from
+`benchmarks/scale-v1/README.md`). `benchmarks/external-v1/`: the
+external-baseline campaign (Neo4j full recompute, differential-dataflow
+incremental maintenance, a same-host TGMS control). `benchmarks/storm-v1/`:
+refresh-cost attribution under a correction storm. New records also landed
+in `benchmarks/longevity-v1/`, `benchmarks/faults-v1/`,
+`benchmarks/live-osv-v1/` and `benchmarks/results-v1/`.
+
 ## v0.8.0 — 2026-09-15
 
 The maintenance release: a saved result stops being either "trusted
