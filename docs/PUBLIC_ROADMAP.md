@@ -6,7 +6,7 @@ internal notes. Questions about any item are welcome as issues.
 
 ---
 
-## Recently shipped (v0.6.1 – v0.8.0)
+## Recently shipped (since v0.6.1)
 
 **Adoption polish.** Streamlined quickstart (`pip install tgms && tgms demo`), hands-on tutorials, and a published stability contract ([STABILITY.md](STABILITY.md)) so you know what to expect when you upgrade.
 
@@ -18,11 +18,7 @@ internal notes. Questions about any item are welcome as issues.
 
 **Dependency precision: delivered, with an honest miss.** Pattern-match verdicts can now narrow from `POSSIBLY_STALE` to `FRESH` using the actual scan region a match touched, instead of the coarse "matches anything" scope every operator used before — never trading soundness for it (0 false-fresh on every population it was measured against, including a full soundness adjudication after a labeling-bug scare mid-campaign). The pre-registered precision bar — 10× more precise than the coarse check — did not clear: measured 1.86×, because an anchored pattern-match population already makes the coarse check ~42–48% precise on its own, which structurally compresses how much visible lift is left to gain. Reported as measured, not re-scored, and not re-labeled a partial success.
 
----
-
-## Now
-
-**Scale evidence.** Running the newly unlocked query shapes against a full-size LDBC social-network instance, with predictions registered before the runs — the same discipline every number above was produced under.
+**Scale evidence.** The newly unlocked query shapes were run in September 2026 against a full-size LDBC social-network instance (SF1), with predictions registered before the runs, as a correctness comparison with an independently loaded Neo4j reference over the 24 templates TGIR expresses. The record, and its scoring against the registered predictions, is [`benchmarks/ldbc-ref-v1/`](../benchmarks/ldbc-ref-v1/README.md).
 
 ---
 

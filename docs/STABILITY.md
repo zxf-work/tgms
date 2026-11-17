@@ -17,8 +17,7 @@ outside our own test and evaluation harnesses.
 promise about them: a distributed mode, multi-writer coordination, live
 replication, high availability / failover, or a network protocol other than
 the MCP tool surface talking to one local store. TGMS is single-machine,
-single-writer, embedded (`docs/ROADMAP.md`: "Single machine only; no
-distributed work").
+single-writer, embedded.
 
 ---
 
@@ -52,8 +51,7 @@ across incompatible versions.* Concretely:
   recorded log. It is documented as producing a result "byte-identical" to
   the original — unlike a fresh `tgms ingest`, replay preserves the
   original transaction times (`tgms/cli.py`, the `replay` subcommand help
-  text). `ENGINE_IMPLEMENTATION_SPEC.md`'s acceptance tests run exactly
-  this: replay a frozen event log into a fresh store and check the digest.
+  text).
 - When moving a store across a TGMS version whose on-disk format changed,
   the supported path is: replay the event log into a freshly created store
   under the new version. There is no in-place binary migration tool, and
@@ -155,8 +153,7 @@ direction with a guarantee.
 **What is atomic:** one manifest generation. The commit protocol is
 append batch(es) to the event log → fsync the log → write segment/close-run/
 index files → fsync those files → write `MANIFEST.G.tmp` → fsync → **atomic
-rename to `CURRENT`** → fsync the directory (`ENGINE_BLUEPRINT.md`,
-"Group-commit durability"). A crash at any point before the rename
+rename to `CURRENT`** → fsync the directory. A crash at any point before the rename
 completes leaves the previous manifest — the previous generation — valid
 and readable; any partially-written files from the interrupted attempt are
 orphaned, not referenced, and ignored. A crash after the rename leaves the
@@ -372,9 +369,7 @@ turns a missing `-o` from an argparse usage error into a named one.
   `check_trace`) is newer than the CLI verb and correspondingly less
   settled.
 
-The contract this implements is `docs/design/FRESHNESS_SEMANTICS.md`
-(sections 1–14 frozen 2026-08-21, §15 an append-only errata register). The
-wire format a result carries is versioned: a reader that does not recognize
+The wire format a result carries is versioned: a reader that does not recognize
 a dependency record's version returns `UNDECIDABLE`, never `FRESH`.
 
 **`DependencyScope.as_of_tt` (added M5, §15 errata entry E-10) is additive
@@ -814,8 +809,8 @@ on this change.
 
 **What is explicitly deferred, and why.** The CollegeMsg agent-loop
 numbers already on public surfaces (`docs/site_facts.json`'s `ucr_gated`
-0/199, coverage 0.706 at conditional accuracy 0.548; `README.md`;
-`docs/TECHNICAL_REPORT.md`) were measured under the *old* gate (drop
+0/199, coverage 0.706 at conditional accuracy 0.548; `README.md`) were
+measured under the *old* gate (drop
 `unsupported` only) and are **not** updated by this note or this commit.
 They stay as measured until a separate LLM campaign (Qwen2.5-14B-AWQ,
 three seeds, on iTiger) re-measures them under the new gate — coverage is

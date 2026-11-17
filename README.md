@@ -226,7 +226,7 @@ agent loop wired to an actual LLM.
 # outside it (iCloud sets the hidden flag on .pth files and Python 3.12+
 # silently skips them):  export UV_PROJECT_ENVIRONMENT=$HOME/.venvs/tgms
 uv sync --extra agent
-make test                     # 271 tests: property, oracle, metamorphic, e2e
+make test                     # 2652 tests: property, oracle, metamorphic, e2e
 ```
 
 ```bash

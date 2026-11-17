@@ -287,7 +287,8 @@ Read the three verdicts this way, and no other way:
   term most operators carry today, not a precise one. That's a measured
   trade, not a hand-wave: on real workloads, only 13.2% of
   `POSSIBLY_STALE` verdicts turn out to be a true stale answer on
-  recomputation (`docs/design/M4_MEASURED_REPORT.md` §4) — the mechanism
+  recomputation (`benchmarks/freshness-v1/campaign-run2.log`, "invalidation
+  precision") — the mechanism
   is *sound*, not *precise*, and it buys that soundness with some false
   alarms. What the soundness direction is worth, measured: across two
   independent injection campaigns and 3,354 corrections, **0 false-fresh**
