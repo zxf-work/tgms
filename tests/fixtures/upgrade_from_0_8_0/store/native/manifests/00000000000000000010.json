@@ -1,0 +1,59 @@
+{
+  "format": 3,
+  "kind": "delta",
+  "sha_kind": "merkle-v1",
+  "generation": 10,
+  "parent": 9,
+  "parent_sha": "270bc1062eca3aca",
+  "checkpoint": 8,
+  "created_tt": 1767225600000008,
+  "event_log": {
+    "offset": 20368,
+    "chain": "6651616d4109cdc8"
+  },
+  "dict": {
+    "records": 25,
+    "bytes": 437
+  },
+  "next_segment_id": 12,
+  "stats": {
+    "n_entities": 25,
+    "n_node_versions": 28,
+    "n_edge_versions": 159,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "add_edges_event": [
+    {
+      "file": "seg/000000000011.tgs",
+      "rows": 2,
+      "key_lo": [
+        1600000000000000,
+        "a9ffa53f55a9fac179c64a52"
+      ],
+      "key_hi": [
+        1600010800000000,
+        "1f711bea05dab0480f9487c5"
+      ],
+      "vt_min": 1600000000000000,
+      "vt_max": 1600010800000000,
+      "vt_e_max": 1600036000000000,
+      "tt_s_min": 1767225600000008,
+      "tt_s_max": 1767225600000008,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "add_close_runs": [
+    {
+      "file": "close/000000000010.tgc",
+      "entries": 1,
+      "sha": ""
+    }
+  ],
+  "delta_sha": "ce43e8e8ee04be54",
+  "manifest_sha": "9b8b4924aedf8682"
+}

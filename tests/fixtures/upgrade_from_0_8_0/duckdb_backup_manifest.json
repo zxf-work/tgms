@@ -1,0 +1,10 @@
+{
+ "store_identity": "d1554e3f859d3cfb098b31c33edd96ad5522022d08b6d64da56e20e394834956",
+ "generation": 0,
+ "manifest_sha": "199135020c470946",
+ "log_sha256": "c66234b3dc371b236d31e0a592fc7551522dc4b4deb630a7a3dc5b1d1a7b3929",
+ "log_records": 12,
+ "logical_digest": "57501e5c6808b3e14852a4ea21dc7873abf9409032a06f9b740c973e83f62cf7",
+ "tgms_version": "0.8.0",
+ "commit": null
+}

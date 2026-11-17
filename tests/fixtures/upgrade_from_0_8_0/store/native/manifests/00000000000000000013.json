@@ -1,0 +1,80 @@
+{
+  "format": 3,
+  "kind": "delta",
+  "sha_kind": "merkle-v1",
+  "generation": 13,
+  "parent": 12,
+  "parent_sha": "506cf097816fe2d5",
+  "checkpoint": 8,
+  "created_tt": 1767225600000011,
+  "event_log": {
+    "offset": 24124,
+    "chain": "d40222765415637c"
+  },
+  "dict": {
+    "records": 25,
+    "bytes": 437
+  },
+  "next_segment_id": 16,
+  "stats": {
+    "n_entities": 25,
+    "n_node_versions": 31,
+    "n_edge_versions": 190,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "add_nodes": [
+    {
+      "file": "seg/000000000014.tgs",
+      "rows": 2,
+      "key_lo": [
+        1600007200000000,
+        "f45bb3f0c783b9e2be8afd07"
+      ],
+      "key_hi": [
+        1600010800000000,
+        "c65b96087316d7575e314f2b"
+      ],
+      "vt_min": 1600007200000000,
+      "vt_max": 1600010800000000,
+      "vt_e_max": 1600014400000000,
+      "tt_s_min": 1767225600000011,
+      "tt_s_max": 1767225600000011,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    },
+    {
+      "file": "seg/000000000015.tgs",
+      "rows": 1,
+      "key_lo": [
+        1600014400000000,
+        "39536f778a897941aff7cde9"
+      ],
+      "key_hi": [
+        1600014400000000,
+        "39536f778a897941aff7cde9"
+      ],
+      "vt_min": 1600014400000000,
+      "vt_max": 1600014400000000,
+      "vt_e_max": 4611686018427387904,
+      "tt_s_min": 1767225600000011,
+      "tt_s_max": 1767225600000011,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "add_close_runs": [
+    {
+      "file": "close/000000000013.tgc",
+      "entries": 1,
+      "sha": ""
+    }
+  ],
+  "delta_sha": "2019acf514876d55",
+  "manifest_sha": "f0093379397e3867"
+}

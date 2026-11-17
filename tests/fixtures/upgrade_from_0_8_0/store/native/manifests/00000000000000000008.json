@@ -1,0 +1,81 @@
+{
+  "kind": "checkpoint",
+  "sha_kind": "merkle-v1",
+  "format": 3,
+  "generation": 8,
+  "parent": 7,
+  "created_tt": 1767225600000006,
+  "event_log": {
+    "offset": 19863,
+    "chain": "9aa3deac02e0f6a3"
+  },
+  "dict": {
+    "records": 25,
+    "bytes": 437
+  },
+  "widths": {
+    "entity_id": 32,
+    "row_id": 32,
+    "rel_code": 16
+  },
+  "node_store": [
+    {
+      "file": "seg/000000000008.tgs",
+      "rows": 25,
+      "key_lo": [
+        1599913600000000,
+        "0c5e93536f3b05eac80b0fdc"
+      ],
+      "key_hi": [
+        1600000000000000,
+        "f03ae6d32ea1b54649f618be"
+      ],
+      "vt_min": 1599913600000000,
+      "vt_max": 1600000000000000,
+      "vt_e_max": 4611686018427387904,
+      "tt_s_min": 1767225600000000,
+      "tt_s_max": 1767225600000005,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "edge_lanes": {
+    "event": [
+      {
+        "file": "seg/000000000007.tgs",
+        "rows": 157,
+        "key_lo": [
+          1600000000000000,
+          "a61077ef61e9c4d0dd68d502"
+        ],
+        "key_hi": [
+          1600010159000000,
+          "1f4ae56c81ea7c6860b4a104"
+        ],
+        "vt_min": 1600000000000000,
+        "vt_max": 1600010159000000,
+        "vt_e_max": 1600043200000000,
+        "tt_s_min": 1767225600000001,
+        "tt_s_max": 1767225600000006,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      }
+    ],
+    "interval": []
+  },
+  "close_runs": [],
+  "next_segment_id": 9,
+  "stats": {
+    "n_entities": 25,
+    "n_node_versions": 25,
+    "n_edge_versions": 157,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "manifest_sha": "245455000677d29e"
+}

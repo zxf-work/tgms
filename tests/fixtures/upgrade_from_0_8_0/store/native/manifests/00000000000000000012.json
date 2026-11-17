@@ -1,0 +1,52 @@
+{
+  "format": 3,
+  "kind": "delta",
+  "sha_kind": "merkle-v1",
+  "generation": 12,
+  "parent": 11,
+  "parent_sha": "db1ca6d9f8fa2651",
+  "checkpoint": 8,
+  "created_tt": 1767225600000010,
+  "event_log": {
+    "offset": 23883,
+    "chain": "0ad73018fafcad98"
+  },
+  "dict": {
+    "records": 25,
+    "bytes": 437
+  },
+  "next_segment_id": 14,
+  "stats": {
+    "n_entities": 25,
+    "n_node_versions": 28,
+    "n_edge_versions": 190,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "add_edges_event": [
+    {
+      "file": "seg/000000000013.tgs",
+      "rows": 30,
+      "key_lo": [
+        1600010816000000,
+        "8d0c8a7b608c99fe2dd9054a"
+      ],
+      "key_hi": [
+        1600012556000000,
+        "1e7d62c6aa724ee046accafa"
+      ],
+      "vt_min": 1600010816000000,
+      "vt_max": 1600012556000000,
+      "vt_e_max": 1600012556000001,
+      "tt_s_min": 1767225600000010,
+      "tt_s_max": 1767225600000010,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "delta_sha": "5ca4906e3251a300",
+  "manifest_sha": "506cf097816fe2d5"
+}
