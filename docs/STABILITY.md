@@ -153,17 +153,24 @@ for example) it could return wrong times, labels or properties without an
 error. From v0.8.1 this build refuses such a store instead: a manifest format
 it does not know, when the store is opened; and, when a segment is decoded, a
 segment whose header carries a key this build does not read, a column codec
-other than raw or frame-of-reference, or a segment format other than 1. The
+other than raw or frame-of-reference, or a segment format above 1. (A segment
+format below 1 was not written by any build; it is reported as damage.) The
 error says the store was written by a newer TGMS build and names the remedy:
 open it with that newer build, or rebuild it with this build from its event
 log, `tgms replay <store>/eventlog.jsonl --store <new-path>`. `tgms store
 verify` and `tgms check` report such a store as not checked and exit 2, not
 as corrupt (§9, exit codes); damage found beside a refused segment is still
-reported as corrupt. Two known limits: the check runs when a segment is
+reported as corrupt. Three known limits: the check runs when a segment is
 decoded, not as one pass at open, so `tgms ingest` into such a store can
-append its batch to the event log before it is refused; and it refuses on
+append its batch to the event log before it is refused; it refuses on
 keys it does not know, not on proven damage, so it also refuses some newer
-segments this build would have read correctly.
+segments this build would have read correctly; and the segment header carries
+no checksum, so damage that raises a segment's format number, or that changes
+the name of a header field, cannot be told apart from a segment a newer build
+wrote. Verify reports such a store as written by a newer build and not
+checked (exit 2), not as corrupt (exit 1). It is never reported healthy,
+reads from it are refused, and the remedy, rebuilding the store from its
+event log, applies in both cases.
 
 **A DuckDB store's backup (v0.8.1).** `tgms store backup` in v0.8.0 opened
 every store as a native one: given a DuckDB store, it created an empty native
@@ -765,7 +772,9 @@ a report exists, and "cannot be checked" is a different answer from "checked,
 and here is what is wrong". Two more cases give exit 2, because this build
 did not check the store: a store written by a newer build (§1), with
 `"written_by_newer_build": true` in the `--json` report, and a store that is
-not native (§7).
+not native (§7). Damage to a segment header can also give exit 2 (§1), so a
+monitor should treat every nonzero exit code of `tgms store verify` as
+needing attention, not exit 1 alone.
 
 **Read-only, and this is a promise, not an implementation detail.** Verify
 never writes, truncates, trims or recovers, in either mode. A torn event-log
