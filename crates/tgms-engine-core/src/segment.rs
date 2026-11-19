@@ -796,7 +796,16 @@ impl<S: SegmentSource> Segment<S> {
             )));
         }
         let format = read_u32(bytes, 4).map_err(at)?;
-        if format != FORMAT_VERSION {
+        // Every segment any build has written records FORMAT_VERSION, which
+        // has not changed since the first format, so a lower number was not
+        // written by any build: it is damage. A change to FORMAT_VERSION must
+        // revisit this.
+        if format < FORMAT_VERSION {
+            return Err(at(EngineError::corrupt(format!(
+                "segment format {format} is below {FORMAT_VERSION}, which no TGMS build writes"
+            ))));
+        }
+        if format > FORMAT_VERSION {
             return Err(at(EngineError::newer_writer(format!(
                 "segment format {format} is not supported (expected {FORMAT_VERSION})"
             ))));
