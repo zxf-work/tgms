@@ -1626,4 +1626,22 @@ mod tests {
                 "{err}");
         assert!(err.contains(REMEDY), "{err}");
     }
+
+    #[test]
+    fn a_segment_format_below_the_current_one_is_corrupt() {
+        // no build writes a lower format, so this is damage, with the
+        // ordinary remedy for damage and not the newer-build one
+        let path = written("guard-format-low");
+        rewrite_header(&path, FORMAT_VERSION - 1, |_| {});
+        let err = match Segment::open(&path, MemorySource::load(&path).unwrap(), false) {
+            Ok(_) => panic!("a segment with a lower format was opened"),
+            Err(e) => e,
+        };
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+        let err = err.to_string();
+        assert!(err.contains(&format!("segment format {} is below {}", FORMAT_VERSION - 1,
+                                      FORMAT_VERSION)), "{err}");
+        assert!(err.contains("restore the previous generation"), "{err}");
+        assert!(!err.contains("written by a newer TGMS build") && !err.contains(REMEDY), "{err}");
+    }
 }
