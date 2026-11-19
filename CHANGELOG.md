@@ -24,7 +24,8 @@ may store a column with a scale or in an encoding 0.8.0 does not know, and
 0.8.0 ignored the header keys it did not recognize, so it could return
 wrong times, labels or properties without an error. A segment whose header
 carries a key this build does not read, a codec other than raw or
-frame-of-reference, or a segment format other than 1 is now refused. These
+frame-of-reference, or a segment format above 1 is now refused; a segment
+format below 1, which no build writes, is reported as damage. These
 refusals and the existing manifest-format refusal name the remedy: open the
 store with the newer build, or rebuild it with this one from its event log,
 `tgms replay <store>/eventlog.jsonl --store <new-path>`, and no longer add the
@@ -33,9 +34,16 @@ verify` and `tgms check` report such a store as written by a newer build and
 not checked, with the same remedy, and exit 2 instead of CORRUPT and exit 1;
 a damaged store is still reported CORRUPT. Known limits: the
 check runs when a segment is decoded, so `tgms ingest` into such a store can
-append its batch to the event log before it refuses; and it refuses on
+append its batch to the event log before it refuses; it refuses on
 unknown keys, so it also refuses some newer segments this build would have
-read correctly.
+read correctly; and the segment header carries no checksum, so damage that
+raises a segment's format number or changes the name of a header field
+cannot be told apart from a newer build's file, and verify reports that
+store as written by a newer build and not checked (exit 2), not CORRUPT
+(exit 1). Such a store is never reported healthy, reads from it are refused,
+and the remedy, rebuilding it from the event log, applies either way; a
+monitor should treat every non-zero exit code of `tgms store verify` as
+needing attention, not exit 1 alone.
 
 **Readers keep the generation they opened.** A read-only handle now maps
 every segment of its generation when it opens and after each commit or
