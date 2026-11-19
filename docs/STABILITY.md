@@ -146,6 +146,32 @@ those node versions, without an error. Replaying a log with the version that
 wrote it (or newer) is therefore not merely advisable — it is the only
 direction with a guarantee.
 
+**A store written by a newer build is refused, not read (v0.8.1).** The
+same question for the store itself. v0.8.0 ignored segment header keys it did
+not know, so on a segment a newer build wrote (a column stored with a scale,
+for example) it could return wrong times, labels or properties without an
+error. From v0.8.1 this build refuses such a store instead: a manifest format
+it does not know, when the store is opened; and, when a segment is decoded, a
+segment whose header carries a key this build does not read, a column codec
+other than raw or frame-of-reference, or a segment format other than 1. The
+error says the store was written by a newer TGMS build and names the remedy:
+open it with that newer build, or rebuild it with this build from its event
+log, `tgms replay <store>/eventlog.jsonl --store <new-path>`. `tgms store
+verify` and `tgms check` report such a store as not checked and exit 2, not
+as corrupt (§9, exit codes); damage found beside a refused segment is still
+reported as corrupt. Two known limits: the check runs when a segment is
+decoded, not as one pass at open, so `tgms ingest` into such a store can
+append its batch to the event log before it is refused; and it refuses on
+keys it does not know, not on proven damage, so it also refuses some newer
+segments this build would have read correctly.
+
+**A DuckDB store's backup (v0.8.1).** `tgms store backup` in v0.8.0 opened
+every store as a native one: given a DuckDB store, it created an empty native
+store inside it and recorded that empty store's logical digest, so restoring
+that backup prints FAIL. v0.8.1 reads a DuckDB store as DuckDB, changes no
+file in it, and its backup restores with PASS; a backup v0.8.0 took of a
+DuckDB store should be taken again (§7).
+
 ---
 
 ## 2. Crash behavior
@@ -533,7 +559,12 @@ verbs, adding no new durability mechanism of their own.
   `tgms_version`/`commit` that made the backup. The source is opened
   `read_only=True` — the one mode that never runs `Store._recover` or
   publishes a generation (§2's "recovery is a writer's act") — so taking a
-  backup never mutates the store being backed up.
+  backup never mutates the store being backed up. It is opened with the
+  backend it was written with: a directory holding `store.duckdb` is a
+  DuckDB store, also when an empty `native/` sits beside it (see below).
+  Only a native store has a generation and a `manifest_sha`; for a store of
+  another backend both keys are `null`, and the rest of the manifest is the
+  same.
 - **`tgms store restore --dest <dest> --store <new_store>`** replays that
   backed-up log into a fresh store at `<new_store>`, reusing exactly the
   `tgms replay` CLI path (copy the log into place, `replay(..., thread_cursor=
@@ -541,7 +572,28 @@ verbs, adding no new durability mechanism of their own.
   against the backup manifest and prints a `PASS`/`FAIL` verdict — nonzero
   exit on any mismatch. The backed-up log's sha256 is checked against the
   manifest *before* replay runs at all, so a tampered backup fails loudly
-  instead of silently reconstructing something else.
+  instead of silently reconstructing something else. Restore always builds
+  a native store; it has no backend option. That still checks a DuckDB
+  store's backup, because the logical digest is one definition for every
+  backend: replaying the same log into a native and a DuckDB store gives the
+  same `store_identity` and the same digest
+  (`tests/test_backup_restore_backends.py` checks the round trip on stores
+  built from the v0.8.0 fixture log). Restore reads neither `generation` nor
+  `manifest_sha`.
+- **A DuckDB store backed up with v0.8.0.** v0.8.0 opened every store as a
+  native one. Given a DuckDB store, its `store backup` created an empty
+  native store under `<src>/native/` and recorded that empty store's logical
+  digest, so restoring such a backup prints `FAIL` and exits 1 — under v0.8.0
+  and under this version alike — although the copied log is intact and the
+  restored store has the right identity and answers. Take the backup again
+  with this version. The empty `native/` left in the source does not change
+  how the store is read.
+- **`tgms store verify` checks native stores only** (and so does `tgms
+  check`). Given a DuckDB store, it prints one line saying what the store is
+  and that it was not checked, and exits 2, the code for a store that cannot
+  be checked. With `--json` the line is the report's `reason`, next to
+  `"readable": false`. For a DuckDB store, the event log and `tgms store
+  restore` of a fresh backup are the check.
 - **What this is not:** a scheduling, retention, or incremental-backup
   mechanism — `--dest` is a plain directory, and running backup twice
   overwrites it. There is also no cross-machine or cross-version portability
@@ -710,7 +762,10 @@ written to. It is reported (`tcsr-stale`) and it does not condemn the store.
 all — `CURRENT` malformed, a manifest failing its own checksum, a dictionary
 shorter than the manifest commits. Those are refusals the engine makes before
 a report exists, and "cannot be checked" is a different answer from "checked,
-and here is what is wrong".
+and here is what is wrong". Two more cases give exit 2, because this build
+did not check the store: a store written by a newer build (§1), with
+`"written_by_newer_build": true` in the `--json` report, and a store that is
+not native (§7).
 
 **Read-only, and this is a promise, not an implementation detail.** Verify
 never writes, truncates, trims or recovers, in either mode. A torn event-log
