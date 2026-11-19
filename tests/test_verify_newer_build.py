@@ -19,6 +19,10 @@ engine's own segment tests make them
 the column keys a newer build writes (`base`, `divisor`), keeping every data
 byte, or set the current manifest's `format` to 4. Nothing written by another
 build is needed.
+
+The segment format number is the exception that runs the other way: no build
+has written a segment format below the current one, so a lower number is
+damage and is reported CORRUPT, while a higher one is a newer build's.
 """
 
 from __future__ import annotations
@@ -31,7 +35,7 @@ import pytest
 pytest.importorskip("tgms._engine", reason="native engine extension not built")
 
 import tgms  # noqa: E402
-from tgms._engine import NEWER_WRITER_REMEDY  # noqa: E402
+from tgms._engine import FORMAT_VERSION, NEWER_WRITER_REMEDY  # noqa: E402
 from tgms.cli import main  # noqa: E402
 
 GENERIC_TAIL = "restore the previous generation"
@@ -84,6 +88,13 @@ def set_manifest_format(root: Path, fmt: int) -> None:
     doc = json.loads(path.read_text())
     doc["format"] = fmt
     path.write_text(json.dumps(doc, indent=2))
+
+
+def set_segment_format(seg: Path, fmt: int) -> None:
+    """Set the preamble's format word to `fmt`, keeping every other byte."""
+    b = bytearray(seg.read_bytes())
+    b[4:8] = fmt.to_bytes(4, "little")
+    seg.write_bytes(bytes(b))
 
 
 def flip_body_byte(seg: Path) -> None:
@@ -154,6 +165,45 @@ def test_reading_a_newer_segment_names_only_its_own_remedy(tmp_path):
     assert "which this build does not understand" in msg, msg
     assert msg.endswith(NEWER_WRITER_REMEDY), msg
     assert GENERIC_TAIL not in msg, msg
+
+
+# --- the segment format number --------------------------------------------- #
+
+
+def test_a_higher_segment_format_is_not_checked(tmp_path, capsys):
+    root = build(tmp_path / "s")
+    for seg in segments(root):
+        set_segment_format(seg, FORMAT_VERSION + 1)
+
+    for argv in (["store", "verify", "--store", str(root)], ["check", str(root)]):
+        rc, out = run(capsys, argv)
+        assert_not_checked(rc, out)
+        assert f"segment format {FORMAT_VERSION + 1} is not supported" in out, out
+
+    assert main(["store", "verify", "--store", str(root), "--json"]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["written_by_newer_build"] is True
+
+
+def test_a_lower_segment_format_is_corrupt(tmp_path, capsys):
+    root = build(tmp_path / "s")
+    set_segment_format(segments(root)[0], FORMAT_VERSION - 1)
+
+    for argv in (["store", "verify", "--store", str(root)],
+                 ["store", "verify", "--store", str(root), "--full"],
+                 ["check", str(root)]):
+        rc, out = run(capsys, argv)
+        assert rc == 1, out
+        assert "verdict: CORRUPT" in out, out
+        assert f"segment format {FORMAT_VERSION - 1} is below {FORMAT_VERSION}" in out, out
+        assert GENERIC_TAIL in out, out
+        assert "NOT CHECKED" not in out and "newer TGMS build" not in out, out
+
+    assert main(["store", "verify", "--store", str(root), "--json"]) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["readable"] is True
+    assert report["healthy"] is False
+    assert "written_by_newer_build" not in report
 
 
 # --- manifest format 4 ------------------------------------------------------ #
