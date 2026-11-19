@@ -298,7 +298,8 @@ def build_parser() -> argparse.ArgumentParser:
                     "every finding reported as {layer, kind, path, "
                     "generation, detail, severity}. Exits 0 when the store "
                     "is clean, 1 when there are findings, and 2 when the "
-                    "store cannot be opened at all. Nothing is repaired — "
+                    "store cannot be opened at all or was written by a "
+                    "newer TGMS build (not checked). Nothing is repaired — "
                     "the remedy for a corrupt store is `tgms replay` from "
                     "its event log.")
     p_check.add_argument("store", help="the store to check")
@@ -312,6 +313,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_mem.add_argument("--refresh-stale", action="store_true")
 
     return p
+
+
+#: What `store verify` / `check` say about a store written by a newer build.
+#: This build refuses such a store (a manifest format or a segment header it
+#: does not read) rather than reading it; that refusal is not damage, and this
+#: build has not checked the store, so the answer is "not checked", exit 2.
+NEWER_BUILD_NOT_CHECKED = (
+    "this store was written by a newer TGMS build and was not checked by this "
+    "build; open it with that newer build, or rebuild it with this build from "
+    "its event log: `tgms replay <store>/eventlog.jsonl --store <new-path>`")
+
+
+def _is_newer_build_refusal(text: str) -> bool:
+    """True when an engine error (or a finding's detail, which embeds one) is
+    the refusal of a file written by a newer build. The engine gives every
+    such refusal one remedy, `NEWER_WRITER_REMEDY`, defined once in the engine
+    and exported by it; a store that is damaged gets a different one."""
+    from tgms._engine import NEWER_WRITER_REMEDY
+
+    return NEWER_WRITER_REMEDY in text
 
 
 def _store_verify(path: str, mode: str, as_json: bool) -> int:
@@ -328,7 +349,11 @@ def _store_verify(path: str, mode: str, as_json: bool) -> int:
     or the dictionary is shorter than the manifest commits. Those are
     refusals the engine makes before any report exists, and they are a
     different answer from "checked, and here is what is wrong" — the
-    corruption sweep has to tell the two apart.
+    corruption sweep has to tell the two apart. A store written by a newer
+    build is also exit 2: this build refuses to read it, at open (a manifest
+    format) or segment by segment (a header key it does not know), and a
+    refusal is not a finding about the store. Damage found beside such a
+    refusal is still exit 1.
 
     The adapter is constructed directly rather than through `tgms.open`,
     which is not a shortcut: `Store.__init__` seeds its clock by scanning the
@@ -367,8 +392,15 @@ def _store_verify(path: str, mode: str, as_json: bool) -> int:
     except Exception as e:
         report = {"store": path, "mode": mode, "readable": False,
                   "reason": f"{type(e).__name__}: {e}"}
+        newer = _is_newer_build_refusal(str(e))
+        if newer:
+            report["written_by_newer_build"] = True
         if as_json:
             print(json.dumps(report, sort_keys=True))
+        elif newer:
+            print(f"store:      {path}")
+            print(f"refused:    {report['reason']}")
+            print(f"\nverdict: NOT CHECKED — {NEWER_BUILD_NOT_CHECKED}")
         else:
             print(f"store:      {path}")
             print(f"\nverdict: UNREADABLE — {report['reason']}")
@@ -384,13 +416,23 @@ def _store_verify(path: str, mode: str, as_json: bool) -> int:
     r["store"] = path
     r["readable"] = True
 
-    if as_json:
-        print(json.dumps(r, sort_keys=True))
-        return 0 if r["healthy"] else 1
-
     findings = r["findings"]
     errors = [f for f in findings if f["severity"] == "error"]
     advisories = [f for f in findings if f["severity"] != "error"]
+    # segments refused as written by a newer build: not checked, not damage
+    refused = [f for f in errors if _is_newer_build_refusal(f["detail"])]
+    errors = [f for f in errors if f not in refused]
+    not_checked = bool(refused) and not errors
+    if refused:
+        r["written_by_newer_build"] = True
+    if not_checked:
+        r["readable"] = False
+        r["reason"] = NEWER_BUILD_NOT_CHECKED
+
+    if as_json:
+        print(json.dumps(r, sort_keys=True))
+        return 2 if not_checked else 0 if r["healthy"] else 1
+
     print(f"store:      {path}")
     print(f"mode:       {r['mode']}")
     print(f"generation: {r['generation']}")
@@ -404,7 +446,9 @@ def _store_verify(path: str, mode: str, as_json: bool) -> int:
               f"{r['identities_checked']} identities")
     print(f"layout:     {r['tt_s_runs']} tt_s runs across live "
           f"segments, {r['max_tt_s_runs']} in the worst one")
-    for title, group in (("PROBLEMS", errors), ("ADVISORIES", advisories)):
+    for title, group in (("PROBLEMS", errors),
+                         ("REFUSED, WRITTEN BY A NEWER BUILD", refused),
+                         ("ADVISORIES", advisories)):
         if not group:
             continue
         print(f"\n{title} ({len(group)}):")
@@ -414,6 +458,9 @@ def _store_verify(path: str, mode: str, as_json: bool) -> int:
     if errors:
         print("\nverdict: CORRUPT — do not trust this store; rebuild "
               "it from its event log with `tgms replay`")
+    elif not_checked:
+        print(f"\nverdict: NOT CHECKED — {NEWER_BUILD_NOT_CHECKED}")
+        return 2
     elif r["mode"] == "full":
         print("\nverdict: healthy — every referenced file passed its "
               "checksums, every cross-reference resolved, and every "
