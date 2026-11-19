@@ -27,7 +27,11 @@ carries a key this build does not read, a codec other than raw or
 frame-of-reference, or a segment format other than 1 is now refused. These
 refusals and the existing manifest-format refusal name the remedy: open the
 store with the newer build, or rebuild it with this one from its event log,
-`tgms replay <store>/eventlog.jsonl --store <new-path>`. Known limits: the
+`tgms replay <store>/eventlog.jsonl --store <new-path>`, and no longer add the
+advice for a damaged store to restore the previous generation. `tgms store
+verify` and `tgms check` report such a store as written by a newer build and
+not checked, with the same remedy, and exit 2 instead of CORRUPT and exit 1;
+a damaged store is still reported CORRUPT. Known limits: the
 check runs when a segment is decoded, so `tgms ingest` into such a store can
 append its batch to the event log before it refuses; and it refuses on
 unknown keys, so it also refuses some newer segments this build would have
