@@ -689,12 +689,11 @@ impl Manifest {
         if self.format != MANIFEST_FORMAT_VERSION
             && !MANIFEST_FORMATS_READ_ONLY.contains(&self.format)
         {
-            return Err(EngineError::corrupt(format!(
+            return Err(EngineError::newer_writer(format!(
                 "manifest format {} is not supported by this build \
-                 (expected {MANIFEST_FORMAT_VERSION}, or {} read-only): {}",
+                 (expected {MANIFEST_FORMAT_VERSION}, or {} read-only)",
                 self.format,
-                read_only_list(),
-                crate::segment::NEWER_WRITER_REMEDY
+                read_only_list()
             )));
         }
         let expected = self.digest();

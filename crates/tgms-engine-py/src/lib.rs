@@ -1286,6 +1286,12 @@ fn _engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
         tgms_engine_core::MANIFEST_FORMAT_VERSION,
     )?;
     m.add("OPEN_END", tgms_engine_core::OPEN_END)?;
+    // the remedy of every "written by a newer build" refusal; `tgms store
+    // verify` recognises such a refusal by it
+    m.add(
+        "NEWER_WRITER_REMEDY",
+        tgms_engine_core::segment::NEWER_WRITER_REMEDY,
+    )?;
     m.add("BLOCK_ROWS", tgms_engine_core::defaults::BLOCK_ROWS)?;
     m.add(
         "SEGMENT_TARGET_BYTES",

@@ -797,8 +797,8 @@ impl<S: SegmentSource> Segment<S> {
         }
         let format = read_u32(bytes, 4).map_err(at)?;
         if format != FORMAT_VERSION {
-            return Err(at(EngineError::corrupt(format!(
-                "segment format {format} is not supported (expected {FORMAT_VERSION}): {NEWER_WRITER_REMEDY}"
+            return Err(at(EngineError::newer_writer(format!(
+                "segment format {format} is not supported (expected {FORMAT_VERSION})"
             ))));
         }
         let header_len = read_u32(bytes, 8).map_err(at)? as usize;
@@ -810,16 +810,16 @@ impl<S: SegmentSource> Segment<S> {
             .map_err(|e| at(EngineError::corrupt(format!("segment header is invalid: {e}"))))?;
         let unknown = unknown_header_keys(header_bytes).map_err(at)?;
         if !unknown.is_empty() {
-            return Err(at(EngineError::corrupt(format!(
-                "segment header uses {} which this build does not understand: {NEWER_WRITER_REMEDY}",
+            return Err(at(EngineError::newer_writer(format!(
+                "segment header uses {} which this build does not understand",
                 unknown.join(", ")
             ))));
         }
         if let Some(c) = header.columns.iter().find(|c| {
             c.codec != crate::codec::CODEC_RAW && c.codec != crate::codec::CODEC_FOR
         }) {
-            return Err(at(EngineError::corrupt(format!(
-                "column '{}' uses codec {} which this build cannot decode: {NEWER_WRITER_REMEDY}",
+            return Err(at(EngineError::newer_writer(format!(
+                "column '{}' uses codec {} which this build cannot decode",
                 c.name, c.codec
             ))));
         }

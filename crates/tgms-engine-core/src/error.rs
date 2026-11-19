@@ -101,6 +101,15 @@ impl EngineError {
         )
     }
 
+    /// A refusal of a file written by a newer build (a manifest format or a
+    /// segment header this build does not read). The category is `Corrupt`,
+    /// as before, but the remedy is `segment::NEWER_WRITER_REMEDY` alone:
+    /// restoring the previous generation does not help with a store a newer
+    /// build wrote. `tgms store verify` recognises the refusal by that remedy.
+    pub fn newer_writer(message: impl Into<String>) -> Self {
+        Self::new(Category::Corrupt, message).with_remedy(crate::segment::NEWER_WRITER_REMEDY)
+    }
+
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new(Category::NotFound, message)
     }
@@ -170,6 +179,16 @@ mod tests {
         assert!(s.contains("corrupt"));
         assert!(s.contains("seg/7.tgs"));
         assert!(s.contains("4096"));
+    }
+
+    #[test]
+    fn a_newer_writer_refusal_names_only_its_own_remedy() {
+        let e = EngineError::newer_writer("segment format 2 is not supported").at_file("seg/7.tgs");
+        assert_eq!(e.category, Category::Corrupt);
+        assert_eq!(e.remedy.as_deref(), Some(crate::segment::NEWER_WRITER_REMEDY));
+        let s = e.to_string();
+        assert!(s.ends_with(crate::segment::NEWER_WRITER_REMEDY), "{s}");
+        assert!(!s.contains("restore the previous generation"), "{s}");
     }
 
     #[test]
