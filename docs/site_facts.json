@@ -196,7 +196,7 @@
  },
  "facts": {
   "site_version": {
-   "value": "0.8.0",
+   "value": "0.8.1",
    "kind": "architectural",
    "prose": "current released package version (matches pyproject.toml and the PyPI release)"
   },
