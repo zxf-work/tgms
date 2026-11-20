@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.8.1 — unreleased
+## v0.8.1 — 2026-11-20
 
 A maintenance release on the 0.8 line: two fixes for stores that 0.8.0
 handled wrongly, and the reader, recovery and freshness-check fixes made on
