@@ -59,7 +59,7 @@ tgms = "tgms.cli:main"
 [project.urls]
 Homepage = "https://zxf-work.github.io/tgms/"
 Repository = "https://github.com/zxf-work/tgms"
-Documentation = "https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md"
+Documentation = "https://github.com/zxf-work/tgms#readme"
 
 [dependency-groups]
 dev = [
